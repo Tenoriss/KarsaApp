@@ -91,13 +91,32 @@ class MockNode {
   }
   dispatch(type, event) {
     const list = (this.listeners[type] || []).slice();
-    const evt = Object.assign({ type, target: this, preventDefault() {}, stopPropagation() {} }, event || {});
+    const evt = Object.assign({
+      type,
+      target: this,
+      defaultPrevented: false,
+      preventDefault() { this.defaultPrevented = true; },
+      stopPropagation() { this.propagationStopped = true; }
+    }, event || {});
     list.forEach((fn) => fn.call(this, evt));
+    // Browser-like: an `onclick` property behaves like a listener.
+    const prop = this['on' + type];
+    if (typeof prop === 'function') prop.call(this, evt);
     return evt;
   }
   focus() { doc.activeElement = this; }
   setSelectionRange() {}
-  click() { this.dispatch('click', {}); }
+  // Browsers bubble click events, so a tap on a child label also triggers the
+  // handler of the card that contains it. The mock has to do the same,
+  // otherwise "dead" buttons are hidden from the harness.
+  click() {
+    let node = this;
+    while (node) {
+      const evt = node.dispatch('click', { target: node });
+      if (evt.propagationStopped) break;
+      node = node.parentNode;
+    }
+  }
 
   set className(value) { this.attributes.class = String(value); }
   get className() { return this.attributes.class || ''; }
@@ -232,13 +251,22 @@ sheetPanel.setAttribute('id', 'sheet-panel');
 [shell, viewport, bottomNav, screenSelect, themeToggle, sheetBackdrop, sheetPanel].forEach((n) => doc.body.appendChild(n));
 
 const timers = [];
+// Mock localStorage supaya penyimpanan lokal di pratinjau bisa diuji.
+const storageData = {};
+const fakeLocalStorage = {
+  getItem(key) { return Object.prototype.hasOwnProperty.call(storageData, key) ? storageData[key] : null; },
+  setItem(key, value) { storageData[key] = String(value); },
+  removeItem(key) { delete storageData[key]; },
+  clear() { Object.keys(storageData).forEach((k) => { delete storageData[k]; }); }
+};
 const fakeWindow = {
   document: doc,
   location: { hash: '' },
   history: { replaceState() { fakeWindow.location.hash = arguments[2]; } },
   setTimeout(fn, ms) { timers.push({ fn, ms }); return timers.length; },
   clearTimeout() {},
-  addEventListener() {}
+  addEventListener() {},
+  localStorage: fakeLocalStorage
 };
 fakeWindow.window = fakeWindow;
 
@@ -648,6 +676,88 @@ preview.state.studentClass = 'Kelas 5';
 preview.state.parentClass = 'Kelas 1';
 preview.state.religion = '';
 preview.state.personalDraft = null;
+
+/* ------------------------------------------------------------------ *
+ * 9d. Notifikasi: setiap item bisa diklik dan membuka isinya
+ * ------------------------------------------------------------------ */
+preview.state.role = 'siswa';
+preview.state.studentClass = 'Kelas 5';
+preview.state.parentClass = 'Kelas 1';
+preview.state.readNotifications = {};
+preview.go('notifikasi');
+
+const notifItems = viewport.querySelectorAll('.list-item-card');
+ok(notifItems.length >= 2, 'the student sees their own notifications (' + notifItems.length + ')');
+ok(viewport.textContent.indexOf('Pecahan dan perbandingan') >= 0,
+  'the student notification list contains a Kelas 5 task');
+ok(viewport.textContent.indexOf('Penjumlahan sampai 20') < 0,
+  'the student does not see the parent (Kelas 1) notifications');
+
+if (notifItems.length) {
+  notifItems[0].click();
+  ok(sheetBackdrop.hidden === false, 'clicking a notification opens the related content');
+  ok(sheetPanel.textContent.indexOf('Pecahan dan perbandingan') >= 0,
+    'the notification opens the matching task detail');
+  ok(sheetPanel.textContent.indexOf('Kerjakan kuis') >= 0,
+    'the opened task offers the quiz action');
+  // Tutup sheet.
+  const closeBtn = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Tutup') >= 0)[0];
+  if (closeBtn) closeBtn.click();
+}
+
+// Notifikasi yang sudah dibaca ditandai, tidak lagi berlabel "Baru".
+preview.go('notifikasi');
+ok(viewport.textContent.indexOf('Dibaca') >= 0, 'a read notification is labelled "Dibaca"');
+const baruCount = (viewport.textContent.match(/Baru/g) || []).length;
+eq(baruCount, 1, 'only the notification that is still unread keeps the "Baru" badge');
+
+/* ------------------------------------------------------------------ *
+ * 9e. Materi: siswa melihat materi kelasnya sendiri
+ * ------------------------------------------------------------------ */
+preview.state.role = 'siswa';
+preview.go('siswa-beranda');
+ok(viewport.textContent.indexOf('Materi kelas') >= 0, 'the student dashboard shows the materials card');
+ok(!/Materi kelas0/.test(viewport.textContent.replace(/\s+/g, ' ')),
+  'the student dashboard no longer shows zero materials');
+
+preview.go('materi');
+ok(viewport.textContent.indexOf('Ringkasan Pecahan Kelas 5') >= 0,
+  'the student sees the materials of their own class');
+ok(viewport.textContent.indexOf('Ringkasan Pecahan') < 0 ||
+  viewport.textContent.indexOf('Ringkasan Pecahan Kelas 5') >= 0,
+  'the student does not see the parent (Kelas 1) materials');
+
+/* ------------------------------------------------------------------ *
+ * 9f. Penyimpanan lokal: data pribadi disimpan di "@karsa-demo-v1"
+ * ------------------------------------------------------------------ */
+preview.state.role = 'siswa';
+preview.go('siswa-profil');
+const editBtn = viewport.querySelectorAll('button')
+  .filter((b) => (b.textContent || '').indexOf('Ubah informasi') >= 0)[0];
+ok(!!editBtn, 'the student profile hero has the "Ubah informasi" button');
+if (editBtn) {
+  editBtn.click();
+  const nameInput = sheetPanel.querySelectorAll('input')[0];
+  ok(!!nameInput, 'the personal info sheet has a name input');
+  if (nameInput) {
+    nameInput.value = 'Nadia Lestari';
+    nameInput.dispatch('input', { target: nameInput });
+  }
+  const saveAction = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Simpan perubahan') >= 0)[0];
+  if (saveAction) saveAction.click();
+  eq(preview.state.studentName, 'Nadia Lestari', 'the edited name is applied');
+  const stored = fakeLocalStorage.getItem('@karsa-demo-v1');
+  ok(!!stored, 'the edited personal info is stored under "@karsa-demo-v1"');
+  if (stored) {
+    const parsed = JSON.parse(stored);
+    eq(parsed.studentName, 'Nadia Lestari', 'the stored JSON holds the new student name');
+  }
+}
+
+preview.state.studentName = 'Dimas Nugroho';
+preview.state.readNotifications = {};
 
 /* ------------------------------------------------------------------ *
  * 10. Dark mode toggle

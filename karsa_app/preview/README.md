@@ -121,6 +121,13 @@ Deep link memakai hash: `index.html#guru-tugas`, `#wali-recap`, `#wali-rekap`,
   chip kelas, chip agama, tombol "Simpan perubahan") dan section
   "Nilai kelas" (rata-rata kelas + nilai per mata pelajaran dari hasil kuis
   yang benar-benar dikerjakan).
+* **Notifikasi** — setiap item bisa diklik: notifikasi ditandai "Dibaca" dan
+  lembar isinya (detail tugas atau materi) langsung dibuka. Notifikasi hanya
+  untuk kelas belajar masing-masing (siswa: kelasnya, orang tua: kelas
+  anaknya).
+* **Penyimpanan lokal** — data pribadi dan status notifikasi disimpan di
+  `localStorage` pada kunci `@karsa-demo-v1` (kunci yang sama dengan aplikasi
+  Flutter), jadi tetap ada setelah halaman dimuat ulang.
 
 ---
 

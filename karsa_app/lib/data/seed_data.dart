@@ -1,5 +1,7 @@
 import '../models/announcement_item.dart';
 import '../models/class_member.dart';
+import '../models/local_notification.dart';
+import '../models/material_item.dart';
 import '../models/practice_item.dart';
 import '../models/task_item.dart';
 import '../models/task_result.dart';
@@ -38,6 +40,128 @@ class SeedData {
       minutes: '30',
     ),
   ];
+
+  /// Materi demo. Termasuk kelas 1 (anak orang tua) dan kelas 5-6 (siswa)
+  /// supaya kartu "Materi kelas" dan layar Materi tidak kosong.
+  static List<MaterialItem> initialMaterials(DateTime now) {
+    final made = DateTime(now.year, now.month, now.day, 7, 30).toUtc();
+    return <MaterialItem>[
+      MaterialItem(
+        id: 'm1',
+        subject: 'Matematika',
+        className: 'Kelas 1',
+        title: 'Ringkasan Pecahan',
+        summary: 'Pengenalan pecahan sederhana untuk siswa kelas 1.',
+        teacher: 'Ibu Sari',
+      ),
+      MaterialItem(
+        id: 'm2',
+        subject: 'Bahasa Indonesia',
+        className: 'Kelas 1',
+        title: 'Contoh Kalimat Sederhana',
+        summary: 'Kumpulan contoh kalimat sederhana beserta latihan membaca.',
+        teacher: 'Ibu Sari',
+      ),
+      MaterialItem(
+        id: 'm3',
+        subject: 'Matematika',
+        className: 'Kelas 5',
+        title: 'Ringkasan Pecahan Kelas 5',
+        summary:
+            'Penjelasan pecahan, perbandingan, dan cara menyederhanakan bilangan pecahan.',
+        teacher: 'Ibu Sari',
+      ),
+      MaterialItem(
+        id: 'm4',
+        subject: 'Bahasa Indonesia',
+        className: 'Kelas 5',
+        title: 'Contoh Menyinggung Kalimat',
+        summary: 'Contoh kalimat berhias beserta latihan menentukan jenis majas.',
+        teacher: 'Ibu Sari',
+      ),
+    ];
+  }
+
+  /// Notifikasi demo untuk guru, orang tua, dan siswa (kelas 1 dan kelas 5).
+  static List<LocalNotification> initialNotifications(DateTime now) {
+    LocalNotification make({
+      required String id,
+      required String target,
+      required String subject,
+      required String className,
+      required String title,
+      required String kind,
+      required String contentId,
+      required int hoursAgo,
+    }) {
+      return LocalNotification(
+        id: id,
+        target: target,
+        subject: subject,
+        className: className,
+        title: title,
+        kind: kind,
+        contentId: contentId,
+        createdAt:
+            DateTime(now.year, now.month, now.day, 7, 30).subtract(Duration(hours: hoursAgo))
+                .toUtc()
+                .toIso8601String(),
+      );
+    }
+
+    return <LocalNotification>[
+      make(
+        id: 'n1',
+        target: 'learners',
+        subject: 'Matematika',
+        className: 'Kelas 1',
+        title: 'Tugas baru · Penjumlahan sampai 20',
+        kind: 'task',
+        contentId: 't1',
+        hoursAgo: 1,
+      ),
+      make(
+        id: 'n2',
+        target: 'learners',
+        subject: 'Bahasa Indonesia',
+        className: 'Kelas 1',
+        title: 'Materi baru · Membaca kalimat',
+        kind: 'material',
+        contentId: 'm1',
+        hoursAgo: 2,
+      ),
+      make(
+        id: 'n3',
+        target: 'teachers',
+        subject: 'Matematika',
+        className: 'Kelas 1',
+        title: 'Tugas dikumpulkan siswa',
+        kind: 'task',
+        contentId: 't1',
+        hoursAgo: 3,
+      ),
+      make(
+        id: 'n4',
+        target: 'learners',
+        subject: 'Matematika',
+        className: 'Kelas 5',
+        title: 'Tugas baru · Pecahan dan perbandingan',
+        kind: 'task',
+        contentId: 'seed5',
+        hoursAgo: 1,
+      ),
+      make(
+        id: 'n5',
+        target: 'learners',
+        subject: 'Bahasa Indonesia',
+        className: 'Kelas 5',
+        title: 'Materi baru · Ringkasan Pecahan Kelas 5',
+        kind: 'material',
+        contentId: 'm3',
+        hoursAgo: 2,
+      ),
+    ];
+  }
 
   static final List<PracticeItem> defaultPractices = <PracticeItem>[
     for (int i = 0; i < CurriculumData.subjects.length; i++)

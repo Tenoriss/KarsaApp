@@ -210,6 +210,14 @@ Profil memiliki 4 varian (wali / guru / siswa / orang tua): avatar 84 radius 42
 * **Pengaturan** — `profile_tab.dart` + `setting_detail_page.dart`
   (Informasi pribadi, Mata pelajaran, Tampilan, Notifikasi, Privasi dan
   keamanan, Pusat bantuan), keluar akun demo.
+* **Perbaikan tombol role siswa (perubahan terbaru)** — notifikasi siswa kini
+  bisa diklik: item ditandai "Dibaca" dan lembar detail tugas/materinya
+  langsung dibuka (sebelumnya hanya menandai `read` tanpa efek terlihat).
+  Notifikasi dan materi kini dibatasi pada kelas belajar masing-masing
+  (siswa: kelasnya, orang tua: kelas anaknya), dan data seed materi untuk
+  kelas 5-6 ditambahkan supaya kartu "Materi kelas" tidak lagi nol. Mock DOM
+  pada harness kini meniru *event bubbling* seperti browser sehingga tombol
+  mati tidak lagi tertutupi.
 * **Profil siswa (perubahan terbaru)** — kartu **Informasi pribadi** yang bisa
   diedit langsung (ikon pensil "Ubah informasi" pada hero profil, kartu
   "Data pribadi" berisi Nama, Kelas, NISN, Agama, dan tombol "Ubah"), plus
@@ -292,7 +300,7 @@ Pemeriksaan yang dilakukan:
 | Sintaks & struktur Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 98 berkas, 11.294 baris, 107 class/enum/mixin; semua import, aset, dan referensi member resolve |
 | Uji unit Flutter (disiapkan, belum dieksekusi) | `flutter test` | **Tidak dijalankan** — SDK tidak tersedia (termasuk uji baru: ringkasan nilai kelas + pengeditan data pribadi) |
 | Sintaks JS pratinjau | `node --check` | OK untuk `app.js`, `curriculum-data.js`, `test_preview.js`, `tool/generate_preview_data.js` |
-| Perilaku pratinjau (mock DOM) | `node karsa_app/preview/test_preview.js` | OK — 181 pemeriksaan lulus |
+| Perilaku pratinjau (mock DOM) | `node karsa_app/preview/test_preview.js` | OK — 206 pemeriksaan lulus |
 | Server pratinjau | `curl http://127.0.0.1:8000/...` | OK — `/healthz` 200, HTML/CSS/JS 200 + charset utf-8, 6 PNG 200, `Ionicons.ttf` 200, 404 untuk berkas tak dikenal |
 
 Rencana uji lengkap: [`03_TESTING_PLAN.md`](03_TESTING_PLAN.md).
