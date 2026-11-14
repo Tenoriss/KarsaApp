@@ -9,6 +9,7 @@ import '../../core/widgets/clay_card.dart';
 import '../../core/widgets/karsa_icons.dart';
 import '../../core/widgets/motion_pressable.dart';
 import '../../core/widgets/notice_card.dart';
+import '../../data/curriculum_data.dart';
 import '../../core/widgets/page_header.dart';
 import '../../core/widgets/stat_card.dart';
 import '../../models/demo_account.dart';
@@ -88,7 +89,17 @@ class ProfileTab extends StatelessWidget {
               ? 'Guru ${state.data.teacherSubject} · SD Karitas Purwokerto'
               : '${state.data.childClass} · SD Karitas Purwokerto',
           badgeText: isTeacher ? 'Guru aktif' : 'Siswa aktif',
+          onEdit: () => state.openSetting('Informasi pribadi'),
+          editLabel: 'Ubah informasi',
         ),
+        if (!isTeacher) ...<Widget>[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text('Informasi pribadi', style: theme.text.section),
+          ),
+          _PersonalInfoCard(state: state, role: role),
+          const SizedBox(height: 18),
+        ],
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Text(
@@ -122,6 +133,13 @@ class ProfileTab extends StatelessWidget {
             ],
           ),
         ),
+        if (!isTeacher) ...<Widget>[
+          Padding(
+            padding: const EdgeInsets.only(top: 18, bottom: 10),
+            child: Text('Nilai kelas', style: theme.text.section),
+          ),
+          _ClassGradesCard(state: state),
+        ],
         if (isTeacher) ...<Widget>[
           Padding(
             padding: const EdgeInsets.only(top: 14, bottom: 10),
@@ -339,12 +357,16 @@ class _ProfileAvatarHero extends StatelessWidget {
   final String name;
   final String subtitle;
   final String badgeText;
+  final VoidCallback? onEdit;
+  final String? editLabel;
 
   const _ProfileAvatarHero({
     required this.emoji,
     required this.name,
     required this.subtitle,
     required this.badgeText,
+    this.onEdit,
+    this.editLabel,
   });
 
   @override
@@ -371,6 +393,27 @@ class _ProfileAvatarHero extends StatelessWidget {
           Text(name, style: theme.text.name),
           const SizedBox(height: 4),
           Text(subtitle, style: theme.text.muted),
+          if (onEdit != null) ...<Widget>[
+            const SizedBox(height: 8),
+            MotionPressable(
+              semanticsLabel: editLabel ?? 'Ubah informasi',
+              onTap: onEdit,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(KarsaIcons.pencil, size: 15, color: c.rose),
+                    const SizedBox(width: 6),
+                    Text(
+                      editLabel ?? 'Ubah informasi',
+                      style: theme.text.link,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -388,6 +431,266 @@ class _ProfileAvatarHero extends StatelessWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Kartu ringkasan data pribadi yang bisa diedit (kelas &lt;button Ubah&gt;).
+///
+/// Membuka layar "Informasi pribadi" berisi nama, kelas, dan agama.
+class _PersonalInfoCard extends StatelessWidget {
+  final AppState state;
+  final UserRole role;
+
+  const _PersonalInfoCard({required this.state, required this.role});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = KarsaThemeScope.of(context);
+    final c = theme.colors;
+    final isStudent = role.isStudent;
+    final className = isStudent ? state.data.studentClass : state.data.childClass;
+    final religion = state.data.religion;
+
+    return ClayCard(
+      onTap: () => state.openSetting('Informasi pribadi'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(KarsaIcons.personOutline, color: c.rose, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Data pribadi', style: theme.text.itemTitle),
+              ),
+              Text('Ubah', style: theme.text.link),
+              const SizedBox(width: 4),
+              Icon(KarsaIcons.chevronForward, size: 17, color: c.muted),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _InfoRow(label: 'Nama', value: state.data.studentName),
+          const SizedBox(height: 10),
+          _InfoRow(label: 'Kelas', value: className),
+          const SizedBox(height: 10),
+          _InfoRow(
+            label: isStudent ? 'NISN demo' : 'NISN anak demo',
+            value: DemoAccount.forRole(UserRole.siswa).id,
+          ),
+          const SizedBox(height: 10),
+          _InfoRow(
+            label: 'Agama',
+            value: religion.isEmpty ? 'Belum diisi' : religion,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Perubahan disimpan di perangkat ini pada kunci "@karsa-demo-v1".',
+            style: theme.text.smallMuted,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = KarsaThemeScope.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        SizedBox(
+          width: 108,
+          child: Text(label, style: theme.text.smallMuted),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Text(value, style: theme.text.itemTitle)),
+      ],
+    );
+  }
+}
+
+/// Ringkasan nilai kelas: rata-rata nilai dan nilai per mata pelajaran
+/// dari tugas yang sudah dikerjakan pada perangkat ini.
+class _ClassGradesCard extends StatelessWidget {
+  final AppState state;
+
+  const _ClassGradesCard({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = KarsaThemeScope.of(context);
+    final c = theme.colors;
+    final summaries = state.classGradeSummaries;
+    final average = state.classGradeAverage;
+    final gradedCount = state.classGradedTaskCount;
+
+    return ClayCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 40,
+                height: 40,
+                decoration: ClayStyles.raised(
+                  color: c.card,
+                  isDark: c.isDark,
+                  radius: 20,
+                ),
+                alignment: Alignment.center,
+                child: const Text('📊', style: TextStyle(fontSize: 22)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text('Rata-rata kelas', style: theme.text.itemTitle),
+                    Text(
+                      '$gradedCount tugas bernilai · ${state.learnerClassName} · data lokal',
+                      style: theme.text.smallMuted,
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                average == null ? '—' : '$average',
+                style: theme.text.statNumber,
+              ),
+            ],
+          ),
+          if (summaries.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                'Belum ada tugas di kelas ini. Nilai muncul setelah tugas dikerjakan.',
+                style: theme.text.smallMuted,
+              ),
+            )
+          else
+            for (final s in summaries)
+              _ClassGradeRow(
+                subject: s.subject,
+                average: s.average,
+                display: s.averageLabel,
+                graded: s.gradedTasks,
+                total: s.totalTasks,
+              ),
+          if (summaries.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                'Nilai contoh dari kuis yang dikerjakan di perangkat ini, bukan nilai resmi sekolah.',
+                style: theme.text.smallMuted,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Baris nilai per mata pelajaran: ikon mapel, nama lengkap, bar nilai, dan
+/// jumlah tugas yang sudah dinilai.
+class _ClassGradeRow extends StatelessWidget {
+  final String subject;
+  final double average;
+  final String display;
+  final int graded;
+  final int total;
+
+  const _ClassGradeRow({
+    required this.subject,
+    required this.average,
+    required this.display,
+    required this.graded,
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = KarsaThemeScope.of(context);
+    final c = theme.colors;
+    final meta = CurriculumData.metaFor(subject);
+    final ratio = (average / 100).clamp(0.0, 1.0);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: 34,
+            height: 34,
+            decoration: ClayStyles.soft(
+              color: meta.color,
+              isDark: c.isDark,
+              radius: 12,
+            ),
+            alignment: Alignment.center,
+            child: Text(meta.icon, style: const TextStyle(fontSize: 16)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  subject,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.text.itemTitle,
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    height: 8,
+                    color: DarkColorMapper.surface(
+                      const Color(0xFFF3E8E6),
+                      isDark: c.isDark,
+                    ),
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: ratio,
+                      child: Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: graded > 0 ? c.rose : c.muted,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$graded dari $total tugas dinilai',
+                  style: theme.text.smallMuted,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            display,
+            style: TextStyle(
+              color: c.ink,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
