@@ -235,6 +235,7 @@ node karsa_app/preview/test_preview.js    # 158 pemeriksaan, mock DOM
 | Kalender & agenda | `MonthCalendar`, agenda kelas, form agenda, daftar agenda |
 | Pengumuman & notifikasi | Daftar pengumuman, detail, status dibaca/belum, notifikasi lokal |
 | Pengaturan | Profil per peran, informasi pribadi, mata pelajaran, tampilan, notifikasi, privasi, pusat bantuan, keluar akun |
+| Profil siswa | Kartu "Data pribadi" yang bisa diedit (nama, kelas, agama) dan section "Nilai kelas" (rata-rata + nilai per mata pelajaran dari kuis yang dikerjakan) |
 | Mode gelap | Palet gelap penuh dengan `DarkColorMapper`, tersimpan di `@karsa-demo-v1` |
 | Lenyap | Offline-first, tanpa backend, catatan demo yang jujur di UI |
 
