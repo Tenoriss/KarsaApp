@@ -270,6 +270,18 @@
       id: 'n3', target: 'teachers', subject: 'Matematika', className: 'Kelas 1',
       title: 'Tugas dikumpulkan siswa', kind: 'task', contentId: 't1',
       createdAt: new Date(NOW.getTime() - 10800000).toISOString()
+    },
+    // Notifikasi untuk kelas siswa (Kelas 5). Nuris ini memakai kelas belajar
+    // masing-masing, jadi siswa harus melihat notifikasi kelasnya sendiri.
+    {
+      id: 'n4', target: 'learners', subject: 'Matematika', className: 'Kelas 5',
+      title: 'Tugas baru · Pecahan dan perbandingan', kind: 'task', contentId: 'seed5',
+      createdAt: new Date(NOW.getTime() - 5400000).toISOString()
+    },
+    {
+      id: 'n5', target: 'learners', subject: 'Bahasa Indonesia', className: 'Kelas 5',
+      title: 'Materi baru · Ringkasan Pecahan Kelas 5', kind: 'material', contentId: 'm3',
+      createdAt: new Date(NOW.getTime() - 9000000).toISOString()
     }
   ];
 
@@ -281,6 +293,14 @@
     {
       id: 'm2', subject: 'Bahasa Indonesia', className: 'Kelas 1', title: 'Contoh Kalimat Sederhana',
       teacher: 'Ibu Sari', body: 'Kumpulan contoh kalimat sederhana beserta latihan membaca.'
+    },
+    {
+      id: 'm3', subject: 'Matematika', className: 'Kelas 5', title: 'Ringkasan Pecahan Kelas 5',
+      teacher: 'Ibu Sari', body: 'Penjelasan pecahan, perbandingan, dan cara menyederhanakan bilangan pecahan.'
+    },
+    {
+      id: 'm4', subject: 'Bahasa Indonesia', className: 'Kelas 5', title: 'Contoh Menyinggung Kalimat',
+      teacher: 'Ibu Sari', body: 'Contoh kalimat berhias beserta latihan menentukan jenis majas.'
     }
   ];
 
@@ -334,7 +354,8 @@
     studentName: 'Dimas Nugroho',
     teacherName: 'Ibu Sari',
     waliName: 'Ibu Sari',
-    personalDraft: null
+    personalDraft: null,
+    readNotifications: {}
   };
 
   var ROLE_TABS = {
@@ -805,12 +826,83 @@
           (state.role !== 'guru' || n.subject === state.teacherSubject) &&
           (state.role !== 'wali' || n.className === WALI_CLASS);
       }
-      return n.target === 'learners' && n.className === state.parentClass;
+      // Pelajar (siswa dan orang tua) hanya melihat notifikasi kelasnya
+      // sendiri: siswa memakai kelasnya, orang tua memakai kelas anaknya.
+      return n.target === 'learners' && n.className === learnerClassName();
     });
   }
 
+  function isNotificationRead(id) {
+    var bucket = state.readNotifications[state.role] || [];
+    return bucket.indexOf(id) >= 0;
+  }
+
+  function markNotificationRead(id) {
+    var bucket = (state.readNotifications[state.role] || []).slice();
+    if (bucket.indexOf(id) < 0) bucket.push(id);
+    state.readNotifications[state.role] = bucket;
+    persistState();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Penyimpanan lokal (cermin StorageService Flutter, kunci "@karsa-demo-v1")
+   * ------------------------------------------------------------------ */
+  var STORE_KEY = '@karsa-demo-v1';
+
+  function storage() {
+    try {
+      return window.localStorage || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function persistState() {
+    var store = storage();
+    if (!store) return;
+    try {
+      store.setItem(STORE_KEY, JSON.stringify({
+        studentName: state.studentName,
+        teacherName: state.teacherName,
+        waliName: state.waliName,
+        studentClass: state.studentClass,
+        parentClass: state.parentClass,
+        religion: state.religion,
+        readNotifications: state.readNotifications
+      }));
+    } catch (e) {
+      /* Penyimpanan penuh atau diblokir - pratinjau tetap berjalan. */
+    }
+  }
+
+  function restoreState() {
+    var store = storage();
+    if (!store) return;
+    try {
+      var raw = store.getItem(STORE_KEY);
+      if (!raw) return;
+      var saved = JSON.parse(raw);
+      if (!saved || typeof saved !== 'object') return;
+      ['studentName', 'teacherName', 'waliName', 'studentClass', 'parentClass', 'religion']
+        .forEach(function (key) {
+          if (typeof saved[key] === 'string' && saved[key]) state[key] = saved[key];
+        });
+      if (saved.readNotifications && typeof saved.readNotifications === 'object') {
+        state.readNotifications = saved.readNotifications;
+      }
+    } catch (e) {
+      /* Data rusak - pakai bawaan. */
+    }
+  }
+
+  function unreadNotificationCount() {
+    return relevantNotifications().filter(function (n) {
+      return !isNotificationRead(n.id);
+    }).length;
+  }
+
   function totalBadgeCount() {
-    return unreadAnnouncementsCount() + relevantNotifications().length;
+    return unreadAnnouncementsCount() + unreadNotificationCount();
   }
 
   /* ------------------------------------------------------------------ *
@@ -1581,15 +1673,17 @@
       state.teacherName = name;
     } else {
       state.studentName = name;
+      // Kelas siswa dan kelas anak orang tua berdiri sendiri: mengubah kelas
+      // siswa tidak boleh ikut mengubah kelas anak orang tua.
       if (state.role === 'siswa') {
         state.studentClass = draft.className;
-        state.parentClass = draft.className;
       } else {
         state.parentClass = draft.className;
       }
       state.religion = draft.religion;
     }
     state.personalDraft = null;
+    persistState();
     closeSheet();
     render();
   }
@@ -2485,11 +2579,12 @@
         return classOk && subjOk;
       }
       if (state.role === 'wali') return m.className === WALI_CLASS;
-      return m.className === state.parentClass || m.className === state.studentClass;
+      // Pelajar hanya melihat materi kelasnya sendiri.
+      return m.className === learnerClassName();
     });
 
     var children = [
-      pageHeader('Materi belajar', state.role === 'guru' ? 'Kelola materi dan ringkasan' : 'Materi untuk ' + state.parentClass,
+      pageHeader('Materi belajar', state.role === 'guru' ? 'Kelola materi dan ringkasan' : 'Materi untuk ' + learnerClassName(),
         function () { go(ROLE_SCREEN_PREFIX[state.role] + 'beranda'); }),
       state.role === 'guru' ? el('button', {
         class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
@@ -2507,22 +2602,24 @@
         children.push(listItemCard({
           iconEmoji: metaFor(m.subject).icon, tileColor: metaFor(m.subject).color, title: m.title,
           meta: m.subject + ' · ' + m.className + ' · ' + m.teacher, status: 'Lihat',
-          onTap: function () {
-            openSheet(el('div', {}, [
-              el('div', { class: 'sheet-handle' }),
-              el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0', text: m.title }),
-              el('p', { class: 't-muted', style: 'margin-bottom:12px', text: m.subject + ' · ' + m.className + ' · ' + m.teacher }),
-              el('p', { class: 't-muted', text: m.body }),
-              el('button', {
-                class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
-                onclick: function () { closeSheet(); render(); }
-              }, ['Tutup'])
-            ]));
-          }
+          onTap: function () { openMaterialDetail(m); }
         }));
       });
     }
     return el('div', {}, children);
+  }
+
+  function openMaterialDetail(m) {
+    openSheet(el('div', {}, [
+      el('div', { class: 'sheet-handle' }),
+      el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0', text: m.title }),
+      el('p', { class: 't-muted', style: 'margin-bottom:12px', text: m.subject + ' · ' + m.className + ' · ' + m.teacher }),
+      el('p', { class: 't-muted', text: m.body }),
+      el('button', {
+        class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
+        onclick: function () { closeSheet(); render(); }
+      }, ['Tutup'])
+    ]));
   }
 
   function openMaterialForm() {
@@ -2565,12 +2662,13 @@
       }));
     } else {
       list.forEach(function (n) {
+        var read = isNotificationRead(n.id);
         children.push(listItemCard({
           iconEmoji: n.target === 'teachers' ? '✅' : (n.kind === 'material' ? '📚' : '📝'),
           tileColor: '#F8EBEC', title: n.title,
           meta: n.subject + ' · ' + n.className + ' · ' + createdAtId(n.createdAt),
-          status: 'Baru',
-          onTap: function () { n.read = true; render(); }
+          status: read ? 'Dibaca' : 'Baru',
+          onTap: function () { openNotification(n); }
         }));
       });
     }
@@ -2584,6 +2682,27 @@
       text: 'Notifikasi demo hanya muncul pada perangkat/browser yang sama, bukan push notification.'
     }));
     return el('div', {}, children);
+  }
+
+  /* Notifikasi harus bisa diklik: tandai sudah dibaca lalu buka isi yang
+     terkait (tugas atau materi), sama seperti AppState.markNotification(). */
+  function openNotification(n) {
+    markNotificationRead(n.id);
+    render();
+    if (n.kind === 'task') {
+      var task = TASKS.filter(function (t) { return t.id === n.contentId; })[0];
+      if (task) {
+        openTaskDetail(task);
+        return;
+      }
+    }
+    if (n.kind === 'material') {
+      var material = MATERIALS.filter(function (m) { return m.id === n.contentId; })[0];
+      if (material) {
+        openMaterialDetail(material);
+        return;
+      }
+    }
   }
 
   function openAnnouncements() {
@@ -2982,6 +3101,7 @@
     buildScreenSelect();
     document.getElementById('theme-toggle').addEventListener('click', function () { toggleTheme(); });
     applyTheme();
+    restoreState();
 
     var hash = (window.location.hash || '').replace('#', '');
     var resolved = hash ? resolveScreen(hash) : null;
