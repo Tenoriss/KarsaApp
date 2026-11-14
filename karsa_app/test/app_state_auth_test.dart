@@ -50,9 +50,11 @@ void main() {
       final summaries = state.classGradeSummaries;
       expect(summaries, isNotEmpty);
       expect(summaries.length, 9);
+      // Matematika kelas 5 punya 3 tugas (1 seed + 2 demo), 1 yang dinilai.
       final math = summaries.firstWhere((s) => s.subject == 'Matematika');
       expect(math.gradedTasks, 1);
-      expect(math.totalTasks, 2);
+      expect(math.totalTasks, 3);
+      expect(math.statusLabel, 'Baik');
       expect(math.average, 70);
       expect(math.averageLabel, '70');
       expect(state.classGradeAverage, 70);
