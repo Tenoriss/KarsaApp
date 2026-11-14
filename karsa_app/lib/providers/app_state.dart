@@ -9,6 +9,7 @@ import '../data/seed_data.dart';
 import '../models/announcement_item.dart';
 import '../models/attachment_file.dart';
 import '../models/class_event.dart';
+import '../models/class_grade_summary.dart';
 import '../models/class_member.dart';
 import '../models/demo_account.dart';
 import '../models/grade_report_row.dart';
@@ -306,6 +307,72 @@ class AppState extends ChangeNotifier {
     );
     return (sum / members.length).round();
   }
+
+  /// Kelas yang dipakai untuk ringkasan nilai: siswa memakai kelasnya sendiri,
+  /// orang tua memakai kelas anaknya. Guru dan wali memakai kelas.filter.
+  String get learnerClassName {
+    if (isStudent) return _data.studentClass;
+    if (isParent) return _data.childClass;
+    if (_filter != 'Semua kelas') return _filter;
+    return _data.childClass;
+  }
+
+  /// Ringkasan nilai kelas per mata pelajaran, dihitung dari hasil kuis yang
+  /// sudah dikerjakan pada perangkat ini. Mata pelajaran tanpa nilai tetap
+  /// ditampilkan dengan status "Belum ada nilai" (bukan nol).
+  List<ClassGradeSummary> get classGradeSummaries {
+    final className = learnerClassName;
+    final allowed = CurriculumData.subjectsForClass(className);
+    final buckets = <String, List<double>>{};
+    final totals = <String, int>{};
+
+    for (final task in _data.tasks) {
+      if (task.className != className) continue;
+      if (!allowed.contains(task.subject)) continue;
+      totals[task.subject] = (totals[task.subject] ?? 0) + 1;
+      final result = _data.results[task.id];
+      if (result == null) continue;
+      final score = result.score;
+      final total = result.total;
+      if (score == null || total == null || total <= 0) continue;
+      buckets
+          .putIfAbsent(task.subject, () => <double>[])
+          .add(score * 100 / total);
+    }
+
+    final summaries = <ClassGradeSummary>[];
+    for (final subject in allowed) {
+      final totalTasks = totals[subject] ?? 0;
+      if (totalTasks == 0) continue;
+      final scores = buckets[subject] ?? const <double>[];
+      final average = scores.isEmpty
+          ? 0.0
+          : scores.reduce((a, b) => a + b) / scores.length;
+      summaries.add(
+        ClassGradeSummary(
+          subject: subject,
+          gradedTasks: scores.length,
+          totalTasks: totalTasks,
+          average: average,
+        ),
+      );
+    }
+    return summaries;
+  }
+
+  /// Rata-rata seluruh nilai kelas (0-100). Null ketika belum ada nilai.
+  int? get classGradeAverage {
+    final graded = classGradeSummaries.where((s) => s.gradedTasks > 0).toList();
+    if (graded.isEmpty) return null;
+    final sum = graded.fold<double>(0.0, (acc, s) => acc + s.average);
+    return (sum / graded.length).round();
+  }
+
+  /// Jumlah tugas yang sudah dinilai pada kelas aktif.
+  int get classGradedTaskCount => classGradeSummaries.fold<int>(
+        0,
+        (acc, s) => acc + s.gradedTasks,
+      );
 
   Future<void> loadFromStorage() async {
     _data = await _storageService.load(now: DateTime.now());

@@ -56,7 +56,7 @@ Empat berkas di `karsa_app/test/`:
 | --- | --- |
 | `curriculum_test.dart` | Paritas bank soal: 9 mata pelajaran, 10 pilihan ganda + 5 esai per mata pelajaran, kunci jawaban, `subjectsForClass()` (IPAS hanya kelas 3–6), adaptasi 6 agama |
 | `storage_migration_test.dart` | Kunci `@karsa-demo-v1`, JSON kompatibel AsyncStorage, normalisasi `"IPA"`, seeding tugas/hasil demo, ketahanan terhadap JSON rusak |
-| `app_state_auth_test.dart` | Autentikasi 4 peran + pesan galat, filter tugas per peran, rekap kehadiran, ringkasan offline |
+| `app_state_auth_test.dart` | Autentikasi 4 peran + pesan galat, filter tugas per peran, rekap kehadiran, ringkasan offline, **ringkasan nilai kelas** (rata-rata, jumlah tugas dinilai, IPAS hanya kelas 3–6) dan **pengeditan data pribadi** (termasuk penolakan nama kosong) |
 | `dark_color_mapper_test.dart` | `DarkColorMapper` (permukaan & teks pastel), token clay, dan pembentukan byte ekspor XLSX/PDF |
 
 ```bash
@@ -71,7 +71,7 @@ flutter test
 
 ```bash
 $ node karsa_app/preview/test_preview.js
-Checks passed: 158
+Checks passed: 181
 ALL PREVIEW CHECKS PASSED
 ```
 
@@ -94,6 +94,10 @@ Yang dipverifikasi:
 * deep link hash (`#guru-tugas`, `#wali-recap`, `#wali-rekap`, `#ortu-latihan`,
   `#hasil-kuis`);
 * toggle mode gelap (`data-theme` pada `<html>`);
+* profil siswa: section "Nilai kelas" (rata-rata + nilai per mata pelajaran
+  dari hasil kuis nyata), form "Informasi pribadi" yang bisa diedit (input
+  nama asli, chip kelas, chip agama, tombol "Simpan perubahan") dan nama yang
+  tersimpan langsung tampil di profil;
 * tidak ada label "Pratinjau" dan tidak ada URL eksternal di `index.html`.
 
 ### 2.4 Server pratinjau — `curl`
@@ -150,7 +154,7 @@ Untuk setiap peran: splash → pilih peran → login dengan akun demo → dashbo
 | M1 | Wali Kelas | `19870001` / `wali123` | 5 tab (Beranda, Anggota, Rekap, Agenda, Profil); hero "Tumbuh bersama, Kelas 1 🌱"; StatCard anggota & hadir; grafik 4 status; rata-rata nilai; isi kehadiran; agenda + kalender; profil |
 | M2 | Guru | `19870002` / `guru123` | 5 tab (Beranda, Kelas, Tugas, Kalender, Profil); banner guru; chip "Semua kelas" + Kelas 1–6; 4 tile metrik kelas; rekap nilai + ekspor |
 | M3 | Orang Tua | `10010001` / `ortu123` | 4 tab (Beranda, Tugas, Latihan, Profil); "RUANG TUMBUH"; bintang & mood; latihan esai |
-| M4 | Siswa | `10050001` / `siswa123` | 3 tab (Beranda, Tugas, Profil); StudentHero; MissionCard + progres; 9 baris tugas per mapel; tips berganti; IPAS tidak muncul di kelas <3 |
+| M4 | Siswa | `10050001` / `siswa123` | 3 tab (Beranda, Tugas, Profil); StudentHero; MissionCard + progres; 9 baris tugas per mapel; tips berganti; IPAS tidak muncul di kelas <3; **profil: "Data pribadi" bisa diedit (nama/kelas/agama) dan section "Nilai kelas" menampilkan rata-rata + nilai per mata pelajaran** |
 
 ### 3.3 Negative & edge case
 
@@ -226,7 +230,7 @@ diuji. Tidak ada klaim "selesai" tanpa bukti eksekusi.
 | --- | --- | --- |
 | Sintaks Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 98 berkas / 11.294 baris / 107 class |
 | Sintaks JS | `node --check` ×4 | OK |
-| Harness pratinjau | `node karsa_app/preview/test_preview.js` | OK — 158 cek lulus |
+| Harness pratinjau | `node karsa_app/preview/test_preview.js` | OK — 181 cek lulus |
 | Server pratinjau | `curl` ×13 | OK — semua aset 200, `/healthz` 200 |
 | `flutter analyze` | — | **tidak dijalankan** |
 | `flutter test` | — | **tidak dijalankan** |

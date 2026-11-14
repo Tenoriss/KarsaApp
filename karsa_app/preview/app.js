@@ -330,7 +330,11 @@
     studentClass: 'Kelas 5',
     parentClass: 'Kelas 1',
     teacherSubject: 'Matematika',
-    religion: ''
+    religion: '',
+    studentName: 'Dimas Nugroho',
+    teacherName: 'Ibu Sari',
+    waliName: 'Ibu Sari',
+    personalDraft: null
   };
 
   var ROLE_TABS = {
@@ -578,6 +582,153 @@
   }
 
   function todayIso() { return dateKey(NOW); }
+
+  function currentPersonalName() {
+    if (state.role === 'wali') return state.waliName;
+    if (state.role === 'guru') return state.teacherName;
+    return state.studentName;
+  }
+
+  /* Ringkasan nilai kelas: rata-rata per mata pelajaran dari tugas yang
+     sudah dikerjakan di perangkat ini (cermin AppState.classGradeSummaries). */
+  function learnerClassName() {
+    return state.role === 'siswa' ? state.studentClass : state.parentClass;
+  }
+
+  function classGradeSummaries() {
+    var className = learnerClassName();
+    var allowed = subjectsForClass(className);
+    var buckets = {};
+    var totals = {};
+    TASKS.forEach(function (t) {
+      if (t.className !== className) return;
+      if (allowed.indexOf(t.subject) < 0) return;
+      totals[t.subject] = (totals[t.subject] || 0) + 1;
+      var r = RESULTS[t.id];
+      if (!r || r.score === null || r.score === undefined || !r.total) return;
+      buckets[t.subject] = buckets[t.subject] || [];
+      buckets[t.subject].push(r.score * 100 / r.total);
+    });
+    return allowed.filter(function (subject) {
+      return !!totals[subject];
+    }).map(function (subject) {
+      var list = buckets[subject] || [];
+      var average = list.length
+        ? list.reduce(function (a, b) { return a + b; }, 0) / list.length
+        : 0;
+      return {
+        subject: subject,
+        graded: list.length,
+        total: totals[subject],
+        average: average,
+        averageLabel: list.length ? String(Math.round(average * 10) / 10) : '\u2014'
+      };
+    });
+  }
+
+  function classGradeAverage() {
+    var graded = classGradeSummaries().filter(function (s) { return s.graded > 0; });
+    if (!graded.length) return null;
+    var sum = graded.reduce(function (acc, s) { return acc + s.average; }, 0);
+    return Math.round(sum / graded.length);
+  }
+
+  /* Kartu "Nilai kelas" (dipakai pada profil siswa dan profil anak). */
+  function classGradesCard() {
+    var summaries = classGradeSummaries();
+    var average = classGradeAverage();
+    var gradedCount = summaries.reduce(function (acc, s) { return acc + s.graded; }, 0);
+    var children = [
+      el('div', { style: 'display:flex;align-items:center;gap:10px' }, [
+        el('div', { class: 'stat-icon-circle', style: 'background-color:var(--card);font-size:22px' }, ['\uD83D\uDCCA']),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 't-item-title', style: 'margin:0', text: 'Rata-rata kelas' }),
+          el('p', {
+            class: 't-small', style: 'margin:0',
+            text: gradedCount + ' tugas bernilai \u00b7 ' + learnerClassName() + ' \u00b7 data lokal'
+          })
+        ]),
+        el('p', { class: 't-stat-number', text: average === null ? '\u2014' : String(average) })
+      ])
+    ];
+
+    if (!summaries.length) {
+      children.push(el('p', {
+        class: 't-small', style: 'margin:12px 0 0 0',
+        text: 'Belum ada tugas di kelas ini. Nilai muncul setelah tugas dikerjakan.'
+      }));
+    } else {
+      summaries.forEach(function (s) {
+        children.push(gradeRow(s));
+      });
+      children.push(el('p', {
+        class: 't-small', style: 'margin:12px 0 0 0',
+        text: 'Nilai contoh dari kuis yang dikerjakan di perangkat ini, bukan nilai resmi sekolah.'
+      }));
+    }
+    return clayCard(children);
+  }
+
+  /* Baris nilai per mata pelajaran: ikon mapel, nama lengkap, bar, dan nilai. */
+  function gradeRow(summary) {
+    var meta = metaFor(summary.subject);
+    var ratio = Math.max(0, Math.min(1, summary.average / 100));
+    return el('div', { style: 'display:flex;align-items:flex-start;gap:10px;margin-top:12px' }, [
+      el('div', {
+        class: 'item-tile',
+        style: 'width:34px;height:34px;border-radius:12px;font-size:16px;background-color:' + meta.color
+      }, [el('span', { text: meta.icon })]),
+      el('div', { style: 'flex:1;min-width:0' }, [
+        el('p', {
+          class: 't-item-title',
+          style: 'margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden',
+          text: summary.subject
+        }),
+        el('div', { class: 'mission-track', style: 'margin:6px 0 4px 0' }, [
+          el('div', {
+            class: 'mission-fill',
+            style: 'width:' + (ratio * 100) + '%;background-color:' +
+              (summary.graded === 0 ? 'var(--muted)' : 'var(--rose)')
+          })
+        ]),
+        el('p', {
+          class: 't-small', style: 'margin:0',
+          text: summary.graded + ' dari ' + summary.total + ' tugas dinilai'
+        })
+      ]),
+      el('span', {
+        style: 'color:var(--ink);font-size:15px;font-weight:800;padding-top:8px',
+        text: summary.averageLabel
+      })
+    ]);
+  }
+
+  /* Kartu "Informasi pribadi" yang bisa diedit. */
+  function personalInfoCard(isStudent) {
+    var className = isStudent ? state.studentClass : state.parentClass;
+    function infoRow(label, value) {
+      return el('div', { style: 'display:flex;align-items:flex-start;gap:10px;margin-top:10px' }, [
+        el('span', { class: 't-small', style: 'width:104px;flex-shrink:0', text: label }),
+        el('span', { class: 't-item-title', style: 'flex:1;min-width:0', text: value })
+      ]);
+    }
+    return clayCard([
+      el('div', { style: 'display:flex;align-items:center;gap:12px' }, [
+        el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('person-outline', 20)]),
+        el('p', { class: 't-item-title', style: 'flex:1;margin:0', text: 'Data pribadi' }),
+        el('span', { class: 't-link', text: 'Ubah' }),
+        el('span', { style: 'color:var(--muted);display:inline-flex' }, [icon('chevron-forward', 17)])
+      ]),
+      infoRow('Nama', state.studentName),
+      infoRow('Kelas', className),
+      infoRow(isStudent ? 'NISN demo' : 'NISN anak demo', ACCOUNTS.siswa.id),
+      infoRow('Agama', state.religion || 'Belum diisi'),
+      el('p', {
+        class: 't-small', style: 'margin:10px 0 0 0',
+        text: 'Perubahan disimpan di perangkat ini pada kunci "@karsa-demo-v1".'
+      })
+    ], { onTap: function () { openSetting('Informasi pribadi'); } });
+  }
 
   /* ------------------------------------------------------------------ *
    * Data selectors (mirrors AppState getters)
@@ -887,7 +1038,7 @@
       greetingHeader({
         avatarText: '👩🏻‍🏫',
         eyebrow: 'Selamat datang, Wali Kelas',
-        userName: 'Ibu Sari',
+        userName: state.waliName,
         subtitle: WALI_CLASS + ' · SD Karitas Purwokerto',
         dark: state.dark,
         badgeCount: totalBadgeCount()
@@ -1203,7 +1354,7 @@
     var members = classMembers();
     return el('div', {}, [
       pageHeader('Profil Wali Kelas', 'Senang bertemu denganmu!'),
-      profileHero('👩🏻‍🏫', 'Ibu Sari', 'Wali ' + WALI_CLASS + ' · SD Karitas Purwokerto', 'Wali kelas aktif'),
+      profileHero('👩🏻‍🏫', state.waliName, 'Wali ' + WALI_CLASS + ' · SD Karitas Purwokerto', 'Wali kelas aktif'),
       el('p', { class: 't-section', style: 'margin-bottom:10px', text: 'Informasi Wali Kelas' }),
       clayCard([
         el('p', { class: 't-small', style: 'margin:0', text: 'Kelas diampu' }),
@@ -1255,8 +1406,7 @@
   function openSetting(label) {
     var body = '';
     if (label === 'Informasi pribadi') {
-      body = 'Nama: Dimas Nugroho · Kelas: ' + state.studentClass +
-        ' · NISN demo: ' + ACCOUNTS.siswa.id + '.';
+      body = 'Data pribadi tersimpan di perangkat ini pada kunci "@karsa-demo-v1".';
     } else if (label === 'Mata pelajaran') {
       body = 'Mata pelajaran aktif: ' + state.teacherSubject + '.';
     } else if (label === 'Tampilan') {
@@ -1268,40 +1418,199 @@
     } else {
       body = 'Pusat bantuan demo. Gunakan kotak akun demo pada layar masuk untuk mencoba peran.';
     }
-    var extra = [];
     if (label === 'Informasi pribadi') {
-      extra.push(el('p', { class: 't-overline', style: 'margin:16px 0 6px 0', text: 'PENGATURAN AGAMA' }));
+      state.personalDraft = null;
+      openPersonalInfoForm();
+      return;
+    }
+
+    var extra = [];
+    var actions = [];
+    if (label === 'Mata pelajaran') {
       extra.push(el('p', {
-        class: 't-small', style: 'margin:0 0 8px 0',
-        text: 'Memilih agama menyesuaikan soal dan latihan Pendidikan Agama.'
+        class: 't-overline', style: 'margin:4px 0 6px 0', text: 'MATA PELAJARAN'
       }));
-      extra.push(chips(['Tanpa agama'].concat(CURR.religions || []), state.religion || 'Tanpa agama',
-        function (value) {
-          state.religion = value === 'Tanpa agama' ? '' : value;
-          closeSheet();
-          render();
-          openSetting(label);
-        }));
+      extra.push(chips(SUBJECTS, state.teacherSubject, function (value) {
+        state.teacherSubject = value;
+        closeSheet();
+        render();
+        openSetting(label);
+      }));
+      actions = [{
+        title: 'Selesai',
+        onTap: function () { closeSheet(); render(); }
+      }];
+    } else {
+      actions = [{
+        title: 'Tutup',
+        onTap: function () { closeSheet(); render(); }
+      }];
     }
     openSheet(el('div', {}, [
       el('div', { class: 'sheet-handle' }),
       el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0', text: label }),
       el('p', { class: 't-muted', style: 'margin-bottom:14px', text: body }),
       extra,
-      el('button', {
-        class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
-        onclick: function () { closeSheet(); render(); }
-      }, ['Tutup'])
+      actions.map(function (action) {
+        return el('button', {
+          class: 'karsa-btn clay-raised pressable', type: 'button',
+          style: 'border:none;cursor:pointer',
+          onclick: action.onTap
+        }, [action.title]);
+      })
     ]));
   }
 
-  function profileHero(emoji, name, subtitle, badgeText) {
-    return el('div', { class: 'profile-hero' }, [
+  /* Formulir "Informasi pribadi" yang bisa diedit (cermin SettingDetailPage). */
+  function openPersonalInfoForm() {
+    var isStudent = state.role === 'siswa';
+    var isLearner = isStudent || state.role === 'orangtua';
+    if (!state.personalDraft) {
+      state.personalDraft = {
+        name: currentPersonalName(),
+        className: isStudent ? state.studentClass : state.parentClass,
+        religion: state.religion,
+        error: ''
+      };
+    }
+    var draft = state.personalDraft;
+
+    function refresh() {
+      var panel = document.getElementById('sheet-panel');
+      clear(panel);
+      panel.appendChild(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', {
+          class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
+          text: 'Informasi pribadi'
+        }),
+        el('p', {
+          class: 't-muted', style: 'margin-bottom:14px',
+          text: 'Data pribadi tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'
+        }),
+        personalInfoForm(),
+        el('button', {
+          class: 'karsa-btn clay-raised pressable', type: 'button',
+          style: 'border:none;cursor:pointer',
+          onclick: savePersonalInfo
+        }, ['Simpan perubahan']),
+        el('button', {
+          class: 't-link pressable', type: 'button',
+          style: 'margin-top:12px;display:block;width:100%',
+          onclick: function () { closeSheet(); render(); }
+        }, ['Batal'])
+      ]));
+    }
+
+    function personalInfoForm() {
+      var nameInput = el('input', {
+        class: 'karsa-input', type: 'text', value: draft.name, id: 'pi-name',
+        placeholder: 'Nama', 'aria-label': 'Nama',
+        oninput: function (e) {
+          draft.name = e.target.value;
+          draft.error = '';
+        }
+      });
+
+      var classChips = chips(
+        (isStudent ? ['Kelas 5', 'Kelas 6'] : ['Kelas 1', 'Kelas 2', 'Kelas 3', 'Kelas 4']),
+        draft.className,
+        function (value) {
+          draft.className = value;
+          refresh();
+        }
+      );
+
+      var religionChips = chips(
+        ['Tanpa agama'].concat(CURR.religions || []),
+        draft.religion || 'Tanpa agama',
+        function (value) {
+          draft.religion = value === 'Tanpa agama' ? '' : value;
+          refresh();
+        }
+      );
+
+      return [
+        el('p', { class: 't-label', style: 'margin-bottom:8px', text: 'Nama' }),
+        nameInput,
+        draft.error ? el('p', {
+          class: 'notice-title', style: 'margin:0 0 10px 0', text: draft.error
+        }) : null,
+        isLearner ? el('p', {
+          class: 't-label', style: 'margin-bottom:8px',
+          text: isStudent ? 'Kelas saya' : 'Kelas anak'
+        }) : null,
+        isLearner ? classChips : null,
+        isLearner ? el('p', {
+          class: 't-small', style: 'margin:0 0 14px 0',
+          text: isStudent
+            ? 'Siswa hanya dapat memilih kelas 5 atau 6.'
+            : 'Orang tua mendampingi anak kelas 1 sampai 4.'
+        }) : null,
+        isLearner ? el('p', {
+          class: 't-label', style: 'margin-bottom:8px', text: 'Agama siswa (opsional)'
+        }) : null,
+        isLearner ? religionChips : null,
+        isLearner ? el('p', {
+          class: 't-small', style: 'margin:0 0 8px 0',
+          text: 'Memilih agama menyesuaikan soal dan latihan Pendidikan Agama.'
+        }) : null
+      ];
+    }
+
+    refresh();
+  }
+
+  function savePersonalInfo() {
+    var draft = state.personalDraft;
+    if (!draft) {
+      closeSheet();
+      render();
+      return;
+    }
+    var name = (draft.name || '').trim();
+    if (!name) {
+      draft.error = 'Nama tidak boleh kosong.';
+      openPersonalInfoForm();
+      return;
+    }
+    if (state.role === 'wali') {
+      state.waliName = name;
+    } else if (state.role === 'guru') {
+      state.teacherName = name;
+    } else {
+      state.studentName = name;
+      if (state.role === 'siswa') {
+        state.studentClass = draft.className;
+        state.parentClass = draft.className;
+      } else {
+        state.parentClass = draft.className;
+      }
+      state.religion = draft.religion;
+    }
+    state.personalDraft = null;
+    closeSheet();
+    render();
+  }
+
+  function profileHero(emoji, name, subtitle, badgeText, onEdit) {
+    var children = [
       el('div', { class: 'big-avatar' }, [el('span', { text: emoji })]),
       el('h2', { class: 't-name', text: name }),
-      el('p', { class: 't-small', text: subtitle }),
-      el('span', { class: 'profile-badge', text: badgeText })
-    ]);
+      el('p', { class: 't-small', text: subtitle })
+    ];
+    if (onEdit) {
+      children.push(el('button', {
+        class: 't-link pressable', type: 'button',
+        style: 'display:inline-flex;align-items:center;gap:6px;margin-top:8px',
+        onclick: onEdit
+      }, [
+        el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('pencil', 15)]),
+        el('span', { text: 'Ubah informasi' })
+      ]));
+    }
+    children.push(el('span', { class: 'profile-badge', text: badgeText }));
+    return el('div', { class: 'profile-hero' }, children);
   }
 
   /* ---------------- Guru ---------------- */
@@ -1318,7 +1627,7 @@
       greetingHeader({
         avatarText: '👩🏻‍🏫',
         eyebrow: 'Selamat datang,',
-        userName: 'Ibu Sari',
+        userName: state.teacherName,
         subtitle: 'Guru ' + state.teacherSubject + ' · SD Karitas Purwokerto',
         dark: state.dark,
         badgeCount: totalBadgeCount()
@@ -1641,7 +1950,7 @@
     }).length;
     return el('div', {}, [
       pageHeader('Profil Guru', 'Senang bertemu denganmu!'),
-      profileHero('👩🏻‍🏫', 'Ibu Sari', 'Guru ' + state.teacherSubject + ' · SD Karitas Purwokerto', 'Guru aktif'),
+      profileHero('👩🏻‍🏫', state.teacherName, 'Guru ' + state.teacherSubject + ' · SD Karitas Purwokerto', 'Guru aktif'),
       el('p', { class: 't-section', style: 'margin-bottom:10px', text: 'Informasi Guru' }),
       clayCard([
         el('p', { class: 't-item-title', style: 'margin:0', text: 'Mata Pelajaran' }),
@@ -1710,7 +2019,7 @@
       greetingHeader({
         avatarText: '👦🏻',
         eyebrow: 'Halo, selamat belajar!',
-        userName: 'Dimas Nugroho',
+        userName: state.studentName,
         subtitle: childClass + ' · SD Karitas Purwokerto',
         dark: state.dark,
         badgeCount: totalBadgeCount()
@@ -1885,15 +2194,20 @@
     }).length;
     return el('div', {}, [
       pageHeader('Profil Anak', 'Senang bertemu denganmu!'),
-      noticeCard('🌟 Semangat belajar, Dimas Nugroho!',
+      noticeCard('🌟 Semangat belajar, ' + state.studentName + '!',
         activeTasks().length ? 'Ada ' + activeTasks().length + ' tugas yang belum dikumpulkan.'
           : 'Semua tugas sudah selesai. Hebat!'),
-      profileHero('👦🏻', 'Dimas Nugroho', childClass + ' · SD Karitas Purwokerto', 'Siswa aktif'),
-      el('p', { class: 't-section', style: 'margin-bottom:10px', text: 'Aktivitas Tugas' }),
+      profileHero('👦🏻', state.studentName, childClass + ' · SD Karitas Purwokerto', 'Siswa aktif',
+        function () { openSetting('Informasi pribadi'); }),
+      el('p', { class: 't-section', style: 'margin-bottom:10px', text: 'Informasi pribadi' }),
+      personalInfoCard(true),
+      el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Aktivitas Tugas' }),
       clayCard([
         el('p', { class: 't-item-title', style: 'margin:0', text: 'Semangat mengerjakan tugas!' }),
         el('p', { class: 't-muted', style: 'margin:4px 0 0 0', text: done + ' tugas selesai.' })
       ]),
+      el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Nilai kelas' }),
+      classGradesCard(),
       el('p', { class: 't-section', style: 'margin:20px 0 10px 0', text: 'Pengaturan' }),
       ['Informasi pribadi', 'Tampilan', 'Notifikasi', 'Privasi dan keamanan', 'Pusat bantuan'].map(function (item) {
         return clayCard([
@@ -1925,7 +2239,7 @@
         avatarText: 'D',
         avatarIsLetter: true,
         eyebrow: 'Orang tua dari',
-        userName: 'Dimas Nugroho',
+        userName: state.studentName,
         subtitle: state.parentClass + ' · SD Karitas Purwokerto',
         dark: state.dark,
         badgeCount: totalBadgeCount()
@@ -2126,11 +2440,14 @@
   function renderOrtuProfil() {
     return el('div', {}, [
       pageHeader('Profil Anak', 'Senang bertemu denganmu!'),
-      noticeCard('🌟 Semangat belajar, Dimas Nugroho!',
+      noticeCard('🌟 Semangat belajar, ' + state.studentName + '!',
         activeTasks().length ? 'Ada ' + activeTasks().length + ' tugas yang belum dikumpulkan.'
           : 'Semua tugas sudah selesai. Hebat!'),
-      profileHero('👦🏻', 'Dimas Nugroho', state.parentClass + ' · SD Karitas Purwokerto', 'Siswa aktif'),
-      el('p', { class: 't-section', style: 'margin-bottom:10px', text: 'Perjalanan Belajarku' }),
+      profileHero('👦🏻', state.studentName, state.parentClass + ' · SD Karitas Purwokerto', 'Siswa aktif',
+        function () { openSetting('Informasi pribadi'); }),
+      el('p', { class: 't-section', style: 'margin-bottom:10px', text: 'Informasi pribadi' }),
+      personalInfoCard(false),
+      el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Perjalanan Belajarku' }),
       clayCard([
         el('p', { class: 't-item-title', style: 'margin:0', text: 'Terus bertumbuh! 🌱' }),
         el('p', {
@@ -2138,6 +2455,8 @@
           text: Object.keys(RESULTS).length + ' tugas dan 0 latihan selesai.'
         })
       ]),
+      el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Nilai kelas' }),
+      classGradesCard(),
       el('p', { class: 't-section', style: 'margin:20px 0 10px 0', text: 'Pengaturan' }),
       ['Informasi pribadi', 'Tampilan', 'Notifikasi', 'Privasi dan keamanan', 'Pusat bantuan'].map(function (item) {
         return clayCard([
