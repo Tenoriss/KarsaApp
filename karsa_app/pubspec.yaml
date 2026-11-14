@@ -1,0 +1,38 @@
+name: karsa_app
+description: Aplikasi pembelajaran KARSA (Karitas Sahabat Belajar) untuk SD Karitas Purwokerto.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.2
+  shared_preferences: ^2.3.2
+  file_picker: ^8.1.2
+  path_provider: ^2.1.4
+  share_plus: ^7.2.2
+  open_filex: ^4.5.0
+  pdf: ^3.11.1
+  excel: ^4.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/icon.png
+    - assets/images/karsa-login-logo.png
+    - assets/images/logo-sd-karitas.png
+    - assets/images/splash-art.png
+    - assets/images/student-banner.png
+    - assets/images/teacher-banner.png
+  fonts:
+    - family: Ionicons
+      fonts:
+        - asset: assets/fonts/Ionicons.ttf
