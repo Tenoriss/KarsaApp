@@ -117,6 +117,10 @@ Deep link memakai hash: `index.html#guru-tugas`, `#wali-recap`, `#wali-rekap`,
 * **Mode gelap** — tombol di bar atas mengganti `data-theme` pada `<html>`.
 * **Sheet modal** — detail tugas, nilai siswa, daftar siswa, materi,
   pengumuman, pengaturan, dan latihan esai.
+* **Profil siswa** — kartu "Data pribadi" yang bisa diedit (input nama asli,
+  chip kelas, chip agama, tombol "Simpan perubahan") dan section
+  "Nilai kelas" (rata-rata kelas + nilai per mata pelajaran dari hasil kuis
+  yang benar-benar dikerjakan).
 
 ---
 

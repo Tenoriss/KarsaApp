@@ -550,6 +550,81 @@ preview.state.religion = '';
 preview.state.quiz = null;
 
 /* ------------------------------------------------------------------ *
+ * 9c. Student profile: editable personal info + class grades section
+ * ------------------------------------------------------------------ */
+preview.state.role = 'siswa';
+preview.state.studentClass = 'Kelas 5';
+preview.go('siswa-profil');
+
+ok(viewport.textContent.indexOf('Nilai kelas') >= 0, 'student profile shows the "Nilai kelas" section');
+ok(viewport.textContent.indexOf('Rata-rata kelas') >= 0, 'student profile shows the class average card');
+ok(viewport.textContent.indexOf('Informasi pribadi') >= 0, 'student profile shows the personal info section');
+ok(viewport.textContent.indexOf('Data pribadi') >= 0, 'student profile shows the personal info card');
+ok(viewport.textContent.indexOf('Ubah informasi') >= 0, 'student profile offers an edit affordance');
+
+// The class grades must come from real results (demo history tasks are 7/10).
+const gradeBars = viewport.querySelectorAll('.mission-fill');
+ok(gradeBars.length >= 9, 'student profile renders a grade bar per subject (' + gradeBars.length + ')');
+ok(viewport.textContent.indexOf('70') >= 0, 'student profile shows the 70% average from the demo results');
+ok(viewport.textContent.indexOf('Ilmu Pengetahuan Alam dan Sosial (IPAS)') >= 0,
+  'student profile shows the full subject names in the grade list');
+ok(viewport.textContent.indexOf('tugas dinilai') >= 0,
+  'student profile shows how many tasks were graded per subject');
+
+// Opening the personal info sheet gives a real editable form.
+const infoCard = viewport.querySelectorAll('.clay-soft').filter((c) => (c.textContent || '').indexOf('Data pribadi') >= 0)[0];
+ok(!!infoCard, 'the personal info card is rendered');
+if (infoCard) {
+  infoCard.click();
+  const sheetInputs = sheetPanel.querySelectorAll('input');
+  ok(sheetInputs.length >= 1, 'the personal info form has a real name input');
+  const sheetChips = sheetPanel.querySelectorAll('.chip-btn');
+  ok(sheetChips.length >= 2 + (CURR.religions || []).length,
+    'the personal info form has class chips and religion chips (' + sheetChips.length + ')');
+  const saveButton = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Simpan perubahan') >= 0)[0];
+  ok(!!saveButton, 'the personal info form has a save action');
+
+  // Edit the name, pick a class and a religion, then save.
+  if (sheetInputs[0]) {
+    sheetInputs[0].value = 'Nadia Lestari';
+    sheetInputs[0].dispatch('input', { target: sheetInputs[0] });
+  }
+  const classChip = sheetPanel.querySelectorAll('.chip-btn').filter((b) => (b.textContent || '').trim() === 'Kelas 6')[0];
+  ok(!!classChip, 'the class chip for Kelas 6 exists');
+  if (classChip) classChip.click();
+  const religionChip = sheetPanel.querySelectorAll('.chip-btn').filter((b) => (b.textContent || '').trim() === 'Islam')[0];
+  ok(!!religionChip, 'the religion chip for Islam exists');
+  if (religionChip) religionChip.click();
+  const saveBtn = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Simpan perubahan') >= 0)[0];
+  if (saveBtn) saveBtn.click();
+
+  eq(preview.state.studentName, 'Nadia Lestari', 'saving the personal info updates the student name');
+  eq(preview.state.studentClass, 'Kelas 6', 'saving the personal info updates the student class');
+  eq(preview.state.religion, 'Islam', 'saving the personal info updates the religion');
+
+  preview.go('siswa-profil');
+  ok(viewport.textContent.indexOf('Nadia Lestari') >= 0, 'the edited name is shown on the student profile');
+  ok(viewport.textContent.indexOf('Kelas 6') >= 0, 'the edited class is shown on the student profile');
+  ok(viewport.textContent.indexOf('Islam') >= 0, 'the edited religion is shown on the student profile');
+}
+
+// The parent profile shares the child profile card.
+preview.state.role = 'orangtua';
+preview.state.parentClass = 'Kelas 1';
+preview.go('ortu-profil');
+ok(viewport.textContent.indexOf('Nilai kelas') >= 0, 'parent profile shows the "Nilai kelas" section');
+ok(viewport.textContent.indexOf('Data pribadi') >= 0, 'parent profile shows the personal info card');
+
+// Restore the demo state for the remaining checks.
+preview.state.studentName = 'Dimas Nugroho';
+preview.state.studentClass = 'Kelas 5';
+preview.state.parentClass = 'Kelas 1';
+preview.state.religion = '';
+preview.state.personalDraft = null;
+
+/* ------------------------------------------------------------------ *
  * 10. Dark mode toggle
  * ------------------------------------------------------------------ */
 preview.go('welcome');
