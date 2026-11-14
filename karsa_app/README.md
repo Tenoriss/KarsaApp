@@ -7,6 +7,11 @@ Kode React Native asli **tetap utuh di root repository** (`App.js`,
 `curriculum.js`, `gradeReports.js`, `assets/`) sebagai rujukan audit.
 Semua kode Flutter berada di folder `karsa_app/` ini.
 
+Selain empat peran hasil migrasi (wali kelas, guru, orang tua, siswa), proyek
+ini menambahkan **peran Operator Sekolah** dengan lima tab
+(**Beranda, Siswa, Kelas, Materi, Media**) dan CRUD penuh yang tersimpan
+lokal. Peran yang sama tersedia di pratinjau HTML offline.
+
 > **Status penting.** Proyek ini dibuat dan diverifikasi di lingkungan yang
 > **tidak memiliki Flutter/Dart SDK**. Karena itu `flutter analyze` dan
 > `flutter test` **belum pernah dijalankan** — lihat
@@ -61,7 +66,7 @@ python3 serve.py --host 0.0.0.0 --port 8000
 # buka http://127.0.0.1:8000
 ```
 
-Pratinjau berisi **28 layar** interaktif, sepenuhnya offline (tanpa CDN), dan
+Pratinjau berisi **38 layar** interaktif, sepenuhnya offline (tanpa CDN), dan
 memakai aset PNG asli serta font `Ionicons.ttf` yang sama dengan aplikasi.
 Detail: [`preview/README.md`](preview/README.md).
 
@@ -90,6 +95,7 @@ node karsa_app/preview/test_preview.js
 
 | Peran | NIP / NISN | Kata sandi | Lingkup |
 | --- | --- | --- | --- |
+| **Operator Sekolah** | `19870003` | `operator123` | Seluruh kelas; tab Beranda, Siswa, Kelas, Materi, Media; kelola siswa, kelas dinamis, akun guru/wali, tugas, pengumuman, agenda, materi, nilai, grafis sekolah, dan data pribadi |
 | Wali Kelas | `19870001` | `wali123` | Hanya `Kelas 1`; tab Beranda, Anggota, Rekap (Kehadiran/Nilai), Agenda, Profil |
 | Guru Mata Pelajaran | `19870002` | `guru123` | NIP, Ibu Sari, default `Matematika`, Kelas 1–6; tab Beranda, Kelas, Tugas, Kalender, Profil; rekap nilai + ekspor `.xlsx`/`.pdf` |
 | Orang Tua/Wali | `10010001` | `ortu123` | NISN, Dimas Nugroho, Kelas 1–4; tab Beranda, Tugas, Latihan, Profil; Ruang Tumbuh, bintang progres, mood |
@@ -117,7 +123,7 @@ karsa_app/
 │   │   │                       # app_typography, karsa_theme
 │   │   ├── utils/              # date_utils, offline_summarizer
 │   │   └── widgets/            # 15 widget claymorphism reusable
-│   ├── models/                 # 15 model domain
+│   ├── models/                 # 20 model domain
 │   ├── services/               # storage, attachment, file_bridge, export
 │   ├── providers/app_state.dart
 │   ├── data/                   # curriculum_data.dart, seed_data.dart
@@ -125,10 +131,11 @@ karsa_app/
 │   └── features/
 │       ├── splash/  authentication/  dashboard/  homeroom/  teacher/
 │       ├── tasks/  quizzes/  materials/  grades/  calendar/
-│       └── announcements/  student/  settings/
-├── test/                       # 4 berkas uji Flutter
+│       ├── announcements/  student/  settings/
+│       └── operator/           # 11 layar CRUD operator sekolah
+├── test/                       # 5 berkas uji Flutter
 ├── tool/                       # generator + check_syntax.py
-├── preview/                    # pratinjau HTML 28 layar
+├── preview/                    # pratinjau HTML 38 layar
 └── docs/                       # 01–03
 ```
 
@@ -168,9 +175,17 @@ karsa_app/
   "studentClass": "Kelas 5", "teacherSubject": "Matematika", "religion": "",
   "mood": null, "darkMode": false, "attendance": {}, "classScores": {},
   "classEvents": [], "materials": [], "localNotifications": [],
-  "readNotifications": {}
+  "readNotifications": {}, "operatorName": "Operator Sekolah",
+  "mediaAssets": {}, "roster": [], "schoolClasses": [],
+  "rosterScores": {}, "staffAccounts": []
 }
 ```
+
+Kunci `roster`, `schoolClasses`, dan `staffAccounts` dipakai peran operator;
+`rosterScores` menyimpan nilai per siswa dan `mediaAssets` menyimpan sumber
+logo/banner sekolah. **Array kosong yang tersimpan sengaja dihormati** — data
+seed yang sudah dihapus operator tidak dibangkitkan ulang saat aplikasi dibuka
+kembali. Kelas terakhir tidak dapat dihapus.
 
 **Migrasi & ketahanan:** JSON rusak → kembali ke default (tidak crash);
 subjek legacy `"IPA"` → `"Ilmu Pengetahuan Alam dan Sosial (IPAS)"`;
@@ -188,7 +203,9 @@ dari `curriculum.js`):
 * **10 soal pilihan ganda + 5 latihan esai per mata pelajaran**;
 * **6 adaptasi agama** (Islam, Kristen, Katolik, Hindu, Buddha, Konghucu) pada
   soal & latihan pertama Pendidikan Agama;
-* `subjectsForClass()` — IPAS hanya untuk kelas 3–6.
+* `subjectsForClass()` — IPAS hanya untuk kelas 3–6. Nama kelas khusus tanpa
+  angka tingkat (mis. "Kelas Persiapan") mendapat seluruh mata pelajaran,
+  termasuk IPAS, agar tidak terkunci pada filter Kelas 1.
 
 Jumlah soal dan kunci jawaban **tidak dikurangi maupun diubah** dari
 `curriculum.js`.
@@ -197,14 +214,14 @@ Jumlah soal dan kunci jawaban **tidak dikurangi maupun diubah** dari
 
 ## Pratinjau HTML
 
-`karsa_app/preview/` — 28 layar HTML interaktif, **tanpa dependensi CDN**,
+`karsa_app/preview/` — 38 layar HTML interaktif, **tanpa dependensi CDN**,
 mobile-first (`100dvh` di ponsel, kolom `480px` di layar lebar,
 `env(safe-area-inset-*)`), **bukan** mock bingkai ponsel.
 
 ```bash
 python3 karsa_app/preview/serve.py --host 0.0.0.0 --port 8000
 curl http://127.0.0.1:8000/healthz
-node karsa_app/preview/test_preview.js    # 158 pemeriksaan, mock DOM
+node karsa_app/preview/test_preview.js    # 339 pemeriksaan, mock DOM
 ```
 
 ---
@@ -216,7 +233,7 @@ node karsa_app/preview/test_preview.js    # 158 pemeriksaan, mock DOM
 | [`docs/01_AUDIT_MAPPING.md`](docs/01_AUDIT_MAPPING.md) | Audit RN → pemetaan Flutter: 41 tampilan, widget, data, alur, dependensi |
 | [`docs/02_IMPLEMENTATION_REPORT.md`](docs/02_IMPLEMENTATION_REPORT.md) | Laporan implementasi per tahap + kendala + keputusan teknis |
 | [`docs/03_TESTING_PLAN.md`](docs/03_TESTING_PLAN.md) | Apa yang sudah diverifikasi, rencana uji manual, matriks acceptance |
-| [`preview/README.md`](preview/README.md) | Cara memakai pratinjau, daftar 28 layar, interaksi |
+| [`preview/README.md`](preview/README.md) | Cara memakai pratinjau, daftar 38 layar, interaksi, cakupan operator |
 
 ---
 
@@ -225,8 +242,9 @@ node karsa_app/preview/test_preview.js    # 158 pemeriksaan, mock DOM
 | Area | Detail |
 | --- | --- |
 | Identitas | Splash (#A2D7FB + ilustrasi asli, 2300 ms), logo & teks SD Karitas Purwokerto, banner siswa & guru |
-| Autentikasi | Pemilihan peran, login 4 peran (NIP/NISN + kata sandi + tombol mata), lupa kata sandi, logout, validasi dengan pesan galat yang sama |
-| Dashboard | 4 dashboard berbeda sesuai peran (tanpa menyatukan menjadi halaman generik) |
+| Autentikasi | Pemilihan peran, login 5 peran (NIP/NISN + kata sandi + tombol mata), lupa kata sandi, logout, validasi dengan pesan galat yang sama |
+| Dashboard | 5 dashboard berbeda sesuai peran (tanpa menyatukan menjadi halaman generik) |
+| **Operator sekolah** | 5 tab (Beranda, Siswa, Kelas, Materi, Media) + halaman tugas, pengumuman, agenda, nilai, dan form siswa/kelas/akun/materi. CRUD siswa, kelas dinamis, akun guru & wali, tugas, pengumuman, agenda, materi, nilai 0–100, logo/banner sekolah, serta data pribadi operator. Semua tersimpan di `@karsa-demo-v1`, dengan validasi terlihat dan perlindungan kelas terakhir |
 | Tugas | Daftar, filter kelas/mapel, pencarian, deadline & countdown, status, lampiran, form tambah tugas |
 | Materi | Daftar, detail, form unggah, filter per kelas/mapel |
 | Kuis & latihan | Bank soal 9 mapel, pilihan ganda, soal esai, navigasi soal, periksa jawaban, skor, riwayat |
@@ -244,7 +262,12 @@ node karsa_app/preview/test_preview.js    # 158 pemeriksaan, mock DOM
 ## Yang belum terverifikasi
 
 * `flutter analyze` dan `flutter test` **belum dijalankan** (SDK tidak ada di
-  lingkungan pembuatan). Empat berkas uji sudah siap di `karsa_app/test/`.
+  lingkungan pembuatan). Lima berkas uji sudah siap di `karsa_app/test/`,
+  termasuk `operator_crud_test.dart`; sebagai gantinya
+  `python3 karsa_app/tool/check_syntax.py` memvalidasi 119 berkas Dart,
+  impor, aset, inisialisasi field `final`, argumen bernama `Image()`, dan
+  null-check `.isEmpty` secara statis, sementara
+  `node karsa_app/preview/test_preview.js` menjalankan 339 pemeriksaan alur.
 * Uji visual di perangkat iOS/Android nyata belum dilakukan.
 * Pembukaan berkas ekspor `.xlsx`/`.pdf` di perangkat belum diuji.
 * Perilaku `file_picker` di iOS belum diuji.

@@ -12,6 +12,7 @@ import '../../core/widgets/school_identity.dart';
 import '../../core/widgets/stat_card.dart';
 import '../../data/curriculum_data.dart';
 import '../../providers/app_state.dart';
+import '../../shared/widgets/media_image.dart';
 import '../../shared/widgets/greeting_header.dart';
 
 class ParentHomeTab extends StatelessWidget {
@@ -53,8 +54,9 @@ class ParentHomeTab extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
           ),
-          child: Image.asset(
-            AppConstants.assetStudentBanner,
+          child: MediaImage(
+            slotKey: SchoolMedia.studentBannerSlot,
+            fallbackAsset: AppConstants.assetStudentBanner,
             width: double.infinity,
             height: 125,
             fit: BoxFit.fill,

@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:karsa_app/core/utils/offline_summarizer.dart';
+import 'package:karsa_app/models/attachment_file.dart';
+import 'package:karsa_app/models/student_profile.dart';
 import 'package:karsa_app/models/user_role.dart';
 import 'package:karsa_app/providers/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -149,6 +151,94 @@ void main() {
         state.data.materials.where((m) => m.className == 'Kelas 1').length,
         2,
       );
+
+      state.dispose();
+    });
+
+    test('operator sekolah mengelola seluruh isi aplikasi', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final state = AppState(autoLoad: false);
+      await state.loadFromStorage();
+
+      state.selectRoleForLogin(UserRole.operator);
+      expect(state.authenticate('19870003', 'operator123'), isTrue);
+      expect(state.role, UserRole.operator);
+      expect(state.isOperator, isTrue);
+      expect(state.canManageAll, isTrue);
+      expect(state.role!.navTabs, <String>[
+        'Beranda',
+        'Siswa',
+        'Kelas',
+        'Materi',
+        'Media',
+      ]);
+
+      // Roster siswa tersedia lintas kelas.
+      expect(state.roster.length, 24);
+      expect(state.rosterForClass('Kelas 5').length, 4);
+      expect(state.activeStudentCount, 24);
+
+      // Operator boleh menambah, mengubah, dan menghapus siswa.
+      final added = StudentProfile(
+        id: 'uji-1',
+        nisn: '10059999',
+        name: 'Uji Operator',
+        className: 'Kelas 3',
+        gender: 'P',
+        parentName: 'Ibu Uji',
+      );
+      state.addStudent(added);
+      expect(state.roster.length, 25);
+      expect(state.rosterForClass('Kelas 3').length, 5);
+
+      state.updateStudent(added.copyWith(name: 'Uji Operator Diperbarui'));
+      expect(
+        state.roster.firstWhere((s) => s.id == 'uji-1').name,
+        'Uji Operator Diperbarui',
+      );
+
+      state.removeStudent('uji-1');
+      expect(state.roster.length, 24);
+
+      // Graphic sekolah dikelola lewat slot media.
+      expect(state.mediaAsset('school-logo'), isNull);
+      state.setMediaAsset(
+        'school-logo',
+        const AttachmentFile(
+          name: 'logo.png',
+          mimeType: 'image/png',
+          uri: 'data:image/png;base64,AAAA',
+          size: 4,
+        ),
+      );
+      expect(state.mediaAsset('school-logo'), isNotNull);
+      expect(state.mediaAsset('school-logo')!.mimeType, 'image/png');
+      state.removeMediaAsset('school-logo');
+      expect(state.mediaAsset('school-logo'), isNull);
+
+      // Operator boleh menghapus data milik guru dan wali.
+      final materialId = state.data.materials.isNotEmpty
+          ? state.data.materials.first.id
+          : '';
+      if (materialId.isNotEmpty) {
+        final before = state.data.materials.length;
+        state.deleteMaterial(materialId);
+        expect(state.data.materials.length, before - 1);
+      }
+
+      // Data pribadi operator tidak boleh menimpa nama siswa.
+      state.openSetting('Informasi pribadi');
+      expect(state.screen, 'setting');
+      state.setDraftTitle('Sari Operator');
+      state.savePersonalInfo();
+      expect(state.screen, 'main');
+      expect(state.data.operatorName, 'Sari Operator');
+      expect(state.data.studentName, 'Dimas Nugroho');
+
+      // Role lain tidak punya akses managing penuh.
+      state.selectRoleForLogin(UserRole.guru);
+      expect(state.authenticate('19870002', 'guru123'), isTrue);
+      expect(state.canManageAll, isFalse);
 
       state.dispose();
     });

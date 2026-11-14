@@ -3,7 +3,7 @@
 > Proyek: **KarsaApp** — SD Karitas Purwokerto
 > Sumber: React Native / Expo (`App.js` ±5.543 baris, `curriculum.js`, `gradeReports.js`, `assets/*.png`)
 > Target: Flutter / Dart modular di `karsa_app/`
-> Branch: `arena/efada06a-karsaapp`
+> Branch: `arena/c189c199-karsaapp`
 > Tanggal: 14 November 2026
 
 ---
@@ -24,18 +24,18 @@ sebagai rujukan audit dan perbandingan visual.
 | Aset | `assets/*.png` | `karsa_app/assets/images/*.png` (salinan identik) |
 | Ikon | `@expo/vector-icons` Ionicons | Font `Ionicons.ttf` + `KarsaIcons` (27 codepoint) |
 | Bank soal | `curriculum.js` | `lib/data/curriculum_data.dart` (generate 1:1) |
-| Pratinjau | — | `karsa_app/preview/` — 28 layar HTML interaktif, offline |
+| Pratinjau | — | `karsa_app/preview/` — 38 layar HTML interaktif, offline |
 
 **Skala implementasi**
 
 | Komponen | Jumlah | Baris |
 | --- | --- | --- |
-| Berkas Dart (`lib/` + `test/`) | 98 | 11.294 |
-| Top-level class / enum / mixin | 107 | — |
-| Layar/tab Flutter (`lib/features/`) | 42 berkas | 5.480 |
+| Berkas Dart (`lib/` + `test/`) | 119 | 15.867 |
+| Top-level class / enum / mixin | 144 | — |
+| Layar/tab Flutter (`lib/features/`) | 53 berkas (11 di antaranya operator) | 7.626 |
 | Widget reusable (`lib/core/widgets/`) | 15 | — |
-| Model domain (`lib/models/`) | 15 | 925 |
-| Pratinjau HTML (`preview/`) | 7 berkas | 6.228 (JS/CSS/HTML/Python) |
+| Model domain (`lib/models/`) | 20 | 1.391 |
+| Pratinjau HTML (`preview/`) | 7 berkas | 8.858 (JS/CSS/HTML/Python) |
 
 ---
 
@@ -51,7 +51,9 @@ Hasil lengkap ada di [`01_AUDIT_MAPPING.md`](01_AUDIT_MAPPING.md). Ringkasan:
   (`lib/core/widgets/karsa_icons.dart`) memakai font `Ionicons.ttf` dari
   `@expo/vector-icons@15.0.2` (389.724 byte, identik dengan berkas RN).
 * **21 kunci penyimpanan** pada `@karsa-demo-v1` dipetakan ke
-  `KarsaStoreData` (15 model domain + 1 aggregate).
+  `KarsaStoreData` (20 model domain + 1 aggregate); operator menambah kunci
+  `roster`, `schoolClasses`, `rosterScores`, `staffAccounts`, `mediaAssets`,
+  dan `operatorName`.
 
 ---
 
@@ -77,17 +79,18 @@ karsa_app/
 │   │   │                   # app_typography, karsa_theme
 │   │   ├── utils/          # date_utils, offline_summarizer
 │   │   └── widgets/        # 15 widget claymorphism reusable
-│   ├── models/             # 15 model domain
+│   ├── models/             # 20 model domain
 │   ├── services/           # storage, attachment, file_bridge, export
 │   ├── providers/          # app_state.dart (ChangeNotifier)
 │   ├── data/               # curriculum_data.dart, seed_data.dart
 │   ├── shared/widgets/     # main_shell, greeting_header, detail_bottom_sheet
 │   └── features/           # splash, authentication, dashboard, homeroom,
 │                           # teacher, tasks, quizzes, materials, grades,
-│                           # calendar, announcements, student, settings
-├── test/                   # 4 berkas uji
+│                           # calendar, announcements, student, settings,
+│                           # operator (11 layar CRUD sekolah)
+├── test/                   # 5 berkas uji
 ├── tool/                   # generator kurikulum & ikon, check_syntax.py
-├── preview/                # pratinjau HTML 28 layar
+├── preview/                # pratinjau HTML 38 layar
 └── docs/                   # 01–03
 ```
 
@@ -297,10 +300,10 @@ Pemeriksaan yang dilakukan:
 
 | Pemeriksaan | Perintah | Hasil |
 | --- | --- | --- |
-| Sintaks & struktur Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 98 berkas, 11.294 baris, 107 class/enum/mixin; semua import, aset, dan referensi member resolve |
+| Sintaks & struktur Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 119 berkas, 15.867 baris, 144 class/enum/mixin; semua import, aset, referensi member, inisialisasi field `final`, argumen bernama `Image`, null-check `.isEmpty`, dan import simbol lokal resolve |
 | Uji unit Flutter (disiapkan, belum dieksekusi) | `flutter test` | **Tidak dijalankan** — SDK tidak tersedia (termasuk uji baru: ringkasan nilai kelas + pengeditan data pribadi) |
 | Sintaks JS pratinjau | `node --check` | OK untuk `app.js`, `curriculum-data.js`, `test_preview.js`, `tool/generate_preview_data.js` |
-| Perilaku pratinjau (mock DOM) | `node karsa_app/preview/test_preview.js` | OK — 206 pemeriksaan lulus |
+| Perilaku pratinjau (mock DOM) | `node karsa_app/preview/test_preview.js` | OK — 339 pemeriksaan lulus |
 | Server pratinjau | `curl http://127.0.0.1:8000/...` | OK — `/healthz` 200, HTML/CSS/JS 200 + charset utf-8, 6 PNG 200, `Ionicons.ttf` 200, 404 untuk berkas tak dikenal |
 
 Rencana uji lengkap: [`03_TESTING_PLAN.md`](03_TESTING_PLAN.md).
@@ -309,7 +312,7 @@ Rencana uji lengkap: [`03_TESTING_PLAN.md`](03_TESTING_PLAN.md).
 
 ## 7. Tahap 9 — Pratinjau HTML (`karsa_app/preview/`)
 
-Pratinjau HTML interaktif 28 layar dibuat agar tampilan dan alur dapat
+Pratinjau HTML interaktif 38 layar dibuat agar tampilan dan alur dapat
 diperiksa **tanpa Flutter** dan **tanpa browser automation**.
 
 * **Mobile-first**: `100dvh` pada ponsel, kolom `480px` pada layar lebar,
@@ -318,8 +321,13 @@ diperiksa **tanpa Flutter** dan **tanpa browser automation**.
   `/assets/...` milik `serve.py`.
 * **Bar atas** hanya berisi dropdown pemilih layar + tombol mode gelap
   (tanpa label "Pratinjau").
-* **28 layar**: splash, pilih peran, 4 login, lupa kata sandi, 5 tab wali,
-  5 tab guru, 3 tab siswa, 4 tab orang tua, materi, notifikasi, kuis, hasil kuis.
+* **38 layar**: splash, pilih peran, 5 login, lupa kata sandi, 5 tab wali,
+  5 tab guru, 3 tab siswa, 4 tab orang tua, 9 layar operator sekolah, materi,
+  notifikasi, kuis, hasil kuis.
+* **CRUD operator**: seluruh tambah/ubah/hapus siswa, kelas, akun guru/wali,
+  materi, tugas, pengumuman, agenda, dan nilai tersimpan di `localStorage`
+  `@karsa-demo-v1`; nilai ditolak di luar 0–100, kelas terakhir dilindungi,
+  dan array kosong yang tersimpan tidak di-seed ulang.
 * **Interaksi hidup**: input NIP/NISN + kata sandi asli dengan tombol mata dan
   submit Enter, validasi per peran dengan pesan galat RN, kotak akun demo
   berbeda per peran, bottom nav per peran, chip kelas/mapel + segmen +
@@ -331,11 +339,45 @@ diperiksa **tanpa Flutter** dan **tanpa browser automation**.
 
 ---
 
+## 7b. Tahap 10 — Peran Operator Sekolah
+
+Peran **Operator Sekolah** ditambahkan baik di Flutter maupun di pratinjau
+HTML. Kode React Native di root repository tetap tidak disentuh.
+
+* **Akun demo**: NIP `19870003`, kata sandi `operator123`.
+* **Lima tab**: Beranda, Siswa, Kelas, Materi, Media (Foto & Grafis). Halaman
+  turunan: tugas, pengumuman, agenda, nilai, form siswa, form materi, form
+  kelas, form akun guru/wali, dan data pribadi operator.
+* **Model baru**: `SchoolClass`, `StaffAccount`, `StudentProfile`,
+  `MediaAsset`. `KarsaStoreData` menyimpan `roster`, `schoolClasses`,
+  `rosterScores`, `staffAccounts`, `mediaAssets`, dan `operatorName`.
+* **CRUD**: `AppState` menyediakan API tambah/ubah/hapus untuk seluruh entitas
+  di atas, dengan `_persistData(...)` pada setiap perubahan. `removeSchoolClass`
+  dan `removeStaffAccount` mengembalikan `bool` supaya form hanya menutup
+  setelah penghapusan benar-benar berhasil.
+* **Validasi terlihat**: kolom wajib, NIS/NIP duplikat, nilai wajib 0–100 dan
+  harus berangka hingga (bukan `NaN`/infinity), serta pesan
+  `Minimal satu kelas sekolah harus tetap ada.` Penghapusan kelas memindahkan
+  siswanya ke kelas pertama yang tersisa.
+* **Kelas dinamis**: pilihan kelas di seluruh form berasal dari
+  `state.schoolClassNames`, bukan daftar hard-code. `subjectsForClass()` memberi
+  seluruh mata pelajaran (termasuk IPAS) pada nama kelas khusus tanpa angka
+  tingkat.
+* **Persistensi**: array kosong yang tersimpan sengaja dihormati, sehingga
+  data seed yang dihapus operator tidak muncul lagi setelah aplikasi dibuka
+  ulang. Perilaku sama diterapkan di pratinjau lewat `restoreState()`.
+* **Regresi**: `test/operator_crud_test.dart` (Flutter, belum dieksekusi karena
+  SDK tidak ada) dan blok operator di `preview/test_preview.js` (339
+  pemeriksaan lulus), termasuk pembuktian bahwa uji gagal bila perlindungan
+  kelas terakhir atau penghapusan materi dimatikan.
+
+---
+
 ## 8. Kendala & keputusan teknis
 
 1. **Tidak ada Flutter/Dart SDK di lingkungan kerja.** Semua perkiraan
    kompilasi divalidasi secara statis (`tool/check_syntax.py`) dan melalui
-   4 berkas uji Flutter yang siap dijalankan di mesin yang memiliki SDK.
+   5 berkas uji Flutter yang siap dijalankan di mesin yang memiliki SDK.
 2. **Font ikon.** `@expo/vector-icons` tidak bisa dipakai di Flutter; font
    `Ionicons.ttf` diambil dari paket npm yang sama (15.0.2) sehingga glyph
    identik, lalu codepoint-nya dibekukan di `KarsaIcons`.
@@ -360,7 +402,7 @@ diperiksa **tanpa Flutter** dan **tanpa browser automation**.
 ## 9. Yang **belum** terverifikasi (jujur)
 
 * `flutter analyze` dan `flutter test` **tidak pernah dijalankan** — tidak ada
-  SDK di lingkungan ini. Empat berkas uji di `test/` sudah ditulis dan siap
+  SDK di lingkungan ini. Lima berkas uji di `test/` sudah ditulis dan siap
   dijalankan di mesin ber-SDK.
 * Uji visual per perangkat (iOS/Android nyata) belum dilakukan.
 * Pembukaan file ekspor `.xlsx`/`.pdf` di aplikasi native belum diuji di
@@ -380,8 +422,8 @@ karsa_app/.gitignore
 karsa_app/README.md
 karsa_app/assets/images/*.png                 (6 berkas, salinan)
 karsa_app/assets/fonts/Ionicons.ttf
-karsa_app/lib/**                               (94 berkas Dart)
-karsa_app/test/*.dart                          (4 berkas)
+karsa_app/lib/**                               (114 berkas Dart)
+karsa_app/test/*.dart                          (5 berkas)
 karsa_app/tool/{extract_ionicons.py,generate_curriculum.py,generate_preview_data.js,check_syntax.py}
 karsa_app/preview/{index.html,styles.css,app.js,curriculum-data.js,serve.py,README.md,test_preview.js}
 karsa_app/docs/{01_AUDIT_MAPPING.md,02_IMPLEMENTATION_REPORT.md,03_TESTING_PLAN.md}

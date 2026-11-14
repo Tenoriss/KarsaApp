@@ -36,7 +36,7 @@ class SettingDetailPage extends StatelessWidget {
             value: state.draftTitle,
             onChanged: state.setDraftTitle,
           ),
-          if (!state.isTeacher) ...<Widget>[
+          if (state.isStudent || state.isParent) ...<Widget>[
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text('Kelas anak', style: theme.text.label),

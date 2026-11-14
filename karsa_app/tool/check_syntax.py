@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""Static syntax, import, asset, and cross-file symbol checker for karsa_app (no Dart SDK required)."""
+"""Static syntax, import, asset, and compile-risk checker for karsa_app.
+
+No Dart SDK is required. Besides balanced delimiters, imports, assets, and
+member references, this catches a handful of type-level mistakes that a
+syntax-only pass cannot see:
+
+* non-`late` final fields missing from every constructor,
+* positional arguments to the named-only `Image`/`ImageIcon` constructors,
+* `.isEmpty` on a nullable local produced by `x == null ? null : ...`,
+* locally defined classes used as `ClassName.member` without a direct import.
+"""
 
 from __future__ import annotations
 
@@ -336,6 +346,207 @@ def check_member_references(dart_files: list[Path], errors: list[str]) -> None:
                     errors.append(f"{fp}: Unknown member '{owner}.{member}'")
 
 
+def _class_bodies(stripped: str):
+    """Yield (class name, class body) for each top-level class declaration."""
+    for m in re.finditer(r"\bclass\s+(\w+)[^{]*\{", stripped):
+        start = m.end() - 1
+        depth = 0
+        end = start
+        for i in range(start, len(stripped)):
+            if stripped[i] == "{":
+                depth += 1
+            elif stripped[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i
+                    break
+        yield m.group(1), stripped[start + 1 : end]
+
+
+def check_field_initialization(dart_files: list[Path], errors: list[str]) -> None:
+    """Every non-late final field must be initialized by a constructor.
+
+    Dart's analyzer rejects a class whose final instance fields are declared
+    but never initialized. This is easy to miss when a model gains new fields,
+    so verify it statically (the SDK is not available in this workspace).
+    """
+    for fp in dart_files:
+        stripped = strip_comments_and_strings(
+            fp.read_text(encoding="utf-8"), fp, []
+        )
+        for class_name, body in _class_bodies(stripped):
+            # Collect only constructor parameter lists and initializer lists.
+            # `copyWith` bodies also mention `this.field`, but they do not
+            # initialize the field and must not count.
+            ctor_parts: list[str] = []
+            for cm in re.finditer(
+                r"^  (?:const\s+|factory\s+)?"
+                + re.escape(class_name)
+                + r"(?:\.\w+)?\s*\(",
+                body,
+                re.MULTILINE,
+            ):
+                open_idx = body.find("(", cm.start())
+                depth = 0
+                end = open_idx
+                for i in range(open_idx, len(body)):
+                    if body[i] == "(":
+                        depth += 1
+                    elif body[i] == ")":
+                        depth -= 1
+                        if depth == 0:
+                            end = i
+                            break
+                params = body[open_idx + 1 : end]
+                tail = body[end + 1 : end + 600]
+                initializer = ""
+                if tail.lstrip().startswith(":"):
+                    stop = len(tail)
+                    for token in ("{", ";"):
+                        pos = tail.find(token)
+                        if 0 <= pos < stop:
+                            stop = pos
+                    initializer = tail[:stop]
+                ctor_parts.append(params + "\n" + initializer)
+            ctor_text = "\n".join(ctor_parts)
+            for line in body.split("\n"):
+                if not re.match(r"^\s{2}(?:static\s+)?(?:late\s+)?final\s", line):
+                    continue
+                if "late " in line or "static " in line:
+                    continue
+                decl = line.split("=", 1)[0].strip().rstrip(";").strip()
+                name = decl.split()[-1] if decl.split() else ""
+                if not name or not re.match(r"^\w+$", name):
+                    continue
+                initialized = (
+                    re.search(r"\bthis\." + re.escape(name) + r"\b", ctor_text)
+                    or re.search(r"\b" + re.escape(name) + r"\s*=", ctor_text)
+                )
+                if not initialized:
+                    errors.append(
+                        f"{fp}: final field '{class_name}.{name}' is never initialized "
+                        f"by a constructor (add it to the constructor parameter list)"
+                    )
+
+
+def check_image_constructor_args(dart_files: list[Path], errors: list[str]) -> None:
+    """`Image` takes only named parameters; a positional argument won't compile."""
+    named_only = {"Image", "ImageIcon", "Placeholder"}
+    for fp in dart_files:
+        stripped = strip_comments_and_strings(
+            fp.read_text(encoding="utf-8"), fp, []
+        )
+        for cls in named_only:
+            for m in re.finditer(r"\b" + cls + r"\s*\(", stripped):
+                open_idx = stripped.find("(", m.start())
+                depth = 0
+                end = open_idx
+                for i in range(open_idx, len(stripped)):
+                    if stripped[i] == "(":
+                        depth += 1
+                    elif stripped[i] == ")":
+                        depth -= 1
+                        if depth == 0:
+                            end = i
+                            break
+                args = stripped[open_idx + 1 : end].strip()
+                if not args:
+                    continue
+                # Split on top-level commas only.
+                parts: list[str] = []
+                buf: list[str] = []
+                inner = 0
+                for ch in args:
+                    if ch in "([{":
+                        inner += 1
+                    elif ch in ")]}":
+                        inner -= 1
+                    if ch == "," and inner == 0:
+                        parts.append("".join(buf).strip())
+                        buf = []
+                    else:
+                        buf.append(ch)
+                if "".join(buf).strip():
+                    parts.append("".join(buf).strip())
+                for part in parts:
+                    if part and not re.match(r"^[A-Za-z_]\w*\s*:", part):
+                        errors.append(
+                            f"{fp}: '{cls}' only accepts named arguments; "
+                            f"positional argument '{part[:40]}' will not compile"
+                        )
+                        break
+
+
+def check_nullable_conditional_deref(dart_files: list[Path], errors: list[str]) -> None:
+    """A `x == null ? null : y` local must be null-checked before `.isEmpty`.
+
+    Dart null safety rejects `x.isEmpty` when `x` is `List<T>?`. This pattern
+    appears in the "open form" helpers, so catch it without needing an SDK.
+    """
+    for fp in dart_files:
+        stripped = strip_comments_and_strings(
+            fp.read_text(encoding="utf-8"), fp, []
+        )
+        lines = stripped.split("\n")
+        for i, line in enumerate(lines):
+            m = re.search(r"\bfinal\s+(\w+)\s*=\s*\w+\s*==\s*null", line)
+            if not m:
+                continue
+            head = " ".join(lines[i : i + 3])
+            if not re.search(r"\?\s*null\s*:", head):
+                continue
+            var = m.group(1)
+            for following in lines[i + 1 : i + 14]:
+                if re.search(r"\b" + re.escape(var) + r"\.isEmpty\b", following):
+                    if (
+                        re.search(r"\b" + re.escape(var) + r"\s*==\s*null", following)
+                        or re.search(r"\b" + re.escape(var) + r"\s*!=\s*null", following)
+                    ):
+                        continue
+                    errors.append(
+                        f"{fp}: nullable local '{var}' is dereferenced with .isEmpty "
+                        f"without a null check (add '{var} == null ||')"
+                    )
+
+
+def check_local_symbol_imports(
+    dart_files: list[Path], symbols_by_file: dict[Path, set[str]], errors: list[str]
+) -> None:
+    """A locally defined class used as `Foo.bar` must be imported directly.
+
+    Dart does not re-export transitively imported symbols, so referencing a
+    class without importing its file is a compile error. External/SDK symbols
+    are not defined in this workspace and are therefore ignored here.
+    """
+    owner_of: dict[str, set[Path]] = {}
+    for fp, symbols in symbols_by_file.items():
+        for symbol in symbols:
+            owner_of.setdefault(symbol, set()).add(fp)
+
+    for fp in dart_files:
+        raw = fp.read_text(encoding="utf-8")
+        stripped = strip_comments_and_strings(raw, fp, [])
+        imported: set[Path] = set()
+        for rel in re.findall(r"import\s+['\"]([^'\"]+)['\"]", raw):
+            if rel.startswith("package:karsa_app/"):
+                target = (ROOT / "lib" / rel[len("package:karsa_app/") :]).resolve()
+            elif rel.startswith(("dart:", "package:")):
+                continue
+            else:
+                target = (fp.parent / rel).resolve()
+            if target.is_file():
+                imported.add(target)
+        own = symbols_by_file[fp]
+        for name in sorted(set(re.findall(r"\b([A-Z]\w*)\s*\.", stripped))):
+            if name in own or name not in owner_of:
+                continue
+            if not (owner_of[name] & imported):
+                errors.append(
+                    f"{fp}: '{name}' is defined in this project but not imported "
+                    f"(add the import for its file)"
+                )
+
+
 def check_pubspec(errors: list[str]) -> None:
     pubspec = ROOT / "pubspec.yaml"
     if not pubspec.is_file():
@@ -369,6 +580,10 @@ def main() -> int:
 
     check_imports_and_assets(dart_files, symbols_by_file, errors)
     check_member_references(dart_files, errors)
+    check_field_initialization(dart_files, errors)
+    check_image_constructor_args(dart_files, errors)
+    check_nullable_conditional_deref(dart_files, errors)
+    check_local_symbol_imports(dart_files, symbols_by_file, errors)
     check_pubspec(errors)
 
     all_symbols = set().union(*symbols_by_file.values())

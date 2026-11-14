@@ -1,6 +1,7 @@
 enum UserRole {
   wali('wali'),
   guru('guru'),
+  operator('operator'),
   orangtua('orangtua'),
   siswa('siswa');
 
@@ -13,6 +14,13 @@ enum UserRole {
   bool get isStudent => this == UserRole.siswa;
   bool get isParent => this == UserRole.orangtua;
 
+  /// Operator sekolah: mengelola seluruh isi aplikasi, termasuk data milik
+  /// guru dan wali kelas.
+  bool get isOperator => this == UserRole.operator;
+
+  /// Boleh mengelola data lintas guru/wali (tugas, materi, pengumuman, nilai).
+  bool get canManageAll => this == UserRole.operator;
+
   List<String> get navTabs {
     switch (this) {
       case UserRole.wali:
@@ -23,6 +31,8 @@ enum UserRole {
         return <String>['Beranda', 'Tugas', 'Profil'];
       case UserRole.orangtua:
         return <String>['Beranda', 'Tugas', 'Latihan', 'Profil'];
+      case UserRole.operator:
+        return <String>['Beranda', 'Siswa', 'Kelas', 'Materi', 'Media'];
     }
   }
 

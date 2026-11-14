@@ -3,6 +3,9 @@ import '../models/class_member.dart';
 import '../models/local_notification.dart';
 import '../models/material_item.dart';
 import '../models/practice_item.dart';
+import '../models/school_class.dart';
+import '../models/staff_account.dart';
+import '../models/student_profile.dart';
 import '../models/task_item.dart';
 import '../models/task_result.dart';
 import 'curriculum_data.dart';
@@ -80,6 +83,90 @@ class SeedData {
         teacher: 'Ibu Sari',
       ),
     ];
+  }
+
+  /// Daftar siswa resmi per kelas. Dipakai role operator sekolah untuk
+  /// menambah, mengubah, dan menghapus data siswa.
+  static List<StudentProfile> initialRoster() {
+    const seeds = <List<String>>[
+      <String>['s1a', '10050002', 'Aisyah Putri', 'Kelas 1', 'P', 'Ibu Rina'],
+      <String>['s1b', '10050003', 'Bagas Wicaksono', 'Kelas 1', 'L', 'Bapak Doni'],
+      <String>['s1c', '10050004', 'Citra Kirana', 'Kelas 1', 'P', 'Ibu Melati'],
+      <String>['s1d', '10050005', 'Dimas Nugroho', 'Kelas 1', 'L', 'Bapak Hendra'],
+      <String>['s2a', '10050006', 'Eka Prasetyo', 'Kelas 2', 'L', 'Bapak Joko'],
+      <String>['s2b', '10050007', 'Fitri Handayani', 'Kelas 2', 'P', 'Ibu Sari'],
+      <String>['s2c', '10050008', 'Gilang Ramadhan', 'Kelas 2', 'L', 'Bapak Arif'],
+      <String>['s2d', '10050009', 'Hana Salsabila', 'Kelas 2', 'P', 'Ibu Yuni'],
+      <String>['s3a', '10050010', 'Indira Maharani', 'Kelas 3', 'P', 'Ibu Ratna'],
+      <String>['s3b', '10050011', 'Jovan Kurniawan', 'Kelas 3', 'L', 'Bapak Teguh'],
+      <String>['s3c', '10050012', 'Kirana Ayu', 'Kelas 3', 'P', 'Ibu Wulan'],
+      <String>['s3d', '10050013', 'Lukman Hakim', 'Kelas 3', 'L', 'Bapak Slamet'],
+      <String>['s4a', '10050014', 'Maya Anggraini', 'Kelas 4', 'P', 'Ibu Dyah'],
+      <String>['s4b', '10050015', 'Naufal Akbar', 'Kelas 4', 'L', 'Bapak Rudi'],
+      <String>['s4c', '10050016', 'Nabila Zahra', 'Kelas 4', 'P', 'Ibu Eka'],
+      <String>['s4d', '10050017', 'Omar Dzaki', 'Kelas 4', 'L', 'Bapak Irwan'],
+      <String>['s5a', '10050018', 'Puspita Rani', 'Kelas 5', 'P', 'Ibu Lilis'],
+      <String>['s5b', '10050019', 'Rendi Saputra', 'Kelas 5', 'L', 'Bapak Cahyo'],
+      <String>['s5c', '10050020', 'Sekar Arum', 'Kelas 5', 'P', 'Ibu Nining'],
+      <String>['s5d', '10050021', 'Taufik Hidayat', 'Kelas 5', 'L', 'Bapak Wahyu'],
+      <String>['s6a', '10050022', 'Ulfa Rahmawati', 'Kelas 6', 'P', 'Ibu Tati'],
+      <String>['s6b', '10050023', 'Vino Ardiansyah', 'Kelas 6', 'L', 'Bapak Gunawan'],
+      <String>['s6c', '10050024', 'Wulan Puspita', 'Kelas 6', 'P', 'Ibu Rina'],
+      <String>['s6d', '10050025', 'Yoga Pratama', 'Kelas 6', 'L', 'Bapak Farid'],
+    ];
+    return seeds
+        .map((row) => StudentProfile(
+              id: row[0],
+              nisn: row[1],
+              name: row[2],
+              className: row[3],
+              gender: row[4],
+              parentName: row[5],
+            ))
+        .toList();
+  }
+
+  /// Kelas sekolah bawaan. Operator sekolah bisa menambah, mengubah, dan
+  /// menghapus kelas beserta wali kelasnya.
+  static List<SchoolClass> initialSchoolClasses() {
+    const seeds = <List<String>>[
+      <String>['c1', 'Kelas 1', 'Ibu Sari'],
+      <String>['c2', 'Kelas 2', 'Ibu Tuti'],
+      <String>['c3', 'Kelas 3', 'Bapak Agus'],
+      <String>['c4', 'Kelas 4', 'Ibu Rina'],
+      <String>['c5', 'Kelas 5', 'Bapak Doni'],
+      <String>['c6', 'Kelas 6', 'Ibu Maya'],
+    ];
+    return seeds
+        .map((row) => SchoolClass(
+              id: row[0],
+              name: row[1],
+              teacherName: row[2],
+            ))
+        .toList();
+  }
+
+  /// Akun guru dan wali kelas bawaan. Operator sekolah bisa menambah,
+  /// mengubah, dan menghapus akun ini.
+  static List<StaffAccount> initialStaffAccounts() {
+    const seeds = <List<String>>[
+      <String>['u1', 'Ibu Sari', '19870001', 'wali', 'Kelas 1'],
+      <String>['u2', 'Ibu Tuti', '19870011', 'wali', 'Kelas 2'],
+      <String>['u3', 'Bapak Agus', '19870012', 'wali', 'Kelas 3'],
+      <String>['u4', 'Ibu Rina', '19870013', 'wali', 'Kelas 4'],
+      <String>['u5', 'Bapak Doni', '19870014', 'wali', 'Kelas 5'],
+      <String>['u6', 'Ibu Maya', '19870015', 'wali', 'Kelas 6'],
+      <String>['u7', 'Pak Rudi', '19870021', 'guru', ''],
+    ];
+    return seeds
+        .map((row) => StaffAccount(
+              id: row[0],
+              name: row[1],
+              nip: row[2],
+              role: row[3],
+              className: row[4],
+            ))
+        .toList();
   }
 
   /// Notifikasi demo untuk guru, orang tua, dan siswa (kelas 1 dan kelas 5).

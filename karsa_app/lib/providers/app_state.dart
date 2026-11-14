@@ -18,6 +18,10 @@ import '../models/local_notification.dart';
 import '../models/material_item.dart';
 import '../models/practice_item.dart';
 import '../models/quiz_question.dart';
+import '../models/school_class.dart';
+import '../models/staff_account.dart';
+import '../models/media_asset.dart';
+import '../models/student_profile.dart';
 import '../models/task_item.dart';
 import '../models/task_result.dart';
 import '../models/user_role.dart';
@@ -99,6 +103,38 @@ class AppState extends ChangeNotifier {
   String _subjectFilter = 'Semua';
   String _learnerSubjectTab = 'Tugas';
   DateTime _now = DateTime.now();
+
+  // Pencarian data siswa pada tab operator.
+  String _operatorStudentQuery = '';
+
+  // Pesan galat saat operator memilih gambar.
+  String _operatorMediaError = '';
+
+  // Form operator: tugas, materi, pengumuman, agenda, nilai, dan kelas.
+  String _draftTaskId = '';
+  String _draftMaterialId = '';
+  String _draftAnnouncementId = '';
+  String _draftEventId = '';
+  String _draftGradeStudentId = '';
+  String _draftSchoolClassId = '';
+  String _draftSchoolClassName = '';
+  String _draftSchoolClassTeacher = '';
+
+  // Form operator: tambah/ubah akun guru dan wali kelas.
+  String _draftStaffId = '';
+  String _draftStaffName = '';
+  String _draftStaffNip = '';
+  String _draftStaffRole = 'guru';
+  String _draftStaffClass = '';
+
+  // Form operator: tambah/ubah data siswa.
+  String _draftStudentId = '';
+  String _draftStudentName = '';
+  String _draftStudentNisn = '';
+  String _draftStudentClass = 'Kelas 1';
+  String _draftStudentGender = 'L';
+  String _draftStudentParent = '';
+  bool _draftStudentActive = true;
 
   String _gradeClass = 'Kelas 1';
   String _gradeReturn = 'main';
@@ -199,6 +235,7 @@ class AppState extends ChangeNotifier {
   bool get isGuru => _role?.isGuru ?? false;
   bool get isStudent => _role?.isStudent ?? false;
   bool get isParent => _role?.isParent ?? false;
+  bool get isOperator => _role?.isOperator ?? false;
 
   bool get isSheetScreen => _screen == 'taskDetail' || _screen == 'practiceDetail';
 
@@ -252,6 +289,8 @@ class AppState extends ChangeNotifier {
 
   List<LocalNotification> get relevantNotifications {
     return _data.localNotifications.where((n) {
+      // Operator sekolah melihat semua notifikasi sekolah.
+      if (isOperator) return true;
       if (isTeacher) {
         return n.target == 'teachers' &&
             (!isGuru || n.subject == _data.teacherSubject) &&
@@ -366,6 +405,754 @@ class AppState extends ChangeNotifier {
     if (graded.isEmpty) return null;
     final sum = graded.fold<double>(0.0, (acc, s) => acc + s.average);
     return (sum / graded.length).round();
+  }
+
+  /// Pesan galat terakhir saat memilih gambar (tab Media).
+  String get operatorMediaError => _operatorMediaError;
+
+  void setOperatorMediaError(String value) {
+    _operatorMediaError = value;
+    notifyListeners();
+  }
+
+  /// Kata kunci pencarian siswa (tab operator).
+  String get operatorStudentQuery => _operatorStudentQuery;
+
+  void setOperatorStudentQuery(String value) {
+    _operatorStudentQuery = value;
+    notifyListeners();
+  }
+
+  // Getter form operator.
+  String get draftTaskId => _draftTaskId;
+  String get draftMaterialId => _draftMaterialId;
+  String get draftAnnouncementId => _draftAnnouncementId;
+  String get draftEventId => _draftEventId;
+  String get draftSchoolClassId => _draftSchoolClassId;
+  String get draftSchoolClassName => _draftSchoolClassName;
+  String get draftSchoolClassTeacher => _draftSchoolClassTeacher;
+  String get draftStaffId => _draftStaffId;
+  String get draftStaffName => _draftStaffName;
+  String get draftStaffNip => _draftStaffNip;
+  String get draftStaffRole => _draftStaffRole;
+  String get draftStaffClass => _draftStaffClass;
+  String get draftStudentId => _draftStudentId;
+  String get draftStudentName => _draftStudentName;
+  String get draftStudentNisn => _draftStudentNisn;
+  String get draftStudentClass => _draftStudentClass;
+  String get draftStudentGender => _draftStudentGender;
+  String get draftStudentParent => _draftStudentParent;
+  bool get draftStudentActive => _draftStudentActive;
+
+  /// Membuka form tambah/ubah siswa. Null berarti tambah baru.
+  void openStudentForm([String? studentId]) {
+    final existing = studentId == null
+        ? null
+        : _data.roster.where((s) => s.id == studentId).toList();
+    if (existing == null || existing.isEmpty) {
+      _draftStudentId = '';
+      _draftStudentName = '';
+      _draftStudentNisn = '';
+      _draftStudentClass = operatorClassNames.isEmpty
+          ? 'Kelas 1'
+          : operatorClassNames.first;
+      _draftStudentGender = 'L';
+      _draftStudentParent = '';
+      _draftStudentActive = true;
+    } else {
+      final student = existing.first;
+      _draftStudentId = student.id;
+      _draftStudentName = student.name;
+      _draftStudentNisn = student.nisn;
+      _draftStudentClass = student.className;
+      _draftStudentGender = student.gender;
+      _draftStudentParent = student.parentName;
+      _draftStudentActive = student.active;
+    }
+    _error = '';
+    _screen = 'operatorStudentForm';
+    notifyListeners();
+  }
+
+  void setDraftStudentName(String value) {
+    _draftStudentName = value;
+    if (_error.isNotEmpty) _error = '';
+    notifyListeners();
+  }
+
+  void setDraftStudentNisn(String value) {
+    _draftStudentNisn = value;
+    notifyListeners();
+  }
+
+  void setDraftStudentClass(String value) {
+    _draftStudentClass = value;
+    notifyListeners();
+  }
+
+  void setDraftStudentGender(String value) {
+    _draftStudentGender = value;
+    notifyListeners();
+  }
+
+  void setDraftStudentParent(String value) {
+    _draftStudentParent = value;
+    notifyListeners();
+  }
+
+  void setDraftStudentActive(bool value) {
+    _draftStudentActive = value;
+    notifyListeners();
+  }
+
+  /// Menyimpan data siswa dari form operator.
+  void saveStudentForm() {
+    final name = _draftStudentName.trim();
+    if (name.isEmpty) {
+      _error = 'Nama siswa tidak boleh kosong.';
+      notifyListeners();
+      return;
+    }
+    final id = _draftStudentId.isEmpty
+        ? 'siswa-${DateTime.now().millisecondsSinceEpoch}'
+        : _draftStudentId;
+    final student = StudentProfile(
+      id: id,
+      nisn: _draftStudentNisn.trim(),
+      name: name,
+      className: _draftStudentClass,
+      gender: _draftStudentGender,
+      parentName: _draftStudentParent.trim(),
+      active: _draftStudentActive,
+    );
+    if (_draftStudentId.isEmpty) {
+      addStudent(student);
+    } else {
+      updateStudent(student);
+    }
+    _error = '';
+    _screen = 'main';
+    _tab = 'Siswa';
+    notifyListeners();
+  }
+
+  /// Apakah role ini boleh mengelola seluruh isi aplikasi (operator sekolah).
+  bool get canManageAll => _role?.canManageAll ?? false;
+
+  /// Grafis yang dikelola operator sekolah.
+  Map<String, AttachmentFile> get mediaAssets => _data.mediaAssets;
+
+  /// Lampiran untuk satu slot grafis, null bila operator belum mengunggah.
+  AttachmentFile? mediaAsset(String key) => _data.mediaAssets[key];
+
+  /// Daftar siswa resmi.
+  List<StudentProfile> get roster => _data.roster;
+
+  /// Siswa satu kelas.
+  List<StudentProfile> rosterForClass(String className) => _data.roster
+      .where((s) => s.className == className)
+      .toList();
+
+  /// Jumlah siswa aktif di seluruh kelas.
+  int get activeStudentCount =>
+      _data.roster.where((s) => s.active).toList().length;
+
+  /// Menyimpan satu grafis ke slot media.
+  void setMediaAsset(String key, AttachmentFile file) {
+    final next = <String, AttachmentFile>{
+      ..._data.mediaAssets,
+      key: file,
+    };
+    _operatorMediaError = '';
+    _persistData(_data.copyWith(mediaAssets: next));
+  }
+
+  /// Memilih gambar untuk satu slot grafis dan menyimpannya ke store.
+  Future<String?> pickMediaAsset(String key) async {
+    final outcome = await _attachmentService.pickAttachment(
+      currentStoreBytes: 0,
+      extensions: AttachmentService.imageExtensions,
+    );
+    if (outcome.error != null) {
+      _operatorMediaError = outcome.error!;
+      notifyListeners();
+      return outcome.error;
+    }
+    if (outcome.canceled || outcome.attachment == null) return null;
+    setMediaAsset(key, outcome.attachment!);
+    return null;
+  }
+
+  /// Menghapus gambar dari satu slot grafis dan kembali ke aset bawaan.
+  void removeMediaAsset(String key) {
+    if (!_data.mediaAssets.containsKey(key)) return;
+    final next = <String, AttachmentFile>{..._data.mediaAssets}..remove(key);
+    _operatorMediaError = '';
+    _persistData(_data.copyWith(mediaAssets: next));
+  }
+
+  /// Menambah siswa baru ke roster.
+  void addStudent(StudentProfile student) {
+    final next = <StudentProfile>[
+      student,
+      ..._data.roster.where((s) => s.id != student.id),
+    ];
+    _persistData(_data.copyWith(roster: next));
+  }
+
+  /// Mengubah data satu siswa.
+  void updateStudent(StudentProfile student) {
+    final next = _data.roster
+        .map((s) => s.id == student.id ? student : s)
+        .toList();
+    _persistData(_data.copyWith(roster: next));
+  }
+
+  /// Menghapus satu siswa dari roster.
+  void removeStudent(String id) {
+    final next = _data.roster.where((s) => s.id != id).toList();
+    _persistData(_data.copyWith(roster: next));
+  }
+
+  /// Menghapus tugas. Hanya operator sekolah yang boleh menghapus data milik
+  /// role lain.
+  void deleteTask(String id) {
+    final next = _data.tasks.where((t) => t.id != id).toList();
+    final results = <String, dynamic>{..._data.results}..remove(id);
+    _persistData(_data.copyWith(tasks: next, results: results));
+  }
+
+  /// Menghapus materi.
+  void deleteMaterial(String id) {
+    final next = _data.materials.where((m) => m.id != id).toList();
+    _persistData(_data.copyWith(materials: next));
+  }
+
+  /// Menghapus pengumuman.
+  void deleteAnnouncement(String id) {
+    final next = _data.announcements.where((a) => a.id != id).toList();
+    _persistData(_data.copyWith(announcements: next));
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Operator sekolah: kelola seluruh data aplikasi
+   * ------------------------------------------------------------------ */
+
+  /// Daftar kelas sekolah yang dikelola operator.
+  List<SchoolClass> get schoolClasses => _data.schoolClasses;
+
+  /// Nama kelas yang dipakai operator, urut sesuai daftar yang disimpan.
+  List<String> get operatorClassNames =>
+      _data.schoolClasses.map((c) => c.name).toList();
+
+  /// Kelas yang dipakai untuk form operator (tanpa "Semua kelas").
+  List<String> get operatorClassOptions => operatorClassNames;
+
+  SchoolClass? schoolClassByName(String name) {
+    for (final c in _data.schoolClasses) {
+      if (c.name == name) return c;
+    }
+    return null;
+  }
+
+  /// Membuka form tambah/ubah tugas sekolah. Null berarti tambah baru.
+  void openOperatorTaskForm([String? taskId]) {
+    final existing = taskId == null
+        ? null
+        : _data.tasks.where((t) => t.id == taskId).toList();
+    if (existing == null || existing.isEmpty) {
+      _draftTaskId = '';
+      _draftTitle = '';
+      _draftBody = '';
+      _draftSubject = 'Matematika';
+      _draftClass = operatorClassNames.isEmpty ? 'Kelas 1' : operatorClassNames.first;
+      _draftMinutes = '30';
+      _draftDue = '';
+    } else {
+      final task = existing.first;
+      _draftTaskId = task.id;
+      _draftTitle = task.title;
+      _draftBody = '';
+      _draftSubject = task.subject;
+      _draftClass = task.className;
+      _draftMinutes = task.minutes;
+      _draftDue = (task.dueAt ?? '').split('T').first;
+    }
+    _error = '';
+    _notice = '';
+    _screen = 'operatorTaskForm';
+    notifyListeners();
+  }
+
+  /// Menyimpan tugas baru atau mengubah tugas yang sudah ada.
+  void saveOperatorTask() {
+    final mins = double.tryParse(_draftMinutes.trim());
+    if (_draftTitle.trim().isEmpty || mins == null || !mins.isFinite || mins <= 0) {
+      _error = 'Isi judul dan batas waktu yang valid.';
+      notifyListeners();
+      return;
+    }
+    final className = _draftClass;
+    if (!CurriculumData.subjectsForClass(className).contains(_draftSubject)) {
+      _error = 'IPAS hanya boleh dipakai untuk kelas 3-6.';
+      notifyListeners();
+      return;
+    }
+    final due = KarsaDateUtils.parseDueEndOfDay(_draftDue);
+    if (due == null) {
+      _error = 'Isi tanggal tenggat dengan format YYYY-MM-DD.';
+      notifyListeners();
+      return;
+    }
+
+    final isEdit = _draftTaskId.isNotEmpty;
+    final id = isEdit ? _draftTaskId : 't${DateTime.now().millisecondsSinceEpoch}';
+    final task = TaskItem(
+      id: id,
+      subject: _draftSubject,
+      title: _draftTitle.trim(),
+      className: className,
+      minutes: _draftMinutes.trim(),
+      kind: 'quiz',
+      teacher: _data.teacherName,
+      dueAt: due.toUtc().toIso8601String(),
+    );
+    final tasks = isEdit
+        ? _data.tasks.map((t) => t.id == id ? task : t).toList()
+        : <TaskItem>[..._data.tasks, task];
+    _error = '';
+    _notice = isEdit ? 'Tugas diperbarui.' : 'Tugas tersimpan di perangkat ini.';
+    _screen = 'operatorTasks';
+    _persistData(_data.copyWith(tasks: tasks));
+  }
+
+  /// Membuka form tambah/ubah materi. Null berarti tambah baru.
+  void openOperatorMaterialForm([String? materialId]) {
+    final existing = materialId == null
+        ? null
+        : _data.materials.where((m) => m.id == materialId).toList();
+    if (existing == null || existing.isEmpty) {
+      _draftMaterialId = '';
+      _draftTitle = '';
+      _draftSubject = 'Matematika';
+      _draftClass = operatorClassNames.isEmpty ? 'Kelas 1' : operatorClassNames.first;
+      _summaryText = '';
+      _sourceText = '';
+    } else {
+      final material = existing.first;
+      _draftMaterialId = material.id;
+      _draftTitle = material.title;
+      _draftSubject = material.subject;
+      _draftClass = material.className;
+      _summaryText = material.summary;
+      _sourceText = material.summary;
+    }
+    _error = '';
+    _notice = '';
+    _screen = 'operatorMaterialForm';
+    notifyListeners();
+  }
+
+  /// Menyimpan materi baru atau mengubah materi yang sudah ada.
+  void saveOperatorMaterial() {
+    if (_draftTitle.trim().isEmpty) {
+      _error = 'Isi judul materi.';
+      notifyListeners();
+      return;
+    }
+    if (!CurriculumData.subjectsForClass(_draftClass).contains(_draftSubject)) {
+      _error = 'IPAS hanya boleh dipakai untuk kelas 3-6.';
+      notifyListeners();
+      return;
+    }
+    if (_summaryText.trim().isEmpty) {
+      _error = 'Isi ringkasan materi.';
+      notifyListeners();
+      return;
+    }
+
+    final isEdit = _draftMaterialId.isNotEmpty;
+    final id = isEdit
+        ? _draftMaterialId
+        : 'm${DateTime.now().millisecondsSinceEpoch}';
+    final material = MaterialItem(
+      id: id,
+      title: _draftTitle.trim(),
+      subject: _draftSubject,
+      className: _draftClass,
+      summary: _summaryText.trim(),
+      teacher: _data.teacherName,
+    );
+    final materials = isEdit
+        ? _data.materials.map((m) => m.id == id ? material : m).toList()
+        : <MaterialItem>[material, ..._data.materials];
+    _error = '';
+    _notice = isEdit ? 'Materi diperbarui.' : 'Materi tersimpan di perangkat ini.';
+    _screen = 'main';
+    _tab = 'Materi';
+    _persistData(_data.copyWith(materials: materials));
+  }
+
+  /// Membuka form tambah/ubah pengumuman. Null berarti tambah baru.
+  void openOperatorAnnouncementForm([String? announcementId]) {
+    final existing = announcementId == null
+        ? null
+        : _data.announcements.where((a) => a.id == announcementId).toList();
+    if (existing == null || existing.isEmpty) {
+      _draftAnnouncementId = '';
+      _draftTitle = '';
+      _draftBody = '';
+      _draftClass = 'Semua kelas';
+    } else {
+      final announcement = existing.first;
+      _draftAnnouncementId = announcement.id;
+      _draftTitle = announcement.title;
+      _draftBody = announcement.body;
+      _draftClass = announcement.className;
+    }
+    _error = '';
+    _notice = '';
+    _screen = 'operatorAnnouncementForm';
+    notifyListeners();
+  }
+
+  /// Menyimpan pengumuman baru atau mengubah pengumuman yang sudah ada.
+  void saveOperatorAnnouncement() {
+    if (_draftTitle.trim().isEmpty || _draftBody.trim().isEmpty) {
+      _error = 'Isi judul dan isi pengumuman.';
+      notifyListeners();
+      return;
+    }
+    final isEdit = _draftAnnouncementId.isNotEmpty;
+    final id = isEdit
+        ? _draftAnnouncementId
+        : 'a${DateTime.now().millisecondsSinceEpoch}';
+    final announcement = AnnouncementItem(
+      id: id,
+      title: _draftTitle.trim(),
+      body: _draftBody.trim(),
+      detail: isEdit ? 'Diperbarui operator sekolah' : 'Baru saja · $_draftClass',
+      category: 'PENGUMUMAN SEKOLAH',
+      className: _draftClass,
+    );
+    final announcements = isEdit
+        ? _data.announcements.map((a) => a.id == id ? announcement : a).toList()
+        : <AnnouncementItem>[announcement, ..._data.announcements];
+    _error = '';
+    _notice = isEdit
+        ? 'Pengumuman diperbarui.'
+        : 'Pengumuman tersimpan di perangkat ini.';
+    _screen = 'operatorAnnouncements';
+    _persistData(_data.copyWith(announcements: announcements));
+  }
+
+  /// Membuka form tambah/ubah agenda sekolah. Null berarti tambah baru.
+  void openOperatorEventForm([String? eventId]) {
+    final existing = eventId == null
+        ? null
+        : _data.classEvents.where((e) => e.id == eventId).toList();
+    if (existing == null || existing.isEmpty) {
+      _draftEventId = '';
+      _draftTitle = '';
+      _draftBody = '';
+      _eventDate = KarsaDateUtils.formatDateKey(DateTime.now());
+      _draftClass = operatorClassNames.isEmpty ? 'Kelas 1' : operatorClassNames.first;
+    } else {
+      final event = existing.first;
+      _draftEventId = event.id;
+      _draftTitle = event.title;
+      _draftBody = event.body;
+      _eventDate = event.date;
+      _draftClass = event.className;
+    }
+    _error = '';
+    _notice = '';
+    _screen = 'operatorAgendaForm';
+    notifyListeners();
+  }
+
+  /// Menyimpan agenda baru atau mengubah agenda yang sudah ada.
+  void saveOperatorEvent() {
+    final parsed = KarsaDateUtils.parseDateKey(_eventDate);
+    if (_draftTitle.trim().isEmpty || parsed == null) {
+      _error = 'Isi judul dan tanggal valid dengan format YYYY-MM-DD.';
+      notifyListeners();
+      return;
+    }
+    final isEdit = _draftEventId.isNotEmpty;
+    final id = isEdit
+        ? _draftEventId
+        : 'e${DateTime.now().millisecondsSinceEpoch}';
+    final event = ClassEvent(
+      id: id,
+      title: _draftTitle.trim(),
+      body: _draftBody.trim(),
+      date: _eventDate.trim(),
+      className: _draftClass,
+      teacher: _data.teacherName,
+    );
+    final events = isEdit
+        ? _data.classEvents.map((e) => e.id == id ? event : e).toList()
+        : <ClassEvent>[..._data.classEvents, event];
+    _error = '';
+    _notice = isEdit ? 'Agenda diperbarui.' : 'Agenda tersimpan di perangkat ini.';
+    _screen = 'operatorAgenda';
+    _persistData(_data.copyWith(classEvents: events));
+  }
+
+  /// Menghapus agenda sekolah.
+  void deleteEvent(String id) {
+    final next = _data.classEvents.where((e) => e.id != id).toList();
+    _persistData(_data.copyWith(classEvents: next));
+  }
+
+  /// Nilai ringkas siswa yang diisi operator sekolah.
+  double? operatorScore(String studentId) => _data.rosterScores[studentId];
+
+  /// Rata-rata nilai kelas yang diisi operator.
+  double? operatorClassAverage(String className) {
+    final values = rosterForClass(className)
+        .map((s) => _data.rosterScores[s.id])
+        .whereType<double>()
+        .toList();
+    if (values.isEmpty) return null;
+    final sum = values.fold<double>(0, (acc, v) => acc + v);
+    return sum / values.length;
+  }
+
+  /// Menyimpan nilai ringkas siswa. Null menghapus nilai.
+  ///
+  /// Nilai wajib berada di rentang 0-100. Nilai di luar rentang (atau bukan
+  /// angka) ditolak dan [_error] diisi supaya operator melihat alasannya,
+  /// bukan diam-diam menyimpan angka yang tidak valid.
+  /// Mengembalikan true bila nilai tersimpan.
+  bool saveOperatorScore(String studentId, double? value) {
+    if (value != null) {
+      if (value.isNaN || value.isInfinite) {
+        _error = 'Nilai harus berupa angka.';
+        notifyListeners();
+        return false;
+      }
+      if (value < 0 || value > 100) {
+        _error = 'Nilai harus antara 0 sampai 100.';
+        notifyListeners();
+        return false;
+      }
+    }
+    final next = <String, double>{..._data.rosterScores};
+    if (value == null) {
+      next.remove(studentId);
+    } else {
+      next[studentId] = value;
+    }
+    _error = '';
+    _notice = value == null ? 'Nilai dihapus.' : 'Nilai tersimpan.';
+    _persistData(_data.copyWith(rosterScores: next));
+    return true;
+  }
+
+  /// Membuka form tambah/ubah kelas sekolah. Null berarti tambah baru.
+  void openOperatorClassForm([String? classId]) {
+    final existing = classId == null
+        ? null
+        : _data.schoolClasses.where((c) => c.id == classId).toList();
+    if (existing == null || existing.isEmpty) {
+      _draftSchoolClassId = '';
+      _draftSchoolClassName = '';
+      _draftSchoolClassTeacher = '';
+    } else {
+      final schoolClass = existing.first;
+      _draftSchoolClassId = schoolClass.id;
+      _draftSchoolClassName = schoolClass.name;
+      _draftSchoolClassTeacher = schoolClass.teacherName;
+    }
+    _error = '';
+    _notice = '';
+    _screen = 'operatorClassForm';
+    notifyListeners();
+  }
+
+  void setDraftSchoolClassName(String value) {
+    _draftSchoolClassName = value;
+    if (_error.isNotEmpty) _error = '';
+    notifyListeners();
+  }
+
+  void setDraftSchoolClassTeacher(String value) {
+    _draftSchoolClassTeacher = value;
+    notifyListeners();
+  }
+
+  /// Menyimpan kelas baru atau mengubah kelas yang sudah ada.
+  void saveOperatorClass() {
+    final name = _draftSchoolClassName.trim();
+    if (name.isEmpty) {
+      _error = 'Isi nama kelas.';
+      notifyListeners();
+      return;
+    }
+    final duplicate = _data.schoolClasses.any(
+      (c) => c.name.toLowerCase() == name.toLowerCase() && c.id != _draftSchoolClassId,
+    );
+    if (duplicate) {
+      _error = 'Kelas dengan nama itu sudah ada.';
+      notifyListeners();
+      return;
+    }
+    final isEdit = _draftSchoolClassId.isNotEmpty;
+    final id = isEdit
+        ? _draftSchoolClassId
+        : 'c${DateTime.now().millisecondsSinceEpoch}';
+    final schoolClass = SchoolClass(
+      id: id,
+      name: name,
+      teacherName: _draftSchoolClassTeacher.trim(),
+    );
+    final classes = isEdit
+        ? _data.schoolClasses.map((c) => c.id == id ? schoolClass : c).toList()
+        : <SchoolClass>[..._data.schoolClasses, schoolClass];
+    _error = '';
+    _notice = isEdit ? 'Kelas diperbarui.' : 'Kelas tersimpan di perangkat ini.';
+    _screen = 'main';
+    _tab = 'Kelas';
+    _persistData(_data.copyWith(schoolClasses: classes));
+  }
+
+  /// Menghapus kelas sekolah. Siswa di kelas tersebut dipindahkan ke kelas
+  /// pertama yang tersisa supaya tidak ada data yatim.
+  ///
+  /// Kelas terakhir tidak boleh dihapus karena seluruh data sekolah (roster,
+  /// tugas, agenda) memakai nama kelas. Mengembalikan true bila kelas dihapus.
+  bool removeSchoolClass(String classId) {
+    final target = _data.schoolClasses.where((c) => c.id == classId).toList();
+    if (target.isEmpty) return false;
+    if (_data.schoolClasses.length <= 1) {
+      _error = 'Minimal satu kelas sekolah harus tetap ada.';
+      notifyListeners();
+      return false;
+    }
+    final removedName = target.first.name;
+    final remaining = _data.schoolClasses.where((c) => c.id != classId).toList();
+    final fallback = remaining.isEmpty ? null : remaining.first.name;
+    final roster = _data.roster
+        .map(
+          (s) => s.className == removedName && fallback != null
+              ? s.copyWith(className: fallback)
+              : s,
+        )
+        .toList();
+    final classes = remaining;
+    _error = '';
+    _notice = 'Kelas $removedName dihapus.';
+    _persistData(
+      _data.copyWith(schoolClasses: classes, roster: roster),
+    );
+    return true;
+  }
+
+  /// Akun guru dan wali kelas yang dikelola operator.
+  List<StaffAccount> get staffAccounts => _data.staffAccounts;
+
+  /// Membuka form tambah/ubah akun guru atau wali kelas.
+  void openOperatorStaffForm([String? staffId]) {
+    final existing = staffId == null
+        ? null
+        : _data.staffAccounts.where((a) => a.id == staffId).toList();
+    if (existing == null || existing.isEmpty) {
+      _draftStaffId = '';
+      _draftStaffName = '';
+      _draftStaffNip = '';
+      _draftStaffRole = 'guru';
+      _draftStaffClass = '';
+    } else {
+      final account = existing.first;
+      _draftStaffId = account.id;
+      _draftStaffName = account.name;
+      _draftStaffNip = account.nip;
+      _draftStaffRole = account.role;
+      _draftStaffClass = account.className;
+    }
+    _error = '';
+    _notice = '';
+    _screen = 'operatorStaffForm';
+    notifyListeners();
+  }
+
+  void setDraftStaffName(String value) {
+    _draftStaffName = value;
+    if (_error.isNotEmpty) _error = '';
+    notifyListeners();
+  }
+
+  void setDraftStaffNip(String value) {
+    _draftStaffNip = value;
+    notifyListeners();
+  }
+
+  void setDraftStaffRole(String value) {
+    _draftStaffRole = value;
+    notifyListeners();
+  }
+
+  void setDraftStaffClass(String value) {
+    _draftStaffClass = value;
+    notifyListeners();
+  }
+
+  /// Menyimpan akun guru atau wali kelas.
+  void saveOperatorStaff() {
+    final name = _draftStaffName.trim();
+    final nip = _draftStaffNip.trim();
+    if (name.isEmpty || nip.isEmpty) {
+      _error = 'Isi nama lengkap dan NIP.';
+      notifyListeners();
+      return;
+    }
+    final duplicate = _data.staffAccounts.any(
+      (a) => a.nip == nip && a.id != _draftStaffId,
+    );
+    if (duplicate) {
+      _error = 'NIP itu sudah dipakai akun lain.';
+      notifyListeners();
+      return;
+    }
+    final isEdit = _draftStaffId.isNotEmpty;
+    final id = isEdit ? _draftStaffId : 'u${DateTime.now().millisecondsSinceEpoch}';
+    final account = StaffAccount(
+      id: id,
+      name: name,
+      nip: nip,
+      role: _draftStaffRole,
+      className: _draftStaffRole == 'wali' ? _draftStaffClass : '',
+    );
+    final accounts = isEdit
+        ? _data.staffAccounts.map((a) => a.id == id ? account : a).toList()
+        : <StaffAccount>[..._data.staffAccounts, account];
+    _error = '';
+    _notice = isEdit ? 'Akun diperbarui.' : 'Akun tersimpan di perangkat ini.';
+    _screen = 'main';
+    _tab = 'Kelas';
+    _persistData(_data.copyWith(staffAccounts: accounts));
+  }
+
+  /// Menghapus akun guru atau wali kelas.
+  ///
+  /// Mengembalikan true bila akun dihapus.
+  bool removeStaffAccount(String id) {
+    final next = _data.staffAccounts.where((a) => a.id != id).toList();
+    if (next.length == _data.staffAccounts.length) return false;
+    _error = '';
+    _notice = 'Akun dihapus.';
+    _persistData(_data.copyWith(staffAccounts: next));
+    return true;
+  }
+
+  /// Memindahkan siswa ke kelas lain.
+  void moveStudentToClass(String studentId, String className) {
+    final next = _data.roster
+        .map((s) => s.id == studentId ? s.copyWith(className: className) : s)
+        .toList();
+    _persistData(_data.copyWith(roster: next));
   }
 
   /// Jumlah tugas yang sudah dinilai pada kelas aktif.
@@ -1397,11 +2184,13 @@ class AppState extends ChangeNotifier {
 
   void openSetting(String settingTitle) {
     _setting = settingTitle;
-    _draftTitle = isWali
-        ? _data.waliName
-        : isTeacher
-            ? _data.teacherName
-            : _data.studentName;
+    _draftTitle = isOperator
+        ? _data.operatorName
+        : isWali
+            ? _data.waliName
+            : isTeacher
+                ? _data.teacherName
+                : _data.studentName;
     _error = '';
     _screen = 'setting';
     notifyListeners();
@@ -1432,7 +2221,9 @@ class AppState extends ChangeNotifier {
     }
     _error = '';
     _screen = 'main';
-    if (isWali) {
+    if (isOperator) {
+      _persistData(_data.copyWith(operatorName: trimmed));
+    } else if (isWali) {
       _persistData(_data.copyWith(waliName: trimmed));
     } else if (isTeacher) {
       _persistData(_data.copyWith(teacherName: trimmed));

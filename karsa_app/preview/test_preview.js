@@ -2,7 +2,7 @@
  *
  * Runs the preview script inside a tiny mock DOM (no browser required) and
  * asserts that:
- *   - every one of the 28 canonical screens renders without throwing,
+ *   - every one of the 38 canonical screens renders without throwing,
  *   - the splash screen auto-advances to the welcome screen,
  *   - each role login validates credentials exactly like AppState.authenticate(),
  *   - the bottom navigation switches tabs,
@@ -10,7 +10,9 @@
  *   - attendance status buttons are selectable,
  *   - the study tip card cycles,
  *   - the quiz flow produces a result screen,
- *   - the dark mode toggle switches the theme attribute.
+ *   - the dark mode toggle switches the theme attribute,
+ *   - operator-school CRUD persists, rejects invalid scores and the deletion
+ *     of the last class, and restores deleted seeded data faithfully.
  *
  * Run with:  node karsa_app/preview/test_preview.js
  */
@@ -302,22 +304,29 @@ const preview = sandbox.window.KARSA_PREVIEW;
 ok(!!preview, 'KARSA_PREVIEW global is exposed');
 
 /* ------------------------------------------------------------------ *
- * 1. Screen registry — 28 canonical screens + alias
+ * 1. Screen registry — 38 canonical screens + alias
  * ------------------------------------------------------------------ */
 const EXPECTED_SCREENS = [
   'splash', 'welcome',
-  'login-wali', 'login-guru', 'login-ortu', 'login-siswa', 'forgot',
+  'login-operator', 'login-wali', 'login-guru', 'login-ortu', 'login-siswa',
+  'forgot',
   'wali-beranda', 'wali-anggota', 'wali-recap', 'wali-agenda', 'wali-profil',
   'guru-beranda', 'guru-kelas', 'guru-tugas', 'guru-kalender', 'guru-profil',
   'siswa-beranda', 'siswa-tugas', 'siswa-profil',
   'ortu-beranda', 'ortu-tugas', 'ortu-latihan', 'ortu-profil',
+  'operator-beranda', 'operator-siswa', 'operator-kelas', 'operator-materi',
+  'operator-media', 'operator-tugas', 'operator-pengumuman',
+  'operator-agenda', 'operator-nilai',
   'materi', 'notifikasi', 'kuis', 'hasil-kuis'
 ];
 
-eq(preview.screens.length, 28, 'screen registry contains 28 screens');
+eq(preview.screens.length, 38, 'screen registry contains 38 screens');
+eq(EXPECTED_SCREENS.length, 38, 'the expected screen list has 38 entries');
 EXPECTED_SCREENS.forEach((id) => {
   ok(preview.screens.indexOf(id) >= 0, 'screen "' + id + '" is registered');
 });
+ok(preview.screens.every((id) => EXPECTED_SCREENS.indexOf(id) >= 0),
+  'the registry contains no undocumented screens');
 
 /* ------------------------------------------------------------------ *
  * 2. Every screen renders without throwing and produces content
@@ -758,6 +767,591 @@ if (editBtn) {
 
 preview.state.studentName = 'Dimas Nugroho';
 preview.state.readNotifications = {};
+
+/* ------------------------------------------------------------------ *
+ * 9g. Role operator sekolah
+ * ------------------------------------------------------------------ */
+preview.state.role = 'operator';
+preview.state.filter = 'Semua kelas';
+preview.state.operatorQuery = '';
+preview.go('operator-beranda');
+
+ok(viewport.textContent.indexOf('Operator Sekolah') >= 0,
+  'the operator home shows the operator heading');
+ok(viewport.textContent.indexOf('24 siswa') >= 0,
+  'the operator home shows the roster size (' + (preview.state.roster || []).length + ' siswa)');
+ok(viewport.textContent.indexOf('grafis') >= 0,
+  'the operator home shows the grafis shortcut');
+ok(viewport.textContent.indexOf('Logo & banner sekolah') >= 0,
+  'the operator home links to the media section');
+
+// Tab operator: 5 tab dan fifth screen media.
+const opTabs = bottomNav.querySelectorAll('.nav-item');
+eq(opTabs.length, 5, 'the operator bottom nav has 5 tabs');
+ok(opTabs.some((t) => (t.textContent || '').indexOf('Media') >= 0),
+  'the operator nav has a Media tab');
+
+preview.go('operator-siswa');
+ok(viewport.textContent.indexOf('Data Siswa') >= 0, 'the operator students tab renders');
+ok(viewport.textContent.indexOf('Aisyah Putri') >= 0, 'the operator roster shows a seeded student');
+ok(viewport.textContent.indexOf('+ Tambah siswa') >= 0, 'the operator can add a student');
+
+// Filter kelas pada tab siswa.
+const opClassChips = viewport.querySelectorAll('.chip-btn')
+  .filter((c) => (c.textContent || '').trim() === 'Kelas 5');
+if (opClassChips[0]) {
+  opClassChips[0].click();
+  ok(viewport.textContent.indexOf('Aisyah Putri') < 0,
+    'filtering by Kelas 5 hides the Kelas 1 students');
+  ok(viewport.textContent.indexOf('Puspita Rani') >= 0,
+    'filtering by Kelas 5 shows the Kelas 5 students');
+  preview.state.filter = 'Semua kelas';
+  preview.go('operator-siswa');
+}
+
+// Form siswa: tambah siswa baru.
+const addButton = viewport.querySelectorAll('button')
+  .filter((b) => (b.textContent || '').indexOf('+ Tambah siswa') >= 0)[0];
+ok(!!addButton, 'the operator students tab has an add button');
+if (addButton) {
+  addButton.click();
+  ok(sheetBackdrop.hidden === false, 'the student form sheet becomes visible');
+  const formInputs = sheetPanel.querySelectorAll('input');
+  ok(formInputs.length >= 2, 'the student form has name and NISN inputs');
+  if (formInputs.length >= 2) {
+    formInputs[0].value = 'Zahra-testing';
+    formInputs[0].dispatch('input', { target: formInputs[0] });
+  }
+  const saveStudent = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Simpan data siswa') >= 0)[0];
+  ok(!!saveStudent, 'the student form has a save action');
+  if (saveStudent) {
+    const before = (preview.state.roster || []).length;
+    saveStudent.click();
+    eq((preview.state.roster || []).length, before + 1, 'saving adds a student to the roster');
+    ok(preview.state.roster.some((x) => x.name === 'Zahra-testing'),
+      'the new student is in the roster');
+  }
+  // Kembalikan roster demo.
+  preview.state.roster = preview.state.roster.filter((x) => x.name !== 'Zahra-testing');
+}
+
+preview.go('operator-kelas');
+ok(viewport.textContent.indexOf('Kelas Sekolah') >= 0, 'the operator classes tab renders');
+ok(viewport.textContent.indexOf('Kelas 6') >= 0, 'the operator classes tab lists every class');
+ok(viewport.textContent.indexOf('Wali kelas') >= 0, 'the operator classes tab shows the homeroom teacher');
+
+preview.go('operator-materi');
+ok(viewport.textContent.indexOf('Materi Sekolah') >= 0, 'the operator materials tab renders');
+ok(viewport.textContent.indexOf('Hapus') >= 0, 'the operator can delete materials');
+ok(viewport.textContent.indexOf('Ringkasan Pecahan Kelas 5') >= 0,
+  'the operator sees the materials of every class');
+
+preview.go('operator-media');
+ok(viewport.textContent.indexOf('Foto & Grafis') >= 0, 'the operator media tab renders');
+ok(viewport.textContent.indexOf('Logo sekolah') >= 0, 'the operator media tab lists the school logo');
+ok(viewport.textContent.indexOf('Banner siswa') >= 0, 'the operator media tab lists the student banner');
+ok(viewport.textContent.indexOf('Banner guru') >= 0, 'the operator media tab lists the teacher banner');
+ok(viewport.textContent.indexOf('Memakai aset bawaan aplikasi') >= 0,
+  'an empty media slot falls back to the built-in asset');
+ok(viewport.textContent.indexOf('Pilih gambar') >= 0, 'the operator can pick an image for a slot');
+
+// Graphic yang dipilih operator langsung dipakai di seluruh aplikasi.
+ok(!!preview.state.mediaAssets, 'the preview keeps the operator grafis assets');
+if (preview.state.mediaAssets) {
+  preview.state.mediaAssets['school-logo'] = 'data:image/png;base64,AAAA';
+  preview.go('siswa-beranda');
+  ok(viewport.querySelectorAll('img').some((i) => (i.getAttribute('src') || '').indexOf('data:image/png;base64') === 0),
+    'the operator school logo is used on every screen');
+  delete preview.state.mediaAssets['school-logo'];
+}
+
+/* --- CRUD operator: tugas, materi, pengumuman, agenda, nilai, kelas, akun --- */
+function opButton(root, label) {
+  return root.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf(label) >= 0)[0];
+}
+
+// Tugas: tambah, ubah, hapus.
+preview.go('operator-tugas');
+ok(viewport.textContent.indexOf('Tugas Sekolah') >= 0, 'the operator task screen renders');
+const taskAdd = opButton(viewport, '+ Tambah tugas');
+ok(!!taskAdd, 'the operator can add a task');
+if (taskAdd) {
+  taskAdd.click();
+  ok(sheetBackdrop.hidden === false, 'the task form sheet opens');
+  const taskInputs = sheetPanel.querySelectorAll('input');
+  ok(taskInputs.length >= 3, 'the task form has title, duration, and due inputs');
+  if (taskInputs.length >= 3) {
+    taskInputs[0].value = 'Tugas operator';
+    taskInputs[0].dispatch('input', { target: taskInputs[0] });
+    taskInputs[1].value = '45';
+    taskInputs[1].dispatch('input', { target: taskInputs[1] });
+    taskInputs[2].value = '2026-12-31';
+    taskInputs[2].dispatch('input', { target: taskInputs[2] });
+  }
+  const taskSave = opButton(sheetPanel, 'Simpan tugas');
+  ok(!!taskSave, 'the task form has a save action');
+  if (taskSave) {
+    taskSave.click();
+    ok(viewport.textContent.indexOf('Tugas operator') >= 0,
+      'the new task appears in the operator task list');
+  }
+}
+
+// Pengumuman: tambah, ubah, hapus.
+preview.go('operator-pengumuman');
+ok(viewport.textContent.indexOf('Pengumuman Sekolah') >= 0,
+  'the operator announcement screen renders');
+const annAdd = opButton(viewport, '+ Tambah pengumuman');
+ok(!!annAdd, 'the operator can add an announcement');
+if (annAdd) {
+  annAdd.click();
+  const annInputs = sheetPanel.querySelectorAll('input');
+  ok(annInputs.length >= 2, 'the announcement form has title and body inputs');
+  if (annInputs.length >= 2) {
+    annInputs[0].value = 'Pengumuman operator';
+    annInputs[0].dispatch('input', { target: annInputs[0] });
+    annInputs[1].value = 'Isi pengumuman operator';
+    annInputs[1].dispatch('input', { target: annInputs[1] });
+  }
+  const annSave = opButton(sheetPanel, 'Simpan pengumuman');
+  ok(!!annSave, 'the announcement form has a save action');
+  if (annSave) {
+    annSave.click();
+    ok(viewport.textContent.indexOf('Pengumuman operator') >= 0,
+      'the new announcement appears in the list');
+  }
+}
+
+// Agenda: tambah.
+preview.go('operator-agenda');
+ok(viewport.textContent.indexOf('Agenda Sekolah') >= 0, 'the operator agenda screen renders');
+const agendaAdd = opButton(viewport, '+ Tambah agenda');
+ok(!!agendaAdd, 'the operator can add an agenda');
+if (agendaAdd) {
+  agendaAdd.click();
+  const agendaInputs = sheetPanel.querySelectorAll('input');
+  ok(agendaInputs.length >= 2, 'the agenda form has title and date inputs');
+  if (agendaInputs.length >= 2) {
+    agendaInputs[0].value = 'Agenda operator';
+    agendaInputs[0].dispatch('input', { target: agendaInputs[0] });
+    agendaInputs[1].value = '2026-12-01';
+    agendaInputs[1].dispatch('input', { target: agendaInputs[1] });
+  }
+  const agendaSave = opButton(sheetPanel, 'Simpan agenda');
+  ok(!!agendaSave, 'the agenda form has a save action');
+  if (agendaSave) {
+    agendaSave.click();
+    ok(viewport.textContent.indexOf('Agenda operator') >= 0,
+      'the new agenda appears in the list');
+  }
+}
+
+// Nilai: isi dan hapus nilai siswa.
+preview.go('operator-nilai');
+ok(viewport.textContent.indexOf('Nilai Kelas') >= 0, 'the operator grade screen renders');
+const firstScore = viewport.querySelectorAll('.list-item-card')[0];
+ok(!!firstScore, 'the operator grade screen lists students');
+if (firstScore) {
+  firstScore.click();
+  const scoreInput = sheetPanel.querySelectorAll('input')[0];
+  ok(!!scoreInput, 'the score sheet has a value input');
+  if (scoreInput) {
+    scoreInput.value = '88';
+    scoreInput.dispatch('input', { target: scoreInput });
+  }
+  const scoreSave = opButton(sheetPanel, 'Simpan nilai');
+  ok(!!scoreSave, 'the score sheet has a save action');
+  if (scoreSave) {
+    scoreSave.click();
+    ok(Object.keys(preview.state.rosterScores || {}).length >= 1,
+      'the operator score is stored per student');
+  }
+  const removeScore = opButton(viewport, 'Hapus nilai');
+  ok(!!removeScore, 'the operator can delete a score');
+  if (removeScore) {
+    removeScore.click();
+    eq(Object.keys(preview.state.rosterScores || {}).length, 0,
+      'deleting the score removes it');
+  }
+}
+
+// Nilai di luar rentang 0-100 harus ditolak.
+preview.go('operator-nilai');
+const scoreCard = viewport.querySelectorAll('.list-item-card')[0];
+if (scoreCard) {
+  scoreCard.click();
+  const scoreField = sheetPanel.querySelectorAll('input')[0];
+  if (scoreField) {
+    scoreField.value = '150';
+    scoreField.dispatch('input', { target: scoreField });
+  }
+  const badSave = opButton(sheetPanel, 'Simpan nilai');
+  if (badSave) {
+    badSave.click();
+    ok(sheetPanel.textContent.indexOf('Nilai harus antara 0 dan 100.') >= 0,
+      'the preview rejects a score above 100');
+    eq(Object.keys(preview.state.rosterScores || {}).length, 0,
+      'the rejected score is not stored');
+  }
+  const scoreField2 = sheetPanel.querySelectorAll('input')[0];
+  if (scoreField2) {
+    scoreField2.value = '95';
+    scoreField2.dispatch('input', { target: scoreField2 });
+  }
+  const goodSave = opButton(sheetPanel, 'Simpan nilai');
+  if (goodSave) {
+    goodSave.click();
+    eq(Object.keys(preview.state.rosterScores || {}).length, 1,
+      'a valid score is stored');
+  }
+}
+
+// Kelas: tambah kelas baru.
+preview.go('operator-kelas');
+ok(viewport.textContent.indexOf('Kelas Sekolah') >= 0, 'the operator classes tab renders');
+const classAdd = opButton(viewport, '+ Tambah kelas');
+ok(!!classAdd, 'the operator can add a class');
+if (classAdd) {
+  classAdd.click();
+  const classInputs = sheetPanel.querySelectorAll('input');
+  ok(classInputs.length >= 2, 'the class form has name and teacher inputs');
+  if (classInputs.length >= 2) {
+    classInputs[0].value = 'Kelas 7';
+    classInputs[0].dispatch('input', { target: classInputs[0] });
+    classInputs[1].value = 'Pak Adi';
+    classInputs[1].dispatch('input', { target: classInputs[1] });
+  }
+  const classSave = opButton(sheetPanel, 'Simpan kelas');
+  ok(!!classSave, 'the class form has a save action');
+  if (classSave) {
+    const before = (preview.state.schoolClasses || []).length;
+    classSave.click();
+    eq((preview.state.schoolClasses || []).length, before + 1,
+      'saving adds a class to the school class list');
+    ok((preview.state.schoolClasses || []).some((c) => c.name === 'Kelas 7'),
+      'the new class is in the list');
+    ok(viewport.textContent.indexOf('Kelas 7') >= 0,
+      'the new class shows up on the operator classes tab');
+  }
+  // Hapus kelas uji.
+  const removeClass = viewport.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').trim() === 'Hapus')[0];
+  if (removeClass) {
+    const before = (preview.state.schoolClasses || []).length;
+    removeClass.click();
+    eq((preview.state.schoolClasses || []).length, before - 1,
+      'the operator can delete a class');
+  }
+}
+
+// Akun guru dan wali: tambah akun.
+preview.go('operator-kelas');
+const accountSection = viewport.querySelectorAll('.segment-item')
+  .filter((b) => (b.textContent || '').trim() === 'Akun')[0];
+ok(!!accountSection, 'the operator classes tab has an account section');
+if (accountSection) {
+  accountSection.click();
+  ok(viewport.textContent.indexOf('Akun guru dan wali') >= 0,
+    'the account section renders');
+  const staffAdd = opButton(viewport, '+ Tambah akun');
+  ok(!!staffAdd, 'the operator can add a staff account');
+  if (staffAdd) {
+    staffAdd.click();
+    const staffInputs = sheetPanel.querySelectorAll('input');
+    ok(staffInputs.length >= 2, 'the staff form has name and NIP inputs');
+    if (staffInputs.length >= 2) {
+      staffInputs[0].value = 'Bu Lilis';
+      staffInputs[0].dispatch('input', { target: staffInputs[0] });
+      staffInputs[1].value = '19870099';
+      staffInputs[1].dispatch('input', { target: staffInputs[1] });
+    }
+    const staffSave = opButton(sheetPanel, 'Simpan akun');
+    ok(!!staffSave, 'the staff form has a save action');
+    if (staffSave) {
+      const before = (preview.state.staffAccounts || []).length;
+      staffSave.click();
+      eq((preview.state.staffAccounts || []).length, before + 1,
+        'saving adds a staff account');
+    }
+  }
+}
+
+// Materi: tambah materi lewat form operator.
+preview.go('operator-materi');
+const materialAdd = opButton(viewport, '+ Tambah materi');
+ok(!!materialAdd, 'the operator can add a material');
+if (materialAdd) {
+  materialAdd.click();
+  const materialInputs = sheetPanel.querySelectorAll('input');
+  ok(materialInputs.length >= 2, 'the material form has title and summary inputs');
+  if (materialInputs.length >= 2) {
+    materialInputs[0].value = 'Materi operator';
+    materialInputs[0].dispatch('input', { target: materialInputs[0] });
+    materialInputs[1].value = 'Ringkasan dari operator';
+    materialInputs[1].dispatch('input', { target: materialInputs[1] });
+  }
+  const materialSave = opButton(sheetPanel, 'Simpan materi');
+  ok(!!materialSave, 'the material form has a save action');
+  if (materialSave) {
+    materialSave.click();
+    ok(viewport.textContent.indexOf('Materi operator') >= 0,
+      'the new material appears in the operator material list');
+  }
+}
+
+// Materi: hapus aksi yang benar-benar diklik dan hitung rekamannya, bukan
+// sekadar memastikan tombol "Hapus" terlihat.
+if (typeof preview.materials === 'function') {
+  preview.state.filter = 'Semua kelas';
+  preview.go('operator-materi');
+  const beforeDelete = preview.materials().length;
+  const createdRecord = preview.materials()
+    .filter((m) => m.title === 'Materi operator')[0];
+  ok(!!createdRecord, 'the added material exists in the preview record store');
+  const deleteButtons = viewport.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').trim() === 'Hapus');
+  eq(deleteButtons.length, beforeDelete,
+    'every material record renders its own delete action');
+  if (createdRecord && deleteButtons.length) {
+    // Materi baru disisipkan di depan daftar, jadi aksi pertama menghapusnya.
+    deleteButtons[0].click();
+    eq(preview.materials().length, beforeDelete - 1,
+      'clicking Hapus removes exactly one material record');
+    ok(preview.materials().every((m) => m.title !== 'Materi operator'),
+      'the deleted material is gone from the record store');
+    preview.go('operator-materi');
+    ok(viewport.textContent.indexOf('Materi operator') < 0,
+      'the deleted material no longer renders in the operator list');
+  }
+  // Kembalikan materi uji agar pemeriksaan berikutnya memakai data demo utuh.
+  if (createdRecord && typeof preview.persistState === 'function') {
+    preview.materials().push(createdRecord);
+    preview.persistState();
+  }
+} else {
+  ok(false, 'the preview exposes materials() for deletion verification');
+}
+
+// Kelas terakhir tidak boleh dihapus.
+const savedClasses = preview.state.schoolClasses || [];
+const savedStaff = preview.state.staffAccounts || [];
+const savedRoster = preview.state.roster || [];
+preview.state.operatorClassSection = 'Kelas';
+preview.state.schoolClasses = savedClasses.length ? [savedClasses[0]] : [];
+preview.go('operator-kelas');
+const lastClassDelete = viewport.querySelectorAll('button')
+  .filter((b) => (b.textContent || '').trim() === 'Hapus')[0];
+ok(!!lastClassDelete, 'the single class still shows a delete action');
+if (lastClassDelete) {
+  lastClassDelete.click();
+  eq((preview.state.schoolClasses || []).length, 1,
+    'the preview refuses to delete the last class');
+  ok(viewport.textContent.indexOf('Minimal satu kelas sekolah harus tetap ada.') >= 0,
+    'the preview explains that one class must remain');
+}
+
+// Pesan yang sama harus muncul pula di dalam sheet form kelas yang sedang
+// terbuka, agar operator tidak mengira tombol hapusnya rusak.
+if (typeof preview.go === 'function') {
+  preview.go('operator-kelas');
+  const editClass = opButton(viewport, 'Ubah');
+  ok(!!editClass, 'the last class still has an edit action');
+  if (editClass) {
+    editClass.click();
+    const sheetDelete = opButton(sheetPanel, 'Hapus kelas ini');
+    ok(!!sheetDelete, 'the class form offers a delete action');
+    if (sheetDelete) {
+      sheetDelete.click();
+      eq((preview.state.schoolClasses || []).length, 1,
+        'deleting from the open class form keeps the last class');
+      ok(sheetPanel.textContent.indexOf('Minimal satu kelas sekolah harus tetap ada.') >= 0,
+        'the open class form shows why the last class cannot be deleted');
+    }
+  }
+  preview.state.operatorError = '';
+}
+
+// Kelas, akun, dan siswa yang dihapus tidak dibangkitkan lagi setelah
+// pemuatan ulang (data lama tanpa daftar itu memakai data bawaan).
+if (typeof preview.persistState === 'function' &&
+    typeof preview.restoreState === 'function') {
+  preview.state.schoolClasses = savedClasses.slice(1);
+  preview.state.staffAccounts = savedStaff.slice(1);
+  preview.state.roster = savedRoster.slice(1);
+  preview.persistState();
+  preview.state.schoolClasses = savedClasses;
+  preview.state.staffAccounts = savedStaff;
+  preview.state.roster = savedRoster;
+  preview.restoreState();
+  eq((preview.state.schoolClasses || []).length, savedClasses.length - 1,
+    'deleted classes are not restored from the seed data');
+  eq((preview.state.staffAccounts || []).length, savedStaff.length - 1,
+    'deleted staff accounts are not restored from the seed data');
+  eq((preview.state.roster || []).length, savedRoster.length - 1,
+    'deleted students are not restored from the seed data');
+} else {
+  ok(false, 'the preview exposes persistState and restoreState for verification');
+}
+
+// Kembalikan data demo untuk pemeriksaan berikutnya.
+preview.state.schoolClasses = savedClasses;
+preview.state.staffAccounts = savedStaff;
+preview.state.roster = savedRoster;
+if (typeof preview.persistState === 'function') preview.persistState();
+preview.go('operator-kelas');
+preview.state.filter = 'Semua kelas';
+preview.state.operatorClassSection = 'Kelas';
+
+// Form tugas menolak tanggal tenggat yang tidak valid secara terlihat.
+preview.go('operator-tugas');
+const tasksBeforeValidation = preview.tasks().length;
+const invalidDateTask = opButton(viewport, '+ Tambah tugas');
+ok(!!invalidDateTask, 'the operator task form can be opened for validation');
+if (invalidDateTask) {
+  invalidDateTask.click();
+  let dateInputs = sheetPanel.querySelectorAll('input');
+  dateInputs[0].value = 'Tugas tanggal salah';
+  dateInputs[0].dispatch('input', { target: dateInputs[0] });
+  dateInputs[1].value = '30';
+  dateInputs[1].dispatch('input', { target: dateInputs[1] });
+  dateInputs[2].value = 'bukan tanggal';
+  dateInputs[2].dispatch('input', { target: dateInputs[2] });
+  opButton(sheetPanel, 'Simpan tugas').click();
+  ok(sheetPanel.textContent.indexOf('Isi tanggal tenggat dengan format YYYY-MM-DD.') >= 0,
+    'an invalid due date shows a visible error inside the form');
+  eq(preview.tasks().length, tasksBeforeValidation,
+    'an invalid due date does not create a task');
+}
+
+// IPAS mengikuti tingkat kelas: kelas bernomor 1-2 ditolak, kelas khusus
+// tanpa angka boleh memakai semua mata pelajaran.
+const IPAS = 'Ilmu Pengetahuan Alam dan Sosial (IPAS)';
+ok(preview.operator.subjectsForClass('Kelas 1').indexOf(IPAS) < 0,
+  'grade 1 does not offer IPAS');
+ok(preview.operator.subjectsForClass('Kelas 3').indexOf(IPAS) >= 0,
+  'grade 3 offers IPAS');
+ok(preview.operator.subjectsForClass('Kelas Persiapan').indexOf(IPAS) >= 0,
+  'a custom class without a numeric grade offers every subject');
+
+const customClass = { id: 'kelas-persiapan', name: 'Kelas Persiapan', teacherName: 'Bu Uji' };
+preview.state.schoolClasses = savedClasses.concat([customClass]);
+preview.go('operator-tugas');
+const ipasTask = opButton(viewport, '+ Tambah tugas');
+if (ipasTask) {
+  ipasTask.click();
+  let chipsAll = sheetPanel.querySelectorAll('.chip-btn');
+  const ipasChip = chipsAll.filter((c) => (c.textContent || '').trim() === IPAS)[0];
+  const lowGradeChip = chipsAll.filter((c) => (c.textContent || '').trim() === 'Kelas 2')[0];
+  ok(!!ipasChip && !!lowGradeChip, 'the task form offers subject and class chips');
+  ok(preview.operator.classOptions().every(
+    (n) => chipsAll.some((c) => (c.textContent || '').trim() === n)),
+    'the task form class chips come from the dynamic class list');
+  if (ipasChip && lowGradeChip) {
+    ipasChip.click();
+    lowGradeChip.click();
+    let inputs = sheetPanel.querySelectorAll('input');
+    inputs[0].value = 'Tugas IPAS kelas 2';
+    inputs[0].dispatch('input', { target: inputs[0] });
+    inputs[1].value = '30';
+    inputs[1].dispatch('input', { target: inputs[1] });
+    inputs[2].value = '2026-12-31';
+    inputs[2].dispatch('input', { target: inputs[2] });
+    opButton(sheetPanel, 'Simpan tugas').click();
+    ok(sheetPanel.textContent.indexOf('IPAS hanya boleh dipakai untuk kelas 3-6.') >= 0,
+      'IPAS for a grade 2 class is rejected with a visible error');
+    eq(preview.tasks().length, tasksBeforeValidation,
+      'the rejected IPAS task is not created');
+
+    // Kelas khusus tanpa angka tingkat membuka IPAS.
+    const customChip = sheetPanel.querySelectorAll('.chip-btn')
+      .filter((c) => (c.textContent || '').trim() === 'Kelas Persiapan')[0];
+    ok(!!customChip, 'the operator task form lists the dynamically added class');
+    if (customChip) {
+      customChip.click();
+      inputs = sheetPanel.querySelectorAll('input');
+      inputs[0].value = 'Tugas kelas persiapan';
+      inputs[0].dispatch('input', { target: inputs[0] });
+      inputs[1].value = '30';
+      inputs[1].dispatch('input', { target: inputs[1] });
+      inputs[2].value = '2026-12-31';
+      inputs[2].dispatch('input', { target: inputs[2] });
+      opButton(sheetPanel, 'Simpan tugas').click();
+      eq(preview.tasks().length, tasksBeforeValidation + 1,
+        'a custom class may use IPAS and create a task');
+      const added = preview.tasks()
+        .filter((t) => t.title === 'Tugas kelas persiapan')[0];
+      ok(!!added && added.className === 'Kelas Persiapan',
+        'the new task keeps the custom class name');
+    }
+  }
+}
+
+// Form siswa memakai daftar kelas dinamis, bukan hard-code Kelas 1-6.
+preview.go('operator-siswa');
+const dynamicStudentForm = opButton(viewport, '+ Tambah siswa');
+if (dynamicStudentForm) {
+  dynamicStudentForm.click();
+  const studentClassChips = sheetPanel.querySelectorAll('.chip-btn')
+    .map((c) => (c.textContent || '').trim());
+  ok(studentClassChips.indexOf('Kelas Persiapan') >= 0,
+    'the student form offers the dynamically added class');
+  ok(preview.operator.classOptions().every(
+    (n) => studentClassChips.indexOf(n) >= 0),
+    'the student form offers every dynamically configured class');
+  opButton(sheetPanel, 'Batal').click();
+}
+
+// Bersihkan data uji agar pemeriksaan berikutnya memakai data demo utuh.
+preview.state.schoolClasses = savedClasses;
+preview.tasks().splice(0, preview.tasks().length,
+  ...preview.tasks().filter((t) => t.title !== 'Tugas kelas persiapan'));
+if (typeof preview.persistState === 'function') preview.persistState();
+preview.state.filter = 'Semua kelas';
+
+// Data pribadi operator tidak boleh menimpa nama siswa.
+preview.state.role = 'operator';
+preview.state.studentName = 'Dimas Nugroho';
+preview.go('operator-beranda');
+const opInfoCard = viewport.querySelectorAll('.list-item-card')
+  .filter((c) => (c.textContent || '').indexOf('Ubah data operator') >= 0)[0];
+ok(!!opInfoCard, 'the operator home can open the personal info form');
+if (opInfoCard) {
+  opInfoCard.click();
+  const opNameInput = sheetPanel.querySelectorAll('input')[0];
+  ok(!!opNameInput, 'the operator personal info form has a name input');
+  if (opNameInput) {
+    opNameInput.value = 'Sari Operator';
+    opNameInput.dispatch('input', { target: opNameInput });
+  }
+  const opSave = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Simpan perubahan') >= 0)[0];
+  if (opSave) opSave.click();
+  eq(preview.state.operatorName, 'Sari Operator', 'the operator name is saved');
+  eq(preview.state.studentName, 'Dimas Nugroho',
+    'saving the operator name does not overwrite the student name');
+  preview.state.operatorName = 'Operator Sekolah';
+}
+
+// Login operator.
+preview.go('login-operator');
+const opFields = viewport.querySelectorAll('input');
+ok(opFields.length >= 2, 'the operator login screen has the id and password fields');
+if (opFields.length >= 2) {
+  opFields[0].value = '19870003';
+  opFields[0].dispatch('input', { target: opFields[0] });
+  opFields[1].value = 'salah';
+  opFields[1].dispatch('input', { target: opFields[1] });
+  const opSubmit = viewport.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Masuk') >= 0)[0];
+  if (opSubmit) opSubmit.click();
+  ok(viewport.textContent.indexOf('NIP/NISN atau kata sandi tidak sesuai.') >= 0,
+    'the operator login rejects wrong credentials with the RN error message');
+}
+
+preview.state.role = 'siswa';
+preview.state.filter = 'Semua kelas';
 
 /* ------------------------------------------------------------------ *
  * 10. Dark mode toggle

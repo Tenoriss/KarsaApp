@@ -34,6 +34,14 @@ class AttachmentService {
     'png',
   ];
 
+  /// Ekstensi gambar untuk aset yang dikelola operator sekolah.
+  static const List<String> imageExtensions = <String>[
+    'jpg',
+    'jpeg',
+    'png',
+    'webp',
+  ];
+
   String _guessMime(String name) {
     final lower = name.toLowerCase();
     if (lower.endsWith('.pdf')) return 'application/pdf';
@@ -42,15 +50,19 @@ class AttachmentService {
       return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     }
     if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
     if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
     return 'application/octet-stream';
   }
 
-  Future<PickedAttachmentOutcome> pickAttachment({required int currentStoreBytes}) async {
+  Future<PickedAttachmentOutcome> pickAttachment({
+    required int currentStoreBytes,
+    List<String>? extensions,
+  }) async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: allowedExtensions,
+        allowedExtensions: extensions ?? allowedExtensions,
         withData: true,
       );
       if (result == null || result.files.isEmpty) {
