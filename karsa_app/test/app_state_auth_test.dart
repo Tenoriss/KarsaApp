@@ -106,6 +106,53 @@ void main() {
       state.dispose();
     });
 
+    test('student notifications and materials are scoped to the learner class', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final state = AppState(autoLoad: false);
+      await state.loadFromStorage();
+
+      // Siswa: notifikasi dan materi untuk kelasnya sendiri (Kelas 5).
+      state.selectRoleForLogin(UserRole.siswa);
+      expect(state.authenticate('10050001', 'siswa123'), isTrue);
+      expect(state.data.childClass, 'Kelas 5');
+
+      final notifTitles = state.relevantNotifications.map((n) => n.title).toList();
+      expect(notifTitles, contains('Tugas baru · Pecahan dan perbandingan'));
+      expect(notifTitles, contains('Materi baru · Ringkasan Pecahan Kelas 5'));
+      expect(notifTitles, isNot(contains('Tugas baru · Penjumlahan sampai 20')));
+
+      final studentMaterials = state.data.materials
+          .where((m) => m.className == 'Kelas 5')
+          .toList();
+      expect(studentMaterials.length, 2);
+      expect(studentMaterials.first.title, 'Ringkasan Pecahan Kelas 5');
+
+      // Semua notifikasi siswa masih baru, jadi badge dihitung.
+      expect(state.unreadEventsCount, 2);
+
+      // Mengetuk notifikasi membuka tugas yang terkait dan menandainya dibaca.
+      final taskNotif = state.relevantNotifications
+          .firstWhere((n) => n.kind == 'task' && n.className == 'Kelas 5');
+      state.markNotification(taskNotif);
+      expect(state.screen, 'taskDetail');
+      expect(state.isNotificationRead(taskNotif.id), isTrue);
+      expect(state.unreadEventsCount, 1);
+
+      // Orang tua: kelas anaknya (Kelas 1), bukan kelas siswa.
+      state.selectRoleForLogin(UserRole.orangtua);
+      expect(state.authenticate('10010001', 'ortu123'), isTrue);
+      expect(state.data.childClass, 'Kelas 1');
+      final parentNotifs = state.relevantNotifications.map((n) => n.title).toList();
+      expect(parentNotifs, contains('Tugas baru · Penjumlahan sampai 20'));
+      expect(parentNotifs, isNot(contains('Tugas baru · Pecahan dan perbandingan')));
+      expect(
+        state.data.materials.where((m) => m.className == 'Kelas 1').length,
+        2,
+      );
+
+      state.dispose();
+    });
+
     test('OfflineSummarizer picks up to first three sentences', () {
       const sample =
           'Akar menyerap air dari tanah. Batang menyalurkan nutrisi! Daun melakukan fotosintesis? Bunga menjadi buah.';

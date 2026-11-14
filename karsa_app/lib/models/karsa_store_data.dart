@@ -86,8 +86,8 @@ class KarsaStoreData {
       attendance: const <String, Map<String, String>>{},
       classScores: const <String, double>{},
       classEvents: const <ClassEvent>[],
-      materials: const <MaterialItem>[],
-      localNotifications: const <LocalNotification>[],
+      materials: SeedData.initialMaterials(now ?? DateTime.now()),
+      localNotifications: SeedData.initialNotifications(now ?? DateTime.now()),
       readNotifications: const <String, List<String>>{},
     );
   }
@@ -206,6 +206,28 @@ class KarsaStoreData {
       });
     }
 
+    final parsedMaterials = <String, dynamic>{};
+    if (saved['materials'] is List) {
+      (saved['materials'] as List).whereType<Map>().forEach((m) {
+        final id = (m['id'] ?? '').toString();
+        parsedMaterials[id] = m;
+      });
+    }
+    for (final seeded in base.materials) {
+      parsedMaterials.putIfAbsent(seeded.id, () => seeded.toJson());
+    }
+
+    final parsedNotifications = <String, dynamic>{};
+    if (saved['localNotifications'] is List) {
+      (saved['localNotifications'] as List).whereType<Map>().forEach((n) {
+        final id = (n['id'] ?? '').toString();
+        parsedNotifications[id] = n;
+      });
+    }
+    for (final seeded in base.localNotifications) {
+      parsedNotifications.putIfAbsent(seeded.id, () => seeded.toJson());
+    }
+
     final parsedReadNotifications = <String, List<String>>{};
     if (saved['readNotifications'] is Map) {
       (saved['readNotifications'] as Map).forEach((key, list) {
@@ -261,24 +283,20 @@ class KarsaStoreData {
               .map((e) => ClassEvent.fromJson(e.map((k, v) => MapEntry(k.toString(), v))))
               .toList()
           : const <ClassEvent>[],
-      materials: (saved['materials'] is List)
-          ? (saved['materials'] as List)
-              .whereType<Map>()
-              .map((m) => MaterialItem.fromJson(
-                    m.map((k, v) => MapEntry(k.toString(), v)),
-                    normalizeSubject: CurriculumData.normalizeSubject,
-                  ))
-              .toList()
-          : const <MaterialItem>[],
-      localNotifications: (saved['localNotifications'] is List)
-          ? (saved['localNotifications'] as List)
-              .whereType<Map>()
-              .map((n) => LocalNotification.fromJson(
-                    n.map((k, v) => MapEntry(k.toString(), v)),
-                    normalizeSubject: CurriculumData.normalizeSubject,
-                  ))
-              .toList()
-          : const <LocalNotification>[],
+      materials: parsedMaterials.values
+          .whereType<Map>()
+          .map((m) => MaterialItem.fromJson(
+                m.map((k, v) => MapEntry(k.toString(), v)),
+                normalizeSubject: CurriculumData.normalizeSubject,
+              ))
+          .toList(),
+      localNotifications: parsedNotifications.values
+          .whereType<Map>()
+          .map((n) => LocalNotification.fromJson(
+                n.map((k, v) => MapEntry(k.toString(), v)),
+                normalizeSubject: CurriculumData.normalizeSubject,
+              ))
+          .toList(),
       readNotifications: parsedReadNotifications,
     );
   }
