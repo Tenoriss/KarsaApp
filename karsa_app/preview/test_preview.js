@@ -224,6 +224,9 @@ const themeToggle = new MockNode('button');
 themeToggle.setAttribute('id', 'theme-toggle');
 const sheetBackdrop = new MockNode('div');
 sheetBackdrop.setAttribute('id', 'sheet-backdrop');
+// index.html ships the backdrop with the `hidden` attribute, so the mock has
+// to start hidden too - otherwise "is the sheet visible?" is always yes.
+sheetBackdrop.hidden = true;
 const sheetPanel = new MockNode('div');
 sheetPanel.setAttribute('id', 'sheet-panel');
 [shell, viewport, bottomNav, screenSelect, themeToggle, sheetBackdrop, sheetPanel].forEach((n) => doc.body.appendChild(n));
@@ -575,7 +578,10 @@ ok(viewport.textContent.indexOf('tugas dinilai') >= 0,
 const infoCard = viewport.querySelectorAll('.clay-soft').filter((c) => (c.textContent || '').indexOf('Data pribadi') >= 0)[0];
 ok(!!infoCard, 'the personal info card is rendered');
 if (infoCard) {
+  ok(sheetBackdrop.hidden === true, 'the personal info sheet starts closed');
   infoCard.click();
+  ok(sheetBackdrop.hidden === false,
+    'clicking "Ubah" makes the personal info sheet visible');
   const sheetInputs = sheetPanel.querySelectorAll('input');
   ok(sheetInputs.length >= 1, 'the personal info form has a real name input');
   const sheetChips = sheetPanel.querySelectorAll('.chip-btn');
@@ -599,6 +605,7 @@ if (infoCard) {
   const saveBtn = sheetPanel.querySelectorAll('button')
     .filter((b) => (b.textContent || '').indexOf('Simpan perubahan') >= 0)[0];
   if (saveBtn) saveBtn.click();
+  ok(sheetBackdrop.hidden === true, 'the personal info sheet closes after saving');
 
   eq(preview.state.studentName, 'Nadia Lestari', 'saving the personal info updates the student name');
   eq(preview.state.studentClass, 'Kelas 6', 'saving the personal info updates the student class');
@@ -608,6 +615,24 @@ if (infoCard) {
   ok(viewport.textContent.indexOf('Nadia Lestari') >= 0, 'the edited name is shown on the student profile');
   ok(viewport.textContent.indexOf('Kelas 6') >= 0, 'the edited class is shown on the student profile');
   ok(viewport.textContent.indexOf('Islam') >= 0, 'the edited religion is shown on the student profile');
+}
+
+// The hero "Ubah informasi" action opens the very same sheet.
+preview.go('siswa-profil');
+const heroEdit = viewport.querySelectorAll('button')
+  .filter((b) => (b.textContent || '').indexOf('Ubah informasi') >= 0)[0];
+ok(!!heroEdit, 'the student profile hero has an "Ubah informasi" button');
+if (heroEdit) {
+  heroEdit.click();
+  ok(sheetBackdrop.hidden === false,
+    'clicking "Ubah informasi" makes the personal info sheet visible');
+  ok(sheetPanel.querySelectorAll('input').length >= 1,
+    'the sheet opened from the hero shows the editable name input');
+  const cancelBtn = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Batal') >= 0)[0];
+  ok(!!cancelBtn, 'the personal info sheet has a cancel action');
+  if (cancelBtn) cancelBtn.click();
+  ok(sheetBackdrop.hidden === true, 'the personal info sheet closes on cancel');
 }
 
 // The parent profile shares the child profile card.

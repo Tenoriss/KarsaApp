@@ -1476,9 +1476,10 @@
     var draft = state.personalDraft;
 
     function refresh() {
-      var panel = document.getElementById('sheet-panel');
-      clear(panel);
-      panel.appendChild(el('div', {}, [
+      // Pakai openSheet() (bukan menulis langsung ke #sheet-panel) supaya
+      // backdrop ikut ditampilkan. Tanpa ini formnya tersusun di dalam
+      // container yang tetap `hidden` sehingga tidak pernah terlihat.
+      openSheet(el('div', {}, [
         el('div', { class: 'sheet-handle' }),
         el('h2', {
           class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
