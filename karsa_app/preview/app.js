@@ -13,12 +13,9 @@
 
   var ACCOUNTS = {
     operator: { id: '19870003', password: 'operator123', label: 'Operator sekolah' },
-    siswa: { id: '10050001', password: 'siswa123', label: 'Siswa kelas 5–6' },
     wali: { id: '19870001', password: 'wali123', label: 'Wali kelas' },
     guru: { id: '19870002', password: 'guru123', label: 'Guru mata pelajaran' },
     siswa: { id: '10050001', password: 'siswa123', label: 'Siswa kelas 5–6' },
-    wali: { id: '19870001', password: 'wali123', label: 'Wali kelas' },
-    guru: { id: '19870002', password: 'guru123', label: 'Guru mata pelajaran' },
     orangtua: { id: '10010001', password: 'ortu123', label: 'Orang tua / wali' }
   };
 
@@ -472,6 +469,7 @@
   };
 
   var LOGIN_SCREEN = {
+    operator: 'login-operator',
     wali: 'login-wali',
     guru: 'login-guru',
     siswa: 'login-siswa',
@@ -1113,9 +1111,15 @@
     ]);
   }
 
+  // Cermin DemoAccount.idFieldLabel: staf memakai NIP, siswa/orang tua NISN.
+  function idFieldLabel(role) {
+    return (role === 'wali' || role === 'guru' || role === 'operator') ? 'NIP' : 'NISN';
+  }
+
   function loginTitle(role) {
     if (role === 'wali') return 'Selamat datang,\nWali Kelas!';
     if (role === 'guru') return 'Selamat datang,\nGuru!';
+    if (role === 'operator') return 'Selamat datang,\nOperator Sekolah!';
     if (role === 'siswa') return 'Halo, Siswa!';
     return 'Halo, Orang Tua!';
   }
@@ -1123,6 +1127,7 @@
   function loginSubtitle(role) {
     if (role === 'siswa') return 'Untuk siswa kelas 5–6';
     if (role === 'orangtua') return 'Untuk pendamping anak kelas 1–4';
+    if (role === 'operator') return 'Masuk untuk mengelola seluruh sekolah';
     return 'Masuk untuk melanjutkan';
   }
 
@@ -1136,8 +1141,8 @@
       autocomplete: 'off',
       autocapitalize: 'off',
       spellcheck: 'false',
-      placeholder: isTeacher ? 'NIP' : 'NISN',
-      'aria-label': isTeacher ? 'NIP' : 'NISN',
+      placeholder: idFieldLabel(role),
+      'aria-label': idFieldLabel(role),
       value: state.login.username,
       oninput: function (e) { state.login.username = e.target.value; state.login.error = ''; }
     });
@@ -1197,7 +1202,7 @@
         el('h1', { class: 'login-title', text: loginTitle(role) }),
         el('p', { class: 'login-subtitle', text: loginSubtitle(role) }),
         el('div', { class: 'login-field' }, [
-          icon(isTeacher ? 'card-outline' : 'person-outline', 22),
+          icon(role === 'siswa' || role === 'orangtua' ? 'person-outline' : 'card-outline', 22),
           usernameInput
         ]),
         el('div', { class: 'login-field' }, [
@@ -1229,7 +1234,7 @@
         }, ['Masuk →']),
         el('div', { class: 'demo-account-box' }, [
           el('p', { class: 't-item-title', text: 'Akun demo · ' + account.label }),
-          el('p', { class: 't-muted', text: (isTeacher ? 'NIP' : 'NISN') + ': ' + account.id }),
+          el('p', { class: 't-muted', text: idFieldLabel(role) + ': ' + account.id }),
           el('p', { class: 't-muted', text: 'Kata sandi: ' + account.password }),
           el('p', { class: 't-small', text: 'Akun contoh untuk mencoba aplikasi, bukan autentikasi aman.' })
         ])
@@ -1249,7 +1254,7 @@
       }),
       clayCard([
         el('p', { class: 't-item-title', text: 'Informasi akun demo' }),
-        el('p', { class: 't-muted', text: (isTeacher ? 'NIP' : 'NISN anak') + ': ' + account.id }),
+        el('p', { class: 't-muted', text: (role === 'siswa' || role === 'orangtua' ? 'NISN anak' : 'NIP') + ': ' + account.id }),
         el('p', { class: 't-muted', text: 'Kata sandi: ' + account.password }),
         el('p', { class: 't-small', text: 'Belum tersedia pemulihan akun sungguhan.' })
       ]),

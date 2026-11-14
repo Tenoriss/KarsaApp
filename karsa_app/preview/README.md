@@ -182,7 +182,11 @@ materi, pengumuman, agenda, nilai, kelas, akun guru/wali, siswa) termasuk
 validasi nilai 0-100, tenggat bertanggal salah, IPAS yang hanya untuk kelas
 3-6 (kelas khusus tanpa angka tingkat tetap boleh semua mapel), kelas terakhir
 yang tidak boleh dihapus, dan fakta bahwa data yang dihapus operator tidak
-dibangkitkan kembali saat pemuatan ulang. Total **339 pemeriksaan**.
+dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar pilih peran
+juga diuji satu per satu: masing-masing harus membuka layar login perannya
+sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak bereaksi),
+dan label medan masuk harus NIP untuk staf vs NISN untuk siswa/orang tua.
+Total **369 pemeriksaan**.
 
 ---
 

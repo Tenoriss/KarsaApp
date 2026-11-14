@@ -84,7 +84,7 @@ flutter test
 
 ```bash
 $ node karsa_app/preview/test_preview.js
-Checks passed: 339
+Checks passed: 369
 ALL PREVIEW CHECKS PASSED
 ```
 
@@ -205,6 +205,8 @@ Untuk setiap peran: splash → pilih peran → login dengan akun demo → dashbo
 | N15 | Operator menyimpan tugas dengan tenggat `bukan tanggal` | Ditolak dengan `Isi tanggal tenggat dengan format YYYY-MM-DD.`; tugas tidak dibuat |
 | N16 | Operator memilih IPAS untuk kelas bernomor 1–2 | Ditolak dengan `IPAS hanya boleh dipakai untuk kelas 3-6.`; form tetap terbuka |
 | N17 | `Image(provider, ...)` atau field `final` tanpa parameter konstruktor ditambahkan | `tool/check_syntax.py` gagal dan menunjuk berkas/field yang salah |
+| N18 | Kartu "Saya Operator Sekolah" di layar pilih peran diklik | Pindah ke `login-operator`; medan masuk berlabel NIP dan kredensial `19870003` / `operator123` membuka beranda operator |
+| N19 | Login staf (operator/wali/guru) dibuka | Kolom dan kotak akun demo berlabel **NIP**; hanya siswa/orang tua memakai NISN |
 
 ### 3.4 Ekspor berkas (wajib di perangkat)
 
@@ -245,7 +247,7 @@ Untuk setiap peran: splash → pilih peran → login dengan akun demo → dashbo
 | A5 | 5 peran + kredensial + dashboard/tab/profil berbeda | `AppState.authenticate()`, `lib/features/dashboard/*`, `lib/features/settings/profile_tab.dart` | ✅ |
 | A6 | Kurikulum utuh (9 mapel, 10 PG + 5 esai, 6 agama) | `lib/data/curriculum_data.dart` + `tool/generate_curriculum.py` | ✅ |
 | A7 | Struktur Flutter modular, tanpa layar placeholder / tombol mati | 119 berkas Dart, `tool/check_syntax.py` lolos | ✅ |
-| A8 | Pratinjau 38 layar, mobile-first, tanpa CDN, tanpa label "Pratinjau" | `karsa_app/preview/*`, `node karsa_app/preview/test_preview.js` (339 cek) | ✅ |
+| A8 | Pratinjau 38 layar, mobile-first, tanpa CDN, tanpa label "Pratinjau" | `karsa_app/preview/*`, `node karsa_app/preview/test_preview.js` (369 cek) | ✅ |
 | A8b | Peran operator sekolah lengkap, CRUD persisten, validasi terlihat, 5 tab | `lib/features/operator/*`, `providers/app_state.dart`, `test/operator_crud_test.dart`, blok operator di harness pratinjau | ✅ (uji Flutter belum dieksekusi) |
 | A9 | Ekspor XLSX & PDF benar-benar dapat dibuat & dibuka | `lib/services/grade_export_service.dart` | ⚠️ belum diuji di perangkat |
 | A10 | `flutter analyze` / `flutter test` hijau | — | ❌ **belum dijalankan** (SDK tidak ada) |
@@ -267,8 +269,8 @@ diuji. Tidak ada klaim "selesai" tanpa bukti eksekusi.
 | --- | --- | --- |
 | Sintaks Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 119 berkas / 15.867 baris / 144 class |
 | Sintaks JS | `node --check` ×4 | OK |
-| Harness pratinjau | `node karsa_app/preview/test_preview.js` | OK — 339 cek lulus |
-| Regresi negatif | Varian scratch: perlindungan kelas terakhir dimatikan / penghapusan materi dibuat no-op / validasi IPAS-per-kelas dihapus | Gagal sesuai dugaan (1, 3, dan 3 cek), membuktikan uji baru bermakna |
+| Harness pratinjau | `node karsa_app/preview/test_preview.js` | OK — 369 cek lulus |
+| Regresi negatif | Varian scratch: perlindungan kelas terakhir dimatikan / penghapusan materi dibuat no-op / validasi IPAS-per-kelas dihapus / entri `operator` di `LOGIN_SCREEN` dihapus / label NIP staf dikembalikan ke NISN | Gagal sesuai dugaan (1, 3, 3, 4, dan 2 cek), membuktikan uji baru bermakna |
 | Regresi statis | Varian scratch: guard `existing == null` dihapus / tiga field `KarsaStoreData` dihapus dari konstruktor / import `karsa_icons.dart` dihapus | `check_syntax.py` gagal dengan 4 cek yang tepat menunjuk penyebabnya |
 | Server pratinjau | `curl` ×13 | OK — semua aset 200, `/healthz` 200 |
 | `flutter analyze` | — | **tidak dijalankan** |

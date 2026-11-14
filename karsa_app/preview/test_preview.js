@@ -1354,6 +1354,78 @@ preview.state.role = 'siswa';
 preview.state.filter = 'Semua kelas';
 
 /* ------------------------------------------------------------------ *
+ * 9b. Every role card on the welcome screen opens its own login screen
+ * ------------------------------------------------------------------ */
+// Regresi: kartu "Saya Operator Sekolah" pernah tidak bereaksi karena
+// LOGIN_SCREEN tidak punya entri `operator`, sehingga go(undefined) no-op.
+preview.go('welcome');
+const roleCards = viewport.querySelectorAll('.role-card');
+eq(roleCards.length, 5, 'the welcome screen offers all five role cards');
+const expectedRoleCards = [
+  { role: 'operator', title: 'Saya Operator Sekolah', login: 'login-operator' },
+  { role: 'wali', title: 'Saya Wali Kelas', login: 'login-wali' },
+  { role: 'guru', title: 'Saya Guru Mata Pelajaran', login: 'login-guru' },
+  { role: 'orangtua', title: 'Saya Orang Tua/Wali', login: 'login-ortu' },
+  { role: 'siswa', title: 'Saya Siswa', login: 'login-siswa' }
+];
+expectedRoleCards.forEach((expected, index) => {
+  preview.go('welcome');
+  const card = viewport.querySelectorAll('.role-card')[index];
+  ok(!!card, 'the welcome screen renders the ' + expected.role + ' card');
+  if (!card) return;
+  ok((card.textContent || '').indexOf(expected.title) >= 0,
+    'role card ' + index + ' is "' + expected.title + '"');
+  card.click();
+  eq(preview.state.screen, expected.login,
+    'clicking the ' + expected.role + ' card opens ' + expected.login);
+  eq(preview.state.role, expected.role,
+    'clicking the ' + expected.role + ' card selects that role');
+});
+
+// Operator login screen: copy and credentials come from the operator account.
+preview.go('welcome');
+viewport.querySelectorAll('.role-card')[0].click();
+ok(viewport.textContent.indexOf('Selamat datang,\nOperator Sekolah!') >= 0 ||
+  viewport.textContent.indexOf('Operator Sekolah!') >= 0,
+  'the operator login screen greets the operator');
+ok(viewport.textContent.indexOf('Masuk untuk mengelola seluruh sekolah') >= 0,
+  'the operator login screen explains the operator scope');
+ok(viewport.textContent.indexOf('Halo, Orang Tua!') < 0,
+  'the operator login screen does not reuse the parent greeting');
+
+// Staf memakai NIP; hanya siswa/orang tua yang memakai NISN.
+preview.go('welcome');
+viewport.querySelectorAll('.role-card')[0].click();
+eq(viewport.querySelectorAll('#login-username')[0].getAttribute('placeholder'), 'NIP',
+  'the operator login field is labelled NIP');
+ok(viewport.textContent.indexOf('NIP: 19870003') >= 0,
+  'the operator demo box shows the operator NIP');
+preview.go('welcome');
+viewport.querySelectorAll('.role-card')[4].click();
+eq(viewport.querySelectorAll('#login-username')[0].getAttribute('placeholder'), 'NISN',
+  'the student login field is still labelled NISN');
+
+// Kembali ke login operator untuk menguji kredensialnya.
+preview.go('welcome');
+viewport.querySelectorAll('.role-card')[0].click();
+const operatorUser = viewport.querySelectorAll('#login-username')[0];
+const operatorPass = viewport.querySelectorAll('#login-password')[0];
+ok(!!operatorUser && !!operatorPass, 'the operator login screen has username and password fields');
+if (operatorUser && operatorPass) {
+  operatorUser.value = '19870003';
+  operatorUser.dispatch('input', { target: operatorUser });
+  operatorPass.value = 'operator123';
+  operatorPass.dispatch('input', { target: operatorPass });
+  const submit = opButton(viewport, 'Masuk');
+  ok(!!submit, 'the operator login screen has a submit button');
+  if (submit) {
+    submit.click();
+    eq(preview.state.screen, 'operator-beranda',
+      'operator credentials open the operator home');
+  }
+}
+
+/* ------------------------------------------------------------------ *
  * 10. Dark mode toggle
  * ------------------------------------------------------------------ */
 preview.go('welcome');
