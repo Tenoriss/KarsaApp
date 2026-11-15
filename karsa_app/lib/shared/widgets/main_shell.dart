@@ -29,6 +29,17 @@ import '../../features/homeroom/wali_recap_tab.dart';
 import '../../features/materials/material_detail_page.dart';
 import '../../features/materials/material_form_page.dart';
 import '../../features/materials/materials_page.dart';
+import '../../features/operator/operator_agenda_page.dart';
+import '../../features/operator/operator_announcements_page.dart';
+import '../../features/operator/operator_classes_tab.dart';
+import '../../features/operator/operator_grades_page.dart';
+import '../../features/operator/operator_home_tab.dart';
+import '../../features/operator/operator_materials_tab.dart';
+import '../../features/operator/operator_material_form_page.dart';
+import '../../features/operator/operator_media_tab.dart';
+import '../../features/operator/operator_students_tab.dart';
+import '../../features/operator/operator_student_form_page.dart';
+import '../../features/operator/operator_tasks_page.dart';
 import '../../features/quizzes/essay_practice_page.dart';
 import '../../features/quizzes/practice_detail_sheet.dart';
 import '../../features/quizzes/practice_form_page.dart';
@@ -63,6 +74,12 @@ class MainShell extends StatelessWidget {
       case 'Anggota':
       case 'Kelas':
         return KarsaIcons.people;
+      case 'Siswa':
+        return KarsaIcons.personOutline;
+      case 'Materi':
+        return KarsaIcons.book;
+      case 'Media':
+        return KarsaIcons.albums;
       case 'Rekap':
         return KarsaIcons.barChart;
       case 'Agenda':
@@ -92,6 +109,21 @@ class MainShell extends StatelessWidget {
           return const WaliAgendaTab();
         default:
           return const ProfileTab();
+      }
+    }
+
+    if (role == UserRole.operator) {
+      switch (state.tab) {
+        case 'Siswa':
+          return const OperatorStudentsTab();
+        case 'Kelas':
+          return const OperatorClassesTab();
+        case 'Materi':
+          return const OperatorMaterialsTab();
+        case 'Media':
+          return const OperatorMediaTab();
+        default:
+          return const OperatorHomeTab();
       }
     }
 
@@ -173,6 +205,28 @@ class MainShell extends StatelessWidget {
         return const TaskFormPage();
       case 'progress':
         return const LearningProgressPage();
+      case 'operatorStudentForm':
+        return const OperatorStudentFormPage();
+      case 'operatorTasks':
+        return const OperatorTasksPage();
+      case 'operatorTaskForm':
+        return const OperatorTaskFormPage();
+      case 'operatorAnnouncements':
+        return const OperatorAnnouncementsPage();
+      case 'operatorAnnouncementForm':
+        return const OperatorAnnouncementFormPage();
+      case 'operatorAgenda':
+        return const OperatorAgendaPage();
+      case 'operatorAgendaForm':
+        return const OperatorAgendaFormPage();
+      case 'operatorMaterialForm':
+        return const OperatorMaterialFormPage();
+      case 'operatorGrades':
+        return const OperatorGradesPage();
+      case 'operatorClassForm':
+        return const OperatorClassFormPage();
+      case 'operatorStaffForm':
+        return const OperatorStaffFormPage();
       case 'setting':
         return const SettingDetailPage();
       default:

@@ -2,7 +2,7 @@
 
 > Proyek: **KarsaApp** — SD Karitas Purwokerto
 > Versi dokumen: 1.0 · 14 November 2026
-> Branch: `arena/efada06a-karsaapp`
+> Branch: `arena/c189c199-karsaapp`
 
 Dokumen ini memuat: (A) apa yang **sudah** diverifikasi di lingkungan kerja
 saat ini, (B) rencana uji manual yang harus dijalankan di mesin dengan Flutter
@@ -33,7 +33,7 @@ SDK, dan (C) matriks ACCEPTANCE yang memetakan setiap criteria ke bukti.
 
 ### 2.1 Validasi statis Dart — `python3 tool/check_syntax.py`
 
-Memeriksa 98 berkas Dart (11.294 baris):
+Memeriksa 120 berkas Dart (16.623 baris):
 
 1. keseimbangan `{}`, `[]`, `()` di luar string/komentar;
 2. string literal (tunggal/ganda/triple) dan komentar tidak rusak;
@@ -41,22 +41,35 @@ Memeriksa 98 berkas Dart (11.294 baris):
 4. setiap `Asset(...)` / `assets/...` menunjuk aset yang ada;
 5. seluruh kunci `pubspec.yaml` yang dirujuk ada;
 6. setiap referensi member yang ditangani (`@karsa-demo-v1`, konstanta,
-   nama enum/constructor) ada di berkas yang diimpor.
+   nama enum/constructor) ada di berkas yang diimpor;
+7. setiap field `final` non-`late` diinisialisasi oleh parameter konstruktor
+   atau initializer list (menangkap model yang bertambah field tanpa
+   memperbarui konstruktor);
+8. `Image(...)`/`ImageIcon(...)` hanya menerima argumen bernama;
+9. variabel lokal nullable hasil `x == null ? null : ...` tidak langsung
+   dipanggil `.isEmpty` tanpa penjagaan `null`;
+10. setiap kelas lokal yang dipakai sebagai `Nama.konstanta` diimpor langsung
+    oleh berkas pemakainya (Dart tidak me-reekspor import transitif).
+Pemeriksaan 7–10 ditambahkan setelah audit kompilasi manual menemukan tiga
+kelas masalah nyata: `Image(provider, ...)`, `existing.isEmpty` pada daftar
+nullable, dan `KarsaStoreData` yang kehilangan tiga parameter konstruktor.
+Ketiganya sudah diperbaiki dan kini dijaga oleh pemeriksa statis.
 
 ```bash
 $ python3 karsa_app/tool/check_syntax.py
-OK: Checked 98 Dart files (11294 lines), 107 top-level classes/enums/mixins, all imports & assets resolved.
+OK: Checked 120 Dart files (16623 lines), 148 top-level classes/enums/mixins, all imports & assets resolved.
 ```
 
 ### 2.2 Uji unit Flutter — **disiapkan, belum dieksekusi**
 
-Empat berkas di `karsa_app/test/`:
+Lima berkas di `karsa_app/test/`:
 
 | Berkas | Cakupan |
 | --- | --- |
-| `curriculum_test.dart` | Paritas bank soal: 9 mata pelajaran, 10 pilihan ganda + 5 esai per mata pelajaran, kunci jawaban, `subjectsForClass()` (IPAS hanya kelas 3–6), adaptasi 6 agama |
+| `curriculum_test.dart` | Paritas bank soal: 9 mata pelajaran, 10 pilihan ganda + 5 esai per mata pelajaran, kunci jawaban, `subjectsForClass()` (IPAS hanya kelas 3–6 untuk kelas bernomor; kelas khusus tanpa angka tingkat mendapat semua mapel), adaptasi 6 agama |
+| `operator_crud_test.dart` | Login operator (`19870003` / `operator123`), CRUD siswa/kelas/akun/materi/tugas/pengumuman/agenda/nilai, validasi nilai 0–100 dan non-finite, perlindungan kelas terakhir, pemindahan siswa saat kelas dihapus, data pribadi operator, grafis sekolah, persistensi array kosong, dan `subjectsForClass()` untuk kelas khusus |
 | `storage_migration_test.dart` | Kunci `@karsa-demo-v1`, JSON kompatibel AsyncStorage, normalisasi `"IPA"`, seeding tugas/hasil demo, ketahanan terhadap JSON rusak |
-| `app_state_auth_test.dart` | Autentikasi 4 peran + pesan galat, filter tugas per peran, rekap kehadiran, ringkasan offline, **ringkasan nilai kelas** (rata-rata, jumlah tugas dinilai, IPAS hanya kelas 3–6), **pengeditan data pribadi** (termasuk penolakan nama kosong), serta **cakupan notifikasi & materi per kelas** (siswa melihat kelas 5, orang tua kelas 1; notifikasi ditandai dibaca dan membuka detail tugas) |
+| `app_state_auth_test.dart` | Autentikasi 5 peran + pesan galat, filter tugas per peran, rekap kehadiran, ringkasan offline, **ringkasan nilai kelas** (rata-rata, jumlah tugas dinilai, IPAS hanya kelas 3–6), **pengeditan data pribadi** (termasuk penolakan nama kosong), serta **cakupan notifikasi & materi per kelas** (siswa melihat kelas 5, orang tua kelas 1; notifikasi ditandai dibaca dan membuka detail tugas) |
 | `dark_color_mapper_test.dart` | `DarkColorMapper` (permukaan & teks pastel), token clay, dan pembentukan byte ekspor XLSX/PDF |
 
 ```bash
@@ -71,19 +84,21 @@ flutter test
 
 ```bash
 $ node karsa_app/preview/test_preview.js
-Checks passed: 206
+Checks passed: 388
 ALL PREVIEW CHECKS PASSED
 ```
 
 Yang dipverifikasi:
 
-* 28 layar terdaftar dan **seluruhnya** ter-render tanpa exception;
+* 38 layar terdaftar dan **seluruhnya** ter-render tanpa exception; daftar
+  harapan lengkap diperiksa dua arah (tidak ada layar tak terdokumentasi);
 * alias `#wali-rekap` → `wali-recap`;
 * splash menjadwalkan timer **2300 ms** dan otomatis pindah ke layar pilih peran;
-* 4 layar login: input NIP/NISN + kata sandi berupa `<input>` asli, tombol mata,
+* 5 layar login (termasuk operator): input NIP/NISN + kata sandi berupa
+  `<input>` asli, tombol mata,
   submit dengan **Enter**, pesan galat **"NIP/NISN atau kata sandi tidak sesuai."**
   saat kredensial salah, dan kotak akun demo berbeda per peran;
-* bottom nav: 5/5/3/4 item untuk wali/guru/siswa/orang tua;
+* bottom nav: 5/5/5/3/4 item untuk operator/wali/guru/siswa/orang tua;
 * chip kelas guru (7 chip), chip mata pelajaran siswa (≥9), segmen
   `Semua/Berjalan/Selesai` dan `Aktif/Riwayat`, serta pencarian menyaring daftar;
 * tombol status kehadiran dapat dipilih dan tersimpan;
@@ -104,6 +119,12 @@ Yang dipverifikasi:
 * materi: siswa melihat materi kelasnya sendiri ("Materi kelas 2", bukan 0);
 * penyimpanan lokal: data pribadi tersimpan di `localStorage` pada kunci
   `@karsa-demo-v1`;
+* **CRUD operator sekolah**: tambah/ubah/hapus siswa, kelas, akun guru/wali,
+  materi, tugas, pengumuman, agenda, dan nilai; penghapusan materi benar-benar
+  diklik lalu jumlah rekamannya diverifikasi berkurang satu; nilai di luar
+  0–100 ditolak; kelas terakhir ditolak baik dari daftar maupun dari sheet form
+  yang sedang terbuka; `restoreState()` tidak membangkitkan ulang data seed
+  yang sengaja dihapus;
 * tidak ada label "Pratinjau" dan tidak ada URL eksternal di `index.html`.
 
 ### 2.4 Server pratinjau — `curl`
@@ -147,7 +168,7 @@ $ node --check karsa_app/tool/generate_preview_data.js
 | --- | --- | --- |
 | T1 | `flutter create --platforms=android,ios .` (atau salin `android/`,`ios/`) lalu `flutter pub get` | sukses |
 | T2 | `flutter analyze` → **0 error, 0 warning** | sukses |
-| T3 | `flutter test` → 4 berkas uji hijau | sukses |
+| T3 | `flutter test` → 5 berkas uji hijau | sukses |
 | T4 | `flutter build apk --debug` dan `flutter build ios --no-codesign` | sukses |
 
 ### 3.2 Alur per peran (manual, perangkat nyata)
@@ -161,6 +182,7 @@ Untuk setiap peran: splash → pilih peran → login dengan akun demo → dashbo
 | M2 | Guru | `19870002` / `guru123` | 5 tab (Beranda, Kelas, Tugas, Kalender, Profil); banner guru; chip "Semua kelas" + Kelas 1–6; 4 tile metrik kelas; rekap nilai + ekspor |
 | M3 | Orang Tua | `10010001` / `ortu123` | 4 tab (Beranda, Tugas, Latihan, Profil); "RUANG TUMBUH"; bintang & mood; latihan esai |
 | M4 | Siswa | `10050001` / `siswa123` | 3 tab (Beranda, Tugas, Profil); StudentHero; MissionCard + progres; 9 baris tugas per mapel; tips berganti; IPAS tidak muncul di kelas <3; **profil: "Data pribadi" bisa diedit (nama/kelas/agama) dan section "Nilai kelas" menampilkan rata-rata + nilai per mata pelajaran**; **notifikasi kelas 5 bisa diklik dan membuka detail tugas; "Materi kelas" menampilkan 2 materi** |
+| M5 | Operator Sekolah | `19870003` / `operator123` | 5 tab (Beranda, Siswa, Kelas, Materi, Media); tambah/ubah/hapus siswa, kelas, akun guru/wali, materi, tugas, pengumuman, agenda; input nilai 0–100; unggah logo/banner; ubah data pribadi; muat ulang aplikasi dan pastikan perubahan (termasuk penghapusan) tetap ada |
 
 ### 3.3 Negative & edge case
 
@@ -176,6 +198,18 @@ Untuk setiap peran: splash → pilih peran → login dengan akun demo → dashbo
 | N8 | Nyala/matikan mode gelap lalu restart | Preferensi tersimpan (`darkMode`) |
 | N9 | Layar sangat kecil (320×568) & tablet (≥800dp) | Tidak ada overflow; shell maksimum 480px |
 | N10 | Geser cepat / putar layar | Tidak ada exception; state tidak hilang |
+| N11 | Operator menyimpan nilai `101`, `-1`, `NaN`, atau `abc` | Ditolak dengan pesan terlihat; nilai lama tetap tersimpan |
+| N20 | Operator mengosongkan NIP atau mengisi NIP non-angka | Ditolak dengan `NIP tidak boleh kosong.` / `NIP harus berupa 6-20 angka.`; tidak ada yang tersimpan |
+| N21 | Operator mengisi surel `bukan-surel` atau telepon `123` | Ditolak dengan pesan format yang terlihat; profil lama tetap utuh |
+| N22 | Operator menyimpan profil lalu aplikasi dibuka ulang | Nama, NIP, jabatan, unit, surel, dan telepon tetap ada; data lama tanpa `operatorProfile` tetap terbaca |
+| N12 | Operator menghapus kelas terakhir | Ditolak dengan `Minimal satu kelas sekolah harus tetap ada.`, form tetap terbuka |
+| N13 | Operator menghapus siswa/kelas/akun seed lalu membuka ulang aplikasi | Data yang dihapus tidak muncul kembali |
+| N14 | Operator membuat kelas bernama "Kelas Persiapan" | Semua mata pelajaran (termasuk IPAS) tersedia di form materi/tugas |
+| N15 | Operator menyimpan tugas dengan tenggat `bukan tanggal` | Ditolak dengan `Isi tanggal tenggat dengan format YYYY-MM-DD.`; tugas tidak dibuat |
+| N16 | Operator memilih IPAS untuk kelas bernomor 1–2 | Ditolak dengan `IPAS hanya boleh dipakai untuk kelas 3-6.`; form tetap terbuka |
+| N17 | `Image(provider, ...)` atau field `final` tanpa parameter konstruktor ditambahkan | `tool/check_syntax.py` gagal dan menunjuk berkas/field yang salah |
+| N18 | Kartu "Saya Operator Sekolah" di layar pilih peran diklik | Pindah ke `login-operator`; medan masuk berlabel NIP dan kredensial `19870003` / `operator123` membuka beranda operator |
+| N19 | Login staf (operator/wali/guru) dibuka | Kolom dan kotak akun demo berlabel **NIP**; hanya siswa/orang tua memakai NISN |
 
 ### 3.4 Ekspor berkas (wajib di perangkat)
 
@@ -192,8 +226,8 @@ Untuk setiap peran: splash → pilih peran → login dengan akun demo → dashbo
 | # | Langkah | Hasil yang diharapkan |
 | --- | --- | --- |
 | P1 | Buka `http://localhost:8000` | Splash tampil, pindah otomatis ke pilih peran dalam 2300 ms |
-| P2 | Ganti layar lewat dropdown | Semua 28 layar terbuka tanpa error konsol |
-| P3 | Login dengan 4 akun demo | Masuk ke beranda peran yang sesuai |
+| P2 | Ganti layar lewat dropdown | Semua 38 layar terbuka tanpa error konsol |
+| P3 | Login dengan 5 akun demo | Masuk ke beranda peran yang sesuai |
 | P4 | Login dengan data salah | Galat tampil, tetap di layar login |
 | P5 | Klik chip kelas/mapel, segmen, ketik di pencarian | Daftar tersaring |
 | P6 | Klik tombol status kehadiran | Status tersorot & tersimpan |
@@ -201,6 +235,7 @@ Untuk setiap peran: splash → pilih peran → login dengan akun demo → dashbo
 | P8 | Klik tombol mode gelap | Seluruh palet beralih ke mode gelap |
 | P9 | Buka `#guru-tugas` langsung | Layar yang benar terbuka |
 | P10 | Layar ponsel (375×667) & desktop (1440×900) | Shell 100dvh di ponsel, kolom 480px di desktop |
+| P11 | Operator: tambah lalu hapus materi, simpan nilai, hapus kelas terakhir | Jumlah rekaman berubah sesuai aksi; galat validasi tampil di sheet; setelah refresh data tidak kembali ke seed |
 
 ---
 
@@ -212,13 +247,14 @@ Untuk setiap peran: splash → pilih peran → login dengan akun demo → dashbo
 | A2 | Aset PNG asli dipakai | `karsa_app/assets/images/*.png` (6 berkas, salinan), font `Ionicons.ttf` asli | ✅ |
 | A3 | Penyimpanan lokal `SharedPreferences`, kunci `@karsa-demo-v1`, JSON kompatibel | `lib/services/storage_service.dart`, `lib/models/karsa_store_data.dart`, `test/storage_migration_test.dart` | ✅ (uji belum dieksekusi) |
 | A4 | Normalisasi `"IPA"` dan seeding demo | `KarsaStoreData.fromSavedJson()` | ✅ |
-| A5 | 4 peran + kredensial + dashboard/tab/profil berbeda | `AppState.authenticate()`, `lib/features/dashboard/*`, `lib/features/settings/profile_tab.dart` | ✅ |
+| A5 | 5 peran + kredensial + dashboard/tab/profil berbeda | `AppState.authenticate()`, `lib/features/dashboard/*`, `lib/features/settings/profile_tab.dart` | ✅ |
 | A6 | Kurikulum utuh (9 mapel, 10 PG + 5 esai, 6 agama) | `lib/data/curriculum_data.dart` + `tool/generate_curriculum.py` | ✅ |
-| A7 | Struktur Flutter modular, tanpa layar placeholder / tombol mati | 98 berkas Dart, `tool/check_syntax.py` lolos | ✅ |
-| A8 | Pratinjau 28 layar, mobile-first, tanpa CDN, tanpa label "Pratinjau" | `karsa_app/preview/*`, `node karsa_app/preview/test_preview.js` (158 cek) | ✅ |
+| A7 | Struktur Flutter modular, tanpa layar placeholder / tombol mati | 120 berkas Dart, `tool/check_syntax.py` lolos | ✅ |
+| A8 | Pratinjau 38 layar, mobile-first, tanpa CDN, tanpa label "Pratinjau" | `karsa_app/preview/*`, `node karsa_app/preview/test_preview.js` (388 cek) | ✅ |
+| A8b | Peran operator sekolah lengkap, CRUD persisten, validasi terlihat, 5 tab | `lib/features/operator/*`, `providers/app_state.dart`, `test/operator_crud_test.dart`, blok operator di harness pratinjau | ✅ (uji Flutter belum dieksekusi) |
 | A9 | Ekspor XLSX & PDF benar-benar dapat dibuat & dibuka | `lib/services/grade_export_service.dart` | ⚠️ belum diuji di perangkat |
 | A10 | `flutter analyze` / `flutter test` hijau | — | ❌ **belum dijalankan** (SDK tidak ada) |
-| A11 | Commit bertahap, push, PR ke `main`, merge | Riwayat git branch `arena/efada06a-karsaapp` | ✅ (lihat §6) |
+| A11 | Perubahan tersimpan di branch kerja | `git status` pada `arena/c189c199-karsaapp` — belum ada commit/push/PR pada sesi ini | ✅ (belum dipublikasikan) |
 
 ---
 
@@ -234,9 +270,11 @@ diuji. Tidak ada klaim "selesai" tanpa bukti eksekusi.
 
 | Pemeriksaan | Perintah | Hasil |
 | --- | --- | --- |
-| Sintaks Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 98 berkas / 11.294 baris / 107 class |
+| Sintaks Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 120 berkas / 16.623 baris / 148 class |
 | Sintaks JS | `node --check` ×4 | OK |
-| Harness pratinjau | `node karsa_app/preview/test_preview.js` | OK — 206 cek lulus |
+| Harness pratinjau | `node karsa_app/preview/test_preview.js` | OK — 388 cek lulus |
+| Regresi negatif | Varian scratch: perlindungan kelas terakhir dimatikan / penghapusan materi dibuat no-op / validasi IPAS-per-kelas dihapus / entri `operator` di `LOGIN_SCREEN` dihapus / label NIP staf dikembalikan ke NISN | Gagal sesuai dugaan (1, 3, 3, 4, dan 2 cek), membuktikan uji baru bermakna |
+| Regresi statis | Varian scratch: guard `existing == null` dihapus / tiga field `KarsaStoreData` dihapus dari konstruktor / import `karsa_icons.dart` dihapus | `check_syntax.py` gagal dengan 4 cek yang tepat menunjuk penyebabnya |
 | Server pratinjau | `curl` ×13 | OK — semua aset 200, `/healthz` 200 |
 | `flutter analyze` | — | **tidak dijalankan** |
 | `flutter test` | — | **tidak dijalankan** |

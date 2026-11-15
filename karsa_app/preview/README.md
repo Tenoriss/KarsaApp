@@ -39,7 +39,7 @@ curl http://127.0.0.1:8000/healthz
 | --- | --- |
 | `index.html` | Kerangka halaman: bar pemilih layar + tombol mode gelap, viewport, bottom nav, dan sheet modal. |
 | `styles.css` | Token claymorphism, palet terang/gelap, tipografi, dan komponen (1:1 dengan `lib/core/theme/*`). |
-| `app.js` | Seluruh logika pratinjau: state, 28 layar, interaksi, router hash. |
+| `app.js` | Seluruh logika pratinjau: state, 38 layar, interaksi, router hash. |
 | `curriculum-data.js` | **Berkas hasil generate** — bank soal, bank esai, info mata pelajaran, daftar agama, dan peta glif Ionicons. |
 | `serve.py` | Server statis tanpa cache + `/healthz`. |
 | `test_preview.js` | Harness verifikasi (mock DOM) — `node test_preview.js`. |
@@ -65,24 +65,51 @@ node karsa_app/tool/generate_preview_data.js
 
 ---
 
-## Layar (28)
+## Layar (38)
 
 | # | Layar | # | Layar |
 | --- | --- | --- | --- |
-| 1 | `splash` | 15 | `guru-tugas` |
-| 2 | `welcome` | 16 | `guru-kalender` |
-| 3 | `login-wali` | 17 | `guru-profil` |
-| 4 | `login-guru` | 18 | `siswa-beranda` |
-| 5 | `login-ortu` | 19 | `siswa-tugas` |
-| 6 | `login-siswa` | 20 | `siswa-profil` |
-| 7 | `forgot` | 21 | `ortu-beranda` |
-| 8 | `wali-beranda` | 22 | `ortu-tugas` |
-| 9 | `wali-anggota` | 23 | `ortu-latihan` |
-| 10 | `wali-recap` (alias `wali-rekap`) | 24 | `ortu-profil` |
-| 11 | `wali-agenda` | 25 | `materi` |
-| 12 | `wali-profil` | 26 | `notifikasi` |
-| 13 | `guru-beranda` | 27 | `kuis` |
-| 14 | `guru-kelas` | 28 | `hasil-kuis` |
+| 1 | `splash` | 20 | `siswa-tugas` |
+| 2 | `welcome` | 21 | `siswa-profil` |
+| 3 | `login-operator` | 22 | `ortu-beranda` |
+| 4 | `login-wali` | 23 | `ortu-tugas` |
+| 5 | `login-guru` | 24 | `ortu-latihan` |
+| 6 | `login-ortu` | 25 | `ortu-profil` |
+| 7 | `login-siswa` | 26 | `operator-beranda` |
+| 8 | `forgot` | 27 | `operator-siswa` |
+| 9 | `wali-beranda` | 28 | `operator-kelas` |
+| 10 | `wali-anggota` | 29 | `operator-materi` |
+| 11 | `wali-recap` (alias `wali-rekap`) | 30 | `operator-media` |
+| 12 | `wali-agenda` | 31 | `operator-tugas` |
+| 13 | `wali-profil` | 32 | `operator-pengumuman` |
+| 14 | `guru-beranda` | 33 | `operator-agenda` |
+| 15 | `guru-kelas` | 34 | `operator-nilai` |
+| 16 | `guru-tugas` | 35 | `materi` |
+| 17 | `guru-kalender` | 36 | `notifikasi` |
+| 18 | `guru-profil` | 37 | `kuis` |
+| 19 | `siswa-beranda` | 38 | `hasil-kuis` |
+
+### Cakupan operator sekolah
+
+Lima tab bawah: **Beranda, Siswa, Kelas, Materi, Media** (Foto & Grafis).
+Halaman tambahan yang dibuka dari pintasan/form: tugas, pengumuman, agenda,
+nilai, form siswa, form materi, form kelas, dan form akun guru/wali.
+
+| Layar | Isi |
+| --- | --- |
+| `operator-beranda` | Ringkasan sekolah + pintasan kelola data, tugas, pengumuman, agenda, nilai |
+| `operator-siswa` | Roster seluruh kelas, pencarian, filter, tambah/ubah/hapus |
+| `operator-kelas` | Sub-tab **Kelas / Akun / Siswa** + form kelas & akun guru/wali |
+| `operator-materi` | Materi seluruh kelas + tambah/ubah/hapus, lampiran URL/berkas |
+| `operator-media` | Unggah logo sekolah, banner siswa & banner guru (pratinjau langsung) |
+| `operator-tugas` | Tugas seluruh kelas + form tambah/ubah/hapus |
+| `operator-pengumuman` | Pengumuman sekolah + form tambah/ubah/hapus |
+| `operator-agenda` | Agenda sekolah + form tambah/ubah/hapus |
+| `operator-nilai` | Input nilai 0-100 per siswa + rata-rata kelas |
+
+Semua perubahan tersimpan di `localStorage` pada kunci `@karsa-demo-v1`
+(kunci yang sama dengan `StorageService` di Flutter). Kelas terakhir tidak
+bisa dihapus, dan data seed yang sengaja dihapus tidak dibangkitkan ulang.
 
 Deep link memakai hash: `index.html#guru-tugas`, `#wali-recap`, `#wali-rekap`,
 `#ortu-latihan`, `#hasil-kuis`, dan seterusnya.
@@ -97,6 +124,7 @@ Deep link memakai hash: `index.html#guru-tugas`, `#wali-recap`, `#wali-rekap`,
 
   | Peran | NIP / NISN | Kata sandi |
   | --- | --- | --- |
+  | Operator Sekolah | `19870003` | `operator123` |
   | Wali Kelas | `19870001` | `wali123` |
   | Guru Mata Pelajaran | `19870002` | `guru123` |
   | Orang Tua/Wali | `10010001` | `ortu123` |
@@ -105,8 +133,8 @@ Deep link memakai hash: `index.html#guru-tugas`, `#wali-recap`, `#wali-rekap`,
   Jika tidak cocok → pesan galat **"NIP/NISN atau kata sandi tidak sesuai."**
   Kotak akun demo di bawahnya berbeda isi untuk tiap peran.
 
-* **Bottom nav** — tiap peran punya tabnya sendiri (wali 5 tab, guru 5 tab,
-  siswa 3 tab, orang tua 4 tab).
+* **Bottom nav** — tiap peran punya tabnya sendiri (operator 5 tab, wali 5
+  tab, guru 5 tab, siswa 3 tab, orang tua 4 tab).
 * **Chip kelas / mata pelajaran**, **segmen** (Semua/Berjalan/Selesai,
   Aktif/Riwayat, Kehadiran/Nilai), dan **pencarian** menyaring daftar tugas.
 * **Tombol status kehadiran** (Hadir / Izin / Sakit / Alpa) bisa dipilih dan
@@ -125,9 +153,22 @@ Deep link memakai hash: `index.html#guru-tugas`, `#wali-recap`, `#wali-rekap`,
   lembar isinya (detail tugas atau materi) langsung dibuka. Notifikasi hanya
   untuk kelas belajar masing-masing (siswa: kelasnya, orang tua: kelas
   anaknya).
-* **Penyimpanan lokal** — data pribadi dan status notifikasi disimpan di
-  `localStorage` pada kunci `@karsa-demo-v1` (kunci yang sama dengan aplikasi
-  Flutter), jadi tetap ada setelah halaman dimuat ulang.
+* **Profil operator** — kartu identitas di beranda operator (avatar inisial,
+  jabatan, NIP, indikator kelengkapan) membuka form "Informasi pribadi" yang
+  berisi enam kolom: nama, NIP, jabatan, unit kerja, surel, dan telepon.
+  Nama/NIP wajib, surel dan telepon divalidasi formatnya, dan semuanya
+  tersimpan di `localStorage`.
+* **CRUD operator sekolah** — tambah/ubah/hapus siswa, kelas, akun guru/wali,
+  materi, tugas, pengumuman, agenda, dan input nilai; semua lewat sheet form
+  dengan validasi terlihat (kolom wajib, nilai 0-100, minimal satu kelas) dan
+  langsung tersimpan di state lokal.
+* **Media sekolah** — pratinjau mengganti logo/banner siswa/banner guru dari
+  pilihan berkas atau URL, lalu menyimpan sumbernya agar tetap tampil setelah
+  dimuat ulang.
+* **Penyimpanan lokal** — data pribadi, status notifikasi, dan seluruh hasil
+  CRUD operator disimpan di `localStorage` pada kunci `@karsa-demo-v1`
+  (kunci yang sama dengan aplikasi Flutter), jadi tetap ada setelah halaman
+  dimuat ulang.
 
 ---
 
@@ -138,10 +179,19 @@ node karsa_app/preview/test_preview.js
 ```
 
 Harness memakai **mock DOM** (tanpa browser) dan memverifikasi:
-28 layar ter-render tanpa error, transisi splash 2300 ms, login 4 peran
+38 layar ter-render tanpa error, transisi splash 2300 ms, login 5 peran
 (termasuk pesan galat), navigasi bawah, filter chip/segmen/pencarian,
 pemilihan status kehadiran, pergantian tips, alur kuis → hasil, adaptasi agama,
-deep link, dan toggle mode gelap.
+deep link, toggle mode gelap, dan seluruh CRUD operator sekolah (tugas,
+materi, pengumuman, agenda, nilai, kelas, akun guru/wali, siswa) termasuk
+validasi nilai 0-100, tenggat bertanggal salah, IPAS yang hanya untuk kelas
+3-6 (kelas khusus tanpa angka tingkat tetap boleh semua mapel), kelas terakhir
+yang tidak boleh dihapus, dan fakta bahwa data yang dihapus operator tidak
+dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar pilih peran
+juga diuji satu per satu: masing-masing harus membuka layar login perannya
+sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak bereaksi),
+dan label medan masuk harus NIP untuk staf vs NISN untuk siswa/orang tua.
+Total **388 pemeriksaan**.
 
 ---
 
@@ -149,7 +199,8 @@ deep link, dan toggle mode gelap.
 
 * Pratinjau **bukan** aplikasi Flutter. Ia hanya memvisualkan dan memverifikasi
   alur, token desain, dan isi soal.
-* Pratinjau **tidak** memakai backend. Data hanya hidup di memori browser.
+* Pratinjau **tidak** memakai backend. Data hidup di `localStorage` browser
+  (bukan memori semata), sehingga bertahan saat halaman dimuat ulang.
 * Ekspor `.xlsx`/`.pdf` dan pemilihan berkas lampiran hanya ada di aplikasi
   Flutter (`lib/services/grade_export_service.dart` dan
   `lib/services/attachment_service.dart`).

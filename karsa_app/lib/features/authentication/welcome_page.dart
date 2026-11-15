@@ -16,6 +16,7 @@ class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
 
   static const List<UserRole> _orderedRoles = <UserRole>[
+    UserRole.operator,
     UserRole.wali,
     UserRole.guru,
     UserRole.orangtua,

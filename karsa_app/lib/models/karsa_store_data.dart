@@ -1,10 +1,15 @@
 import '../data/curriculum_data.dart';
 import '../data/seed_data.dart';
 import 'announcement_item.dart';
+import 'attachment_file.dart';
 import 'class_event.dart';
 import 'local_notification.dart';
 import 'material_item.dart';
+import 'operator_profile.dart';
 import 'practice_item.dart';
+import 'school_class.dart';
+import 'staff_account.dart';
+import 'student_profile.dart';
 import 'task_item.dart';
 import 'task_result.dart';
 
@@ -18,6 +23,14 @@ class KarsaStoreData {
   final String teacherName;
   final String waliName;
   final String studentName;
+
+  /// Nama operator sekolah.
+  final String operatorName;
+
+  /// Profil lengkap operator sekolah: NIP, jabatan, kontak, dan unit kerja.
+  /// Disimpan terpisah dari `operatorName` supaya kompatibel dengan data lama
+  /// yang hanya punya nama.
+  final OperatorProfile operatorProfile;
   final bool notifications;
   final List<String> reviewed;
   final String childClass;
@@ -34,6 +47,22 @@ class KarsaStoreData {
   final List<LocalNotification> localNotifications;
   final Map<String, List<String>> readNotifications;
 
+  /// Grafis yang dikelola operator sekolah (kunci slot -> lampiran).
+  final Map<String, AttachmentFile> mediaAssets;
+
+  /// Daftar siswa resmi (dikelola operator sekolah).
+  final List<StudentProfile> roster;
+
+  /// Daftar kelas sekolah yang dikelola operator sekolah.
+  final List<SchoolClass> schoolClasses;
+
+  /// Akun guru dan wali kelas yang dikelola operator sekolah.
+  final List<StaffAccount> staffAccounts;
+
+  /// Nilai ringkas yang diisi operator sekolah untuk setiap siswa.
+  /// Kunci: id siswa.
+  final Map<String, double> rosterScores;
+
   const KarsaStoreData({
     required this.tasks,
     required this.customPractices,
@@ -44,6 +73,8 @@ class KarsaStoreData {
     required this.teacherName,
     required this.waliName,
     required this.studentName,
+    required this.operatorName,
+    required this.operatorProfile,
     required this.notifications,
     required this.reviewed,
     required this.childClass,
@@ -59,6 +90,11 @@ class KarsaStoreData {
     required this.materials,
     required this.localNotifications,
     required this.readNotifications,
+    required this.mediaAssets,
+    required this.roster,
+    required this.schoolClasses,
+    required this.rosterScores,
+    required this.staffAccounts,
   });
 
   factory KarsaStoreData.defaults({DateTime? now}) {
@@ -74,6 +110,8 @@ class KarsaStoreData {
       teacherName: 'Ibu Sari',
       waliName: 'Ibu Sari',
       studentName: 'Dimas Nugroho',
+      operatorName: OperatorProfile.defaults().name,
+      operatorProfile: OperatorProfile.defaults(),
       notifications: true,
       reviewed: const <String>[],
       childClass: 'Kelas 1',
@@ -89,6 +127,11 @@ class KarsaStoreData {
       materials: SeedData.initialMaterials(now ?? DateTime.now()),
       localNotifications: SeedData.initialNotifications(now ?? DateTime.now()),
       readNotifications: const <String, List<String>>{},
+      mediaAssets: const <String, AttachmentFile>{},
+      roster: SeedData.initialRoster(),
+      schoolClasses: SeedData.initialSchoolClasses(),
+      rosterScores: const <String, double>{},
+      staffAccounts: SeedData.initialStaffAccounts(),
     );
   }
 
@@ -102,6 +145,8 @@ class KarsaStoreData {
     String? teacherName,
     String? waliName,
     String? studentName,
+    String? operatorName,
+    OperatorProfile? operatorProfile,
     bool? notifications,
     List<String>? reviewed,
     String? childClass,
@@ -118,6 +163,11 @@ class KarsaStoreData {
     List<MaterialItem>? materials,
     List<LocalNotification>? localNotifications,
     Map<String, List<String>>? readNotifications,
+    Map<String, AttachmentFile>? mediaAssets,
+    List<StudentProfile>? roster,
+    List<SchoolClass>? schoolClasses,
+    Map<String, double>? rosterScores,
+    List<StaffAccount>? staffAccounts,
   }) {
     return KarsaStoreData(
       tasks: tasks ?? this.tasks,
@@ -129,6 +179,8 @@ class KarsaStoreData {
       teacherName: teacherName ?? this.teacherName,
       waliName: waliName ?? this.waliName,
       studentName: studentName ?? this.studentName,
+      operatorName: operatorName ?? this.operatorName,
+      operatorProfile: operatorProfile ?? this.operatorProfile,
       notifications: notifications ?? this.notifications,
       reviewed: reviewed ?? this.reviewed,
       childClass: childClass ?? this.childClass,
@@ -144,6 +196,11 @@ class KarsaStoreData {
       materials: materials ?? this.materials,
       localNotifications: localNotifications ?? this.localNotifications,
       readNotifications: readNotifications ?? this.readNotifications,
+      mediaAssets: mediaAssets ?? this.mediaAssets,
+      roster: roster ?? this.roster,
+      schoolClasses: schoolClasses ?? this.schoolClasses,
+      rosterScores: rosterScores ?? this.rosterScores,
+      staffAccounts: staffAccounts ?? this.staffAccounts,
     );
   }
 
@@ -228,6 +285,72 @@ class KarsaStoreData {
       parsedNotifications.putIfAbsent(seeded.id, () => seeded.toJson());
     }
 
+    final parsedMediaAssets = <String, AttachmentFile>{};
+    if (saved['mediaAssets'] is Map) {
+      (saved['mediaAssets'] as Map).forEach((key, value) {
+        if (value is Map) {
+          parsedMediaAssets[key.toString()] = AttachmentFile.fromJson(
+            value.map((k, v) => MapEntry(k.toString(), v)),
+          );
+        }
+      });
+    }
+
+    final parsedRoster = <String, dynamic>{};
+    if (saved['roster'] is List) {
+      (saved['roster'] as List).whereType<Map>().forEach((r) {
+        final id = (r['id'] ?? '').toString();
+        parsedRoster[id] = r;
+      });
+    }
+    if (saved['roster'] is! List) {
+      // Data lama yang belum punya roster memakai siswa bawaan. Kalau daftar
+      // roster sudah tersimpan, isi operator dihormati apa adanya supaya
+      // siswa yang dihapus tidak muncul lagi setelah aplikasi dibuka ulang.
+      for (final seeded in base.roster) {
+        parsedRoster[seeded.id] = seeded.toJson();
+      }
+    }
+
+    final parsedSchoolClasses = <String, dynamic>{};
+    if (saved['schoolClasses'] is List) {
+      (saved['schoolClasses'] as List).whereType<Map>().forEach((c) {
+        final id = (c['id'] ?? '').toString();
+        parsedSchoolClasses[id] = c;
+      });
+    }
+    if (saved['schoolClasses'] is! List) {
+      // Hanya data lama tanpa daftar kelas yang memakai kelas bawaan.
+      // Kelas yang dihapus operator tidak boleh dibangkitkan lagi.
+      for (final seeded in base.schoolClasses) {
+        parsedSchoolClasses[seeded.id] = seeded.toJson();
+      }
+    }
+
+    final parsedRosterScores = <String, double>{};
+    if (saved['rosterScores'] is Map) {
+      (saved['rosterScores'] as Map).forEach((k, v) {
+        if (v is num && v.isFinite) {
+          parsedRosterScores[k.toString()] = v.toDouble();
+        }
+      });
+    }
+
+    final parsedStaffAccounts = <String, dynamic>{};
+    if (saved['staffAccounts'] is List) {
+      (saved['staffAccounts'] as List).whereType<Map>().forEach((a) {
+        final id = (a['id'] ?? '').toString();
+        parsedStaffAccounts[id] = a;
+      });
+    }
+    if (saved['staffAccounts'] is! List) {
+      // Hanya data lama tanpa daftar akun yang memakai akun bawaan.
+      // Akun yang dihapus operator tidak boleh dibangkitkan lagi.
+      for (final seeded in base.staffAccounts) {
+        parsedStaffAccounts[seeded.id] = seeded.toJson();
+      }
+    }
+
     final parsedReadNotifications = <String, List<String>>{};
     if (saved['readNotifications'] is Map) {
       (saved['readNotifications'] as Map).forEach((key, list) {
@@ -262,6 +385,11 @@ class KarsaStoreData {
       teacherName: (saved['teacherName'] ?? base.teacherName).toString(),
       waliName: (saved['waliName'] ?? base.waliName).toString(),
       studentName: (saved['studentName'] ?? base.studentName).toString(),
+      operatorName: (saved['operatorName'] ?? base.operatorName).toString(),
+      operatorProfile: OperatorProfile.fromSaved(
+        saved['operatorProfile'],
+        fallbackName: (saved['operatorName'] ?? base.operatorName).toString(),
+      ),
       notifications: saved['notifications'] is bool ? saved['notifications'] as bool : true,
       reviewed: (saved['reviewed'] is List)
           ? (saved['reviewed'] as List).map((e) => e.toString()).toList()
@@ -298,6 +426,26 @@ class KarsaStoreData {
               ))
           .toList(),
       readNotifications: parsedReadNotifications,
+      mediaAssets: parsedMediaAssets,
+      roster: parsedRoster.values
+          .whereType<Map>()
+          .map((r) => StudentProfile.fromJson(
+                r.map((k, v) => MapEntry(k.toString(), v)),
+              ))
+          .toList(),
+      rosterScores: parsedRosterScores,
+      staffAccounts: parsedStaffAccounts.values
+          .whereType<Map>()
+          .map((a) => StaffAccount.fromJson(
+                a.map((k, v) => MapEntry(k.toString(), v)),
+              ))
+          .toList(),
+      schoolClasses: parsedSchoolClasses.values
+          .whereType<Map>()
+          .map((c) => SchoolClass.fromJson(
+                c.map((k, v) => MapEntry(k.toString(), v)),
+              ))
+          .toList(),
     );
   }
 
@@ -317,6 +465,8 @@ class KarsaStoreData {
       'teacherName': teacherName,
       'waliName': waliName,
       'studentName': studentName,
+      'operatorName': operatorName,
+      'operatorProfile': operatorProfile.toJson(),
       'notifications': notifications,
       'reviewed': reviewed,
       'childClass': childClass,
@@ -332,6 +482,11 @@ class KarsaStoreData {
       'materials': materials.map((m) => m.toJson()).toList(),
       'localNotifications': localNotifications.map((n) => n.toJson()).toList(),
       'readNotifications': readNotifications,
+      'mediaAssets': mediaAssets.map((k, v) => MapEntry(k, v.toJson())),
+      'roster': roster.map((r) => r.toJson()).toList(),
+      'schoolClasses': schoolClasses.map((c) => c.toJson()).toList(),
+      'rosterScores': rosterScores,
+      'staffAccounts': staffAccounts.map((a) => a.toJson()).toList(),
     };
   }
 }

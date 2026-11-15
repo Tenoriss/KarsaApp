@@ -3,6 +3,7 @@ import '../constants/app_constants.dart';
 import '../theme/clay_styles.dart';
 import '../theme/dark_color_mapper.dart';
 import '../theme/karsa_theme.dart';
+import '../../shared/widgets/media_image.dart';
 
 class SchoolIdentity extends StatelessWidget {
   final bool compact;
@@ -35,8 +36,9 @@ class SchoolIdentity extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             alignment: Alignment.center,
-            child: Image.asset(
-              AppConstants.assetSchoolLogo,
+            child: MediaImage(
+              slotKey: SchoolMedia.logoSlot,
+              fallbackAsset: AppConstants.assetSchoolLogo,
               width: 33,
               height: 33,
               fit: BoxFit.contain,

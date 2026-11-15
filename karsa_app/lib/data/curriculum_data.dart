@@ -233,9 +233,16 @@ class CurriculumData {
     return raw;
   }
 
+  /// Mata pelajaran yang boleh dipakai untuk sebuah kelas.
+  ///
+  /// Tingkat kelas diambil dari angka pada namanya ("Kelas 3" -> 3).
+  /// IPAS hanya untuk kelas 3-6. Kelas dengan nama bebas yang tidak memuat
+  /// angka (mis. "Kelas Alfa") tidak punya tingkat yang jelas, jadi semua
+  /// mata pelajaran boleh dipakai supaya operator tidak terkunci.
   static List<String> subjectsForClass(String className) {
     final digits = className.replaceAll(RegExp(r'\D'), '');
-    final grade = int.tryParse(digits) ?? 1;
+    final grade = int.tryParse(digits);
+    if (grade == null) return subjects;
     return subjects
         .where((s) => s != 'Ilmu Pengetahuan Alam dan Sosial (IPAS)' || grade >= 3)
         .toList();

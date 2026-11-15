@@ -144,4 +144,5 @@ Aplikasi menyimpan satu objek JSON utuh pada kunci **`@karsa-demo-v1`** (di Flut
 1. Kode React Native asli (`App.js`, `curriculum.js`, `gradeReports.js`, `assets/`) tetap dipertahankan utuh di root repositori sebagai rujukan.
 2. Seluruh aplikasi Flutter ditempatkan secara modular di `karsa_app/`.
 3. Aset gambar asli disalin ke `karsa_app/assets/images/` dan font `Ionicons.ttf` diekstrak ke `karsa_app/assets/fonts/Ionicons.ttf`.
-4. Disediakan pratinjau HTML interaktif 28 layar di `karsa_app/preview/` yang mereplikasi token desain, data kurikulum, validasi akun demo, dan interaksi widget Flutter tanpa ketergantungan CDN.
+4. Disediakan pratinjau HTML interaktif 38 layar di `karsa_app/preview/` yang mereplikasi token desain, data kurikulum, validasi akun demo, dan interaksi widget Flutter tanpa ketergantungan CDN.
+5. **Di luar cakupan audit 1:1 ini**, peran **Operator Sekolah** ditambahkan sebagai fitur baru (bukan hasil port dari `App.js`): 5 tab Beranda/Siswa/Kelas/Materi/Media, CRUD siswa, kelas dinamis, akun guru/wali, tugas, pengumuman, agenda, materi, nilai, grafis sekolah, dan data pribadi. Implementasi Flutter ada di `karsa_app/lib/features/operator/` dan `lib/providers/app_state.dart`; padanan offline-nya ada di `karsa_app/preview/app.js`. Kode React Native di root tetap tidak diubah.

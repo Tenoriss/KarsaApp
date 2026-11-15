@@ -12,9 +12,10 @@
   var ICONS = CURR.icons || {};
 
   var ACCOUNTS = {
-    siswa: { id: '10050001', password: 'siswa123', label: 'Siswa kelas 5–6' },
+    operator: { id: '19870003', password: 'operator123', label: 'Operator sekolah' },
     wali: { id: '19870001', password: 'wali123', label: 'Wali kelas' },
     guru: { id: '19870002', password: 'guru123', label: 'Guru mata pelajaran' },
+    siswa: { id: '10050001', password: 'siswa123', label: 'Siswa kelas 5–6' },
     orangtua: { id: '10010001', password: 'ortu123', label: 'Orang tua / wali' }
   };
 
@@ -39,6 +40,73 @@
     ['😴', 'Lelah'],
     ['😔', 'Sedih']
   ];
+  /* Daftar siswa resmi (sama seperti SeedData.initialRoster di Flutter). */
+  function buildRoster() {
+    var seeds = [
+      ['s1a', '10050002', 'Aisyah Putri', 'Kelas 1', 'P', 'Ibu Rina'],
+      ['s1b', '10050003', 'Bagas Wicaksono', 'Kelas 1', 'L', 'Bapak Doni'],
+      ['s1c', '10050004', 'Citra Kirana', 'Kelas 1', 'P', 'Ibu Melati'],
+      ['s1d', '10050005', 'Dimas Nugroho', 'Kelas 1', 'L', 'Bapak Hendra'],
+      ['s2a', '10050006', 'Eka Prasetyo', 'Kelas 2', 'L', 'Bapak Joko'],
+      ['s2b', '10050007', 'Fitri Handayani', 'Kelas 2', 'P', 'Ibu Sari'],
+      ['s2c', '10050008', 'Gilang Ramadhan', 'Kelas 2', 'L', 'Bapak Arif'],
+      ['s2d', '10050009', 'Hana Salsabila', 'Kelas 2', 'P', 'Ibu Yuni'],
+      ['s3a', '10050010', 'Indira Maharani', 'Kelas 3', 'P', 'Ibu Ratna'],
+      ['s3b', '10050011', 'Jovan Kurniawan', 'Kelas 3', 'L', 'Bapak Teguh'],
+      ['s3c', '10050012', 'Kirana Ayu', 'Kelas 3', 'P', 'Ibu Wulan'],
+      ['s3d', '10050013', 'Lukman Hakim', 'Kelas 3', 'L', 'Bapak Slamet'],
+      ['s4a', '10050014', 'Maya Anggraini', 'Kelas 4', 'P', 'Ibu Dyah'],
+      ['s4b', '10050015', 'Naufal Akbar', 'Kelas 4', 'L', 'Bapak Rudi'],
+      ['s4c', '10050016', 'Nabila Zahra', 'Kelas 4', 'P', 'Ibu Eka'],
+      ['s4d', '10050017', 'Omar Dzaki', 'Kelas 4', 'L', 'Bapak Irwan'],
+      ['s5a', '10050018', 'Puspita Rani', 'Kelas 5', 'P', 'Ibu Lilis'],
+      ['s5b', '10050019', 'Rendi Saputra', 'Kelas 5', 'L', 'Bapak Cahyo'],
+      ['s5c', '10050020', 'Sekar Arum', 'Kelas 5', 'P', 'Ibu Nining'],
+      ['s5d', '10050021', 'Taufik Hidayat', 'Kelas 5', 'L', 'Bapak Wahyu'],
+      ['s6a', '10050022', 'Ulfa Rahmawati', 'Kelas 6', 'P', 'Ibu Tati'],
+      ['s6b', '10050023', 'Vino Ardiansyah', 'Kelas 6', 'L', 'Bapak Gunawan'],
+      ['s6c', '10050024', 'Wulan Puspita', 'Kelas 6', 'P', 'Ibu Rina'],
+      ['s6d', '10050025', 'Yoga Pratama', 'Kelas 6', 'L', 'Bapak Farid']
+    ];
+    return seeds.map(function (row) {
+      return {
+        id: row[0], nisn: row[1], name: row[2], className: row[3],
+        gender: row[4], parentName: row[5], active: true
+      };
+    });
+  }
+
+  /* Kelas sekolah yang dikelola operator sekolah. */
+  function buildSchoolClasses() {
+    var seeds = [
+      ['c1', 'Kelas 1', 'Ibu Sari'],
+      ['c2', 'Kelas 2', 'Ibu Tuti'],
+      ['c3', 'Kelas 3', 'Bapak Agus'],
+      ['c4', 'Kelas 4', 'Ibu Rina'],
+      ['c5', 'Kelas 5', 'Bapak Doni'],
+      ['c6', 'Kelas 6', 'Ibu Maya']
+    ];
+    return seeds.map(function (row) {
+      return { id: row[0], name: row[1], teacherName: row[2] };
+    });
+  }
+
+  /* Akun guru dan wali kelas yang dikelola operator sekolah. */
+  function buildStaffAccounts() {
+    var seeds = [
+      ['u1', 'Ibu Sari', '19870001', 'wali', 'Kelas 1'],
+      ['u2', 'Ibu Tuti', '19870011', 'wali', 'Kelas 2'],
+      ['u3', 'Bapak Agus', '19870012', 'wali', 'Kelas 3'],
+      ['u4', 'Ibu Rina', '19870013', 'wali', 'Kelas 4'],
+      ['u5', 'Bapak Doni', '19870014', 'wali', 'Kelas 5'],
+      ['u6', 'Ibu Maya', '19870015', 'wali', 'Kelas 6'],
+      ['u7', 'Pak Rudi', '19870021', 'guru', '']
+    ];
+    return seeds.map(function (row) {
+      return { id: row[0], name: row[1], nip: row[2], role: row[3], className: row[4] };
+    });
+  }
+
   var ASSETS = {
     icon: './assets/images/icon.png',
     loginLogo: './assets/images/karsa-login-logo.png',
@@ -47,6 +115,13 @@
     studentBanner: './assets/images/student-banner.png',
     teacherBanner: './assets/images/teacher-banner.png'
   };
+
+  /* Slot grafis yang dikelola operator sekolah. */
+  var MEDIA_SLOTS = [
+    { key: 'school-logo', label: 'Logo sekolah', desc: 'Tampil di kartu identitas sekolah pada semua layar.', fallback: ASSETS.schoolLogo },
+    { key: 'banner-siswa', label: 'Banner siswa', desc: 'Gambar besar di beranda siswa dan orang tua.', fallback: ASSETS.studentBanner },
+    { key: 'banner-guru', label: 'Banner guru', desc: 'Gambar besar di beranda guru dan wali kelas.', fallback: ASSETS.teacherBanner }
+  ];
 
   var MONTH_NAMES = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -169,7 +244,10 @@
   function subjectsForClass(className) {
     var digits = String(className).replace(/\D/g, '');
     var grade = parseInt(digits, 10);
-    if (isNaN(grade)) grade = 1;
+    // Kelas dengan nama bebas (tanpa angka) tidak punya tingkat yang jelas,
+    // jadi semua mata pelajaran boleh dipakai - cermin
+    // CurriculumData.subjectsForClass di aplikasi Flutter.
+    if (isNaN(grade)) return SUBJECTS.slice();
     return SUBJECTS.filter(function (s) {
       return s !== 'Ilmu Pengetahuan Alam dan Sosial (IPAS)' || grade >= 3;
     });
@@ -341,7 +419,6 @@
     recapTab: 'Kehadiran',
     recapDate: dateKey(new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate())),
     attendance: {},
-    classScores: { dimas: 82, sari: 91, rafi: 74 },
     tipIndex: 0,
     login: { username: '', password: '', show: false, error: '' },
     quiz: null,
@@ -354,11 +431,31 @@
     studentName: 'Dimas Nugroho',
     teacherName: 'Ibu Sari',
     waliName: 'Ibu Sari',
+    operatorName: 'Operator Sekolah',
+    // Cermin OperatorProfile di Flutter: identitas kerja operator.
+    operatorProfile: {
+      name: 'Operator Sekolah',
+      nip: '19870003',
+      role: 'Operator Sekolah',
+      email: '',
+      phone: '',
+      unit: 'SD Karitas Purwokerto'
+    },
     personalDraft: null,
-    readNotifications: {}
+    readNotifications: {},
+    mediaAssets: {},
+    operatorQuery: '',
+    operatorClassSection: 'Kelas',
+    operatorError: '',
+    roster: buildRoster(),
+    schoolClasses: buildSchoolClasses(),
+    staffAccounts: buildStaffAccounts(),
+    rosterScores: {},
+    classScores: { dimas: 82, sari: 91, rafi: 74 }
   };
 
   var ROLE_TABS = {
+    operator: ['Beranda', 'Siswa', 'Kelas', 'Materi', 'Media'],
     wali: ['Beranda', 'Anggota', 'Rekap', 'Agenda', 'Profil'],
     guru: ['Beranda', 'Kelas', 'Tugas', 'Kalender', 'Profil'],
     siswa: ['Beranda', 'Tugas', 'Profil'],
@@ -366,6 +463,7 @@
   };
 
   var ROLE_SCREEN_PREFIX = {
+    operator: 'operator-',
     wali: 'wali-',
     guru: 'guru-',
     siswa: 'siswa-',
@@ -380,6 +478,7 @@
   };
 
   var LOGIN_SCREEN = {
+    operator: 'login-operator',
     wali: 'login-wali',
     guru: 'login-guru',
     siswa: 'login-siswa',
@@ -389,10 +488,16 @@
   /* ------------------------------------------------------------------ *
    * Reusable components (mirrors lib/core/widgets/*.dart)
    * ------------------------------------------------------------------ */
+  /* Logo sekolah: pakai gambar yang dipilih operator, fallback ke aset bawaan. */
+  function mediaImage(slotKey, fallback) {
+    var custom = state.mediaAssets[slotKey];
+    return el('img', { src: custom || fallback, alt: 'Logo SD Karitas Purwokerto' });
+  }
+
   function schoolIdentity(compact) {
     return el('div', { class: 'clay-soft school-identity' + (compact ? ' compact' : '') }, [
       el('div', { class: 'school-logo-frame' }, [
-        el('img', { src: ASSETS.schoolLogo, alt: 'Logo SD Karitas Purwokerto' })
+        mediaImage('school-logo', ASSETS.schoolLogo)
       ]),
       el('div', {}, [
         el('p', { class: 'school-name', text: SCHOOL_NAME }),
@@ -607,6 +712,7 @@
   function currentPersonalName() {
     if (state.role === 'wali') return state.waliName;
     if (state.role === 'guru') return state.teacherName;
+    if (state.role === 'operator') return state.operatorName;
     return state.studentName;
   }
 
@@ -865,10 +971,22 @@
         studentName: state.studentName,
         teacherName: state.teacherName,
         waliName: state.waliName,
+        operatorName: state.operatorName,
+        operatorProfile: state.operatorProfile,
         studentClass: state.studentClass,
         parentClass: state.parentClass,
         religion: state.religion,
-        readNotifications: state.readNotifications
+        readNotifications: state.readNotifications,
+        mediaAssets: state.mediaAssets,
+        roster: state.roster,
+        materials: MATERIALS,
+        tasks: TASKS,
+        announcements: ANNOUNCEMENTS,
+        classEvents: CLASS_EVENTS,
+        classScores: state.classScores,
+        rosterScores: state.rosterScores,
+        schoolClasses: state.schoolClasses,
+        staffAccounts: state.staffAccounts
       }));
     } catch (e) {
       /* Penyimpanan penuh atau diblokir - pratinjau tetap berjalan. */
@@ -883,12 +1001,57 @@
       if (!raw) return;
       var saved = JSON.parse(raw);
       if (!saved || typeof saved !== 'object') return;
-      ['studentName', 'teacherName', 'waliName', 'studentClass', 'parentClass', 'religion']
+      ['studentName', 'teacherName', 'waliName', 'operatorName', 'studentClass', 'parentClass', 'religion']
         .forEach(function (key) {
           if (typeof saved[key] === 'string' && saved[key]) state[key] = saved[key];
         });
+      if (saved.operatorProfile && typeof saved.operatorProfile === 'object') {
+        var savedProfile = saved.operatorProfile;
+        ['name', 'nip', 'role', 'email', 'phone', 'unit'].forEach(function (key) {
+          if (typeof savedProfile[key] === 'string') {
+            state.operatorProfile[key] = savedProfile[key];
+          }
+        });
+        if (typeof savedProfile.name === 'string' && savedProfile.name) {
+          state.operatorName = savedProfile.name;
+        }
+      }
       if (saved.readNotifications && typeof saved.readNotifications === 'object') {
         state.readNotifications = saved.readNotifications;
+      }
+      if (saved.mediaAssets && typeof saved.mediaAssets === 'object') {
+        state.mediaAssets = saved.mediaAssets;
+      }
+      if (Array.isArray(saved.roster)) {
+        // Daftar roster yang tersimpan dipakai apa adanya, termasuk kosong,
+        // supaya siswa yang dihapus operator tidak muncul lagi.
+        state.roster = saved.roster;
+      }
+      if (Array.isArray(saved.materials) && saved.materials.length) {
+        MATERIALS = saved.materials;
+      }
+      if (Array.isArray(saved.tasks) && saved.tasks.length) {
+        TASKS = saved.tasks;
+      }
+      if (Array.isArray(saved.announcements) && saved.announcements.length) {
+        ANNOUNCEMENTS = saved.announcements;
+      }
+      if (Array.isArray(saved.classEvents) && saved.classEvents.length) {
+        CLASS_EVENTS = saved.classEvents;
+      }
+      if (saved.classScores && typeof saved.classScores === 'object') {
+        state.classScores = saved.classScores;
+      }
+      if (saved.rosterScores && typeof saved.rosterScores === 'object') {
+        state.rosterScores = saved.rosterScores;
+      }
+      if (Array.isArray(saved.schoolClasses)) {
+        // Kelas yang dihapus operator tidak boleh dibangkitkan lagi, jadi
+        // daftar yang tersimpan dipakai apa adanya (bisa kosong).
+        state.schoolClasses = saved.schoolClasses;
+      }
+      if (Array.isArray(saved.staffAccounts)) {
+        state.staffAccounts = saved.staffAccounts;
       }
     } catch (e) {
       /* Data rusak - pakai bawaan. */
@@ -923,6 +1086,7 @@
   }
 
   var ROLE_CARDS = [
+    { r: 'operator', emoji: '🗂️', title: 'Saya Operator Sekolah', sub: 'Kelola siswa, kelas, materi, dan grafis sekolah.' },
     { r: 'wali', emoji: '👩🏻‍🏫', title: 'Saya Wali Kelas', sub: 'Pantau kelas, siswa, dan perkembangan belajar.' },
     { r: 'guru', emoji: '📚', title: 'Saya Guru Mata Pelajaran', sub: 'Kelola tugas berdasarkan mata pelajaran dan kelas.' },
     { r: 'orangtua', emoji: '👩🏻', title: 'Saya Orang Tua/Wali', sub: 'Dampingi anak kelas 1–4 belajar dan mengerjakan tugas.' },
@@ -968,9 +1132,15 @@
     ]);
   }
 
+  // Cermin DemoAccount.idFieldLabel: staf memakai NIP, siswa/orang tua NISN.
+  function idFieldLabel(role) {
+    return (role === 'wali' || role === 'guru' || role === 'operator') ? 'NIP' : 'NISN';
+  }
+
   function loginTitle(role) {
     if (role === 'wali') return 'Selamat datang,\nWali Kelas!';
     if (role === 'guru') return 'Selamat datang,\nGuru!';
+    if (role === 'operator') return 'Selamat datang,\nOperator Sekolah!';
     if (role === 'siswa') return 'Halo, Siswa!';
     return 'Halo, Orang Tua!';
   }
@@ -978,6 +1148,7 @@
   function loginSubtitle(role) {
     if (role === 'siswa') return 'Untuk siswa kelas 5–6';
     if (role === 'orangtua') return 'Untuk pendamping anak kelas 1–4';
+    if (role === 'operator') return 'Masuk untuk mengelola seluruh sekolah';
     return 'Masuk untuk melanjutkan';
   }
 
@@ -991,8 +1162,8 @@
       autocomplete: 'off',
       autocapitalize: 'off',
       spellcheck: 'false',
-      placeholder: isTeacher ? 'NIP' : 'NISN',
-      'aria-label': isTeacher ? 'NIP' : 'NISN',
+      placeholder: idFieldLabel(role),
+      'aria-label': idFieldLabel(role),
       value: state.login.username,
       oninput: function (e) { state.login.username = e.target.value; state.login.error = ''; }
     });
@@ -1052,7 +1223,7 @@
         el('h1', { class: 'login-title', text: loginTitle(role) }),
         el('p', { class: 'login-subtitle', text: loginSubtitle(role) }),
         el('div', { class: 'login-field' }, [
-          icon(isTeacher ? 'card-outline' : 'person-outline', 22),
+          icon(role === 'siswa' || role === 'orangtua' ? 'person-outline' : 'card-outline', 22),
           usernameInput
         ]),
         el('div', { class: 'login-field' }, [
@@ -1084,7 +1255,7 @@
         }, ['Masuk →']),
         el('div', { class: 'demo-account-box' }, [
           el('p', { class: 't-item-title', text: 'Akun demo · ' + account.label }),
-          el('p', { class: 't-muted', text: (isTeacher ? 'NIP' : 'NISN') + ': ' + account.id }),
+          el('p', { class: 't-muted', text: idFieldLabel(role) + ': ' + account.id }),
           el('p', { class: 't-muted', text: 'Kata sandi: ' + account.password }),
           el('p', { class: 't-small', text: 'Akun contoh untuk mencoba aplikasi, bukan autentikasi aman.' })
         ])
@@ -1104,7 +1275,7 @@
       }),
       clayCard([
         el('p', { class: 't-item-title', text: 'Informasi akun demo' }),
-        el('p', { class: 't-muted', text: (isTeacher ? 'NIP' : 'NISN anak') + ': ' + account.id }),
+        el('p', { class: 't-muted', text: (role === 'siswa' || role === 'orangtua' ? 'NISN anak' : 'NIP') + ': ' + account.id }),
         el('p', { class: 't-muted', text: 'Kata sandi: ' + account.password }),
         el('p', { class: 't-small', text: 'Belum tersedia pemulihan akun sungguhan.' })
       ]),
@@ -1558,10 +1729,16 @@
     var isStudent = state.role === 'siswa';
     var isLearner = isStudent || state.role === 'orangtua';
     if (!state.personalDraft) {
+      var op = state.operatorProfile || {};
       state.personalDraft = {
         name: currentPersonalName(),
         className: isStudent ? state.studentClass : state.parentClass,
         religion: state.religion,
+        nip: op.nip || '',
+        role: op.role || '',
+        email: op.email || '',
+        phone: op.phone || '',
+        unit: op.unit || '',
         error: ''
       };
     }
@@ -1579,8 +1756,11 @@
         }),
         el('p', {
           class: 't-muted', style: 'margin-bottom:14px',
-          text: 'Data pribadi tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'
+          text: state.role === 'operator'
+            ? 'Identitas kerja operator tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'
+            : 'Data pribadi tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'
         }),
+        state.role === 'operator' ? operatorProfileHero() : null,
         personalInfoForm(),
         el('button', {
           class: 'karsa-btn clay-raised pressable', type: 'button',
@@ -1593,6 +1773,59 @@
           onclick: function () { closeSheet(); render(); }
         }, ['Batal'])
       ]));
+    }
+
+    // Indikator kelengkapan profil operator (6 kolom).
+    function operatorProfileHero() {
+      var op = state.operatorProfile || {};
+      var parts = (op.name || '').trim().split(/\s+/).filter(function (w) { return w; });
+      var initials = parts.length
+        ? (parts.length === 1
+            ? parts[0].charAt(0)
+            : parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+        : '?';
+      var filled = ['name', 'nip', 'role', 'email', 'phone', 'unit']
+        .filter(function (k) { return (op[k] || '').trim(); }).length;
+      var contact = [op.email, op.phone].filter(function (v) { return v; }).join(' · ');
+
+      return el('div', { class: 'clay-soft', style: 'padding:16px;margin-bottom:16px' }, [
+        el('div', { style: 'display:flex;align-items:center;gap:12px' }, [
+          el('div', {
+            style: 'width:56px;height:56px;border-radius:28px;background:#fff;display:flex;' +
+                   'align-items:center;justify-content:center;font-weight:800;font-size:19px;color:var(--rose)'
+          }, [initials]),
+          el('div', { style: 'flex:1;min-width:0' }, [
+            el('p', { class: 't-item-title', style: 'margin:0', text: op.name || 'Operator Sekolah' }),
+            el('p', { class: 't-small', style: 'margin:2px 0 0 0',
+              text: [op.role, op.nip ? 'NIP ' + op.nip : ''].filter(function (v) { return v; }).join(' · ') }),
+            op.unit ? el('p', { class: 't-small', style: 'margin:2px 0 0 0', text: op.unit }) : null
+          ])
+        ]),
+        contact ? el('p', { class: 't-small', style: 'margin:10px 0 0 0', text: contact }) : null,
+        el('div', {
+          style: 'height:7px;border-radius:8px;background:var(--line);margin-top:12px;overflow:hidden'
+        }, [
+          el('div', {
+            style: 'height:100%;width:' + Math.round(filled / 6 * 100) + '%;background:var(--rose)'
+          })
+        ]),
+        el('p', { class: 't-small', style: 'margin:6px 0 0 0',
+          text: filled >= 6
+            ? 'Profil lengkap - semua kolom terisi.'
+            : 'Profil ' + filled + '/6 kolom terisi. Lengkapi surel dan telepon agar sekolah mudah menghubungi Anda.' })
+      ]);
+    }
+
+    function operatorInput(field, placeholder, ariaLabel) {
+      return el('input', {
+        class: 'karsa-input', type: field === 'email' ? 'email' : (field === 'phone' ? 'tel' : 'text'),
+        value: draft[field] || '', id: 'pi-' + field,
+        placeholder: placeholder, 'aria-label': ariaLabel,
+        oninput: function (e) {
+          draft[field] = e.target.value;
+          draft.error = '';
+        }
+      });
     }
 
     function personalInfoForm() {
@@ -1628,6 +1861,31 @@
         nameInput,
         draft.error ? el('p', {
           class: 'notice-title', style: 'margin:0 0 10px 0', text: draft.error
+        }) : null,
+        state.role === 'operator' ? el('p', {
+          class: 't-label', style: 'margin:6px 0 8px 0', text: 'NIP'
+        }) : null,
+        state.role === 'operator' ? operatorInput('nip', 'Nomor induk pegawai', 'NIP operator') : null,
+        state.role === 'operator' ? el('p', {
+          class: 't-label', style: 'margin:12px 0 8px 0', text: 'Jabatan'
+        }) : null,
+        state.role === 'operator' ? operatorInput('role', 'Mis. Operator Sekolah', 'Jabatan operator') : null,
+        state.role === 'operator' ? el('p', {
+          class: 't-label', style: 'margin:12px 0 8px 0', text: 'Unit kerja'
+        }) : null,
+        state.role === 'operator' ? operatorInput('unit', 'Mis. SD Karitas Purwokerto', 'Unit kerja operator') : null,
+        state.role === 'operator' ? el('p', {
+          class: 't-label', style: 'margin:16px 0 8px 0', text: 'Surel'
+        }) : null,
+        state.role === 'operator' ? operatorInput('email', 'nama@sekolah.sch.id', 'Surel operator') : null,
+        state.role === 'operator' ? el('p', {
+          class: 't-label', style: 'margin:12px 0 8px 0', text: 'Telepon'
+        }) : null,
+        state.role === 'operator' ? operatorInput('phone', '08xxxxxxxxxx', 'Telepon operator') : null,
+        state.role === 'operator' ? el('p', {
+          class: 't-small', style: 'margin:2px 0 14px 0',
+          text: 'Nama dan NIP wajib diisi. Surel dan telepon boleh dikosongkan, tetapi kalau '
+              + 'diisi formatnya harus benar.'
         }) : null,
         isLearner ? el('p', {
           class: 't-label', style: 'margin-bottom:8px',
@@ -1671,6 +1929,46 @@
       state.waliName = name;
     } else if (state.role === 'guru') {
       state.teacherName = name;
+    } else if (state.role === 'operator') {
+      // Operator punya profil kerja lengkap; validasi cermin
+      // AppState.saveOperatorProfileForm().
+      var nip = (draft.nip || '').trim();
+      var email = (draft.email || '').trim();
+      var phone = (draft.phone || '').trim();
+      if (!nip) {
+        draft.error = 'NIP tidak boleh kosong.';
+        openPersonalInfoForm();
+        return;
+      }
+      if (!/^[0-9]{6,20}$/.test(nip)) {
+        draft.error = 'NIP harus berupa 6-20 angka.';
+        openPersonalInfoForm();
+        return;
+      }
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        draft.error = 'Format surel belum benar, mis. nama@sekolah.sch.id';
+        openPersonalInfoForm();
+        return;
+      }
+      if (phone) {
+        if (!/^[0-9+()\-\s]+$/.test(phone) ||
+            phone.replace(/\D/g, '').length < 8 ||
+            phone.replace(/\D/g, '').length > 16) {
+          draft.error = 'Nomor telepon harus 8-16 angka.';
+          openPersonalInfoForm();
+          return;
+        }
+      }
+      var base = state.operatorProfile || {};
+      state.operatorProfile = {
+        name: name,
+        nip: nip,
+        role: (draft.role || '').trim() || base.role || 'Operator Sekolah',
+        email: email,
+        phone: phone,
+        unit: (draft.unit || '').trim() || base.unit || 'SD Karitas Purwokerto'
+      };
+      state.operatorName = name;
     } else {
       state.studentName = name;
       // Kelas siswa dan kelas anak orang tua berdiri sendiri: mengubah kelas
@@ -1727,7 +2025,7 @@
         dark: state.dark,
         badgeCount: totalBadgeCount()
       }),
-      el('img', { class: 'banner-img', src: ASSETS.teacherBanner, alt: 'Banner guru' }),
+      el('img', { class: 'banner-img', src: state.mediaAssets['banner-guru'] || ASSETS.teacherBanner, alt: 'Banner guru' }),
       chips(['Semua kelas'].concat(CLASSES), state.filter, function (v) {
         state.filter = v;
         render();
@@ -2339,7 +2637,7 @@
         dark: state.dark,
         badgeCount: totalBadgeCount()
       }),
-      el('img', { class: 'banner-img', src: ASSETS.studentBanner, alt: 'Banner siswa' }),
+      el('img', { class: 'banner-img', src: state.mediaAssets['banner-siswa'] || ASSETS.studentBanner, alt: 'Banner siswa' }),
       el('div', { class: 'stats-grid' }, [
         statCard({
           icon: 'pencil', label: 'Tugas Aktif', value: String(active.length),
@@ -2568,6 +2866,1261 @@
         }, ['Keluar dari akun demo'])
       ])
     ]);
+  }
+
+  /* ---------------- Operator sekolah ---------------- */
+  function rosterForClass(className) {
+    return state.roster.filter(function (s) { return s.className === className; });
+  }
+
+  function operatorStatCard(opts) {
+    return statCard(opts);
+  }
+
+  function renderOperatorBeranda() {
+    var custom = Object.keys(state.mediaAssets).length;
+    var active = state.roster.filter(function (s) { return s.active; }).length;
+    return el('div', {}, [
+      pageHeader('Operator Sekolah', 'Kelola seluruh isi KARSA'),
+      el('img', { class: 'banner-img', src: state.mediaAssets['banner-guru'] || ASSETS.teacherBanner, alt: 'Banner guru' }),
+      noticeCard('Selamat datang, Operator',
+        'Anda mengelola data siswa, kelas, materi, dan aset sekolah. Semua perubahan tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'),
+      el('div', { class: 'stats-grid' }, [
+        operatorStatCard({
+          icon: 'person', label: 'Siswa', value: String(state.roster.length),
+          desc: active + ' aktif · ' + state.roster.length + ' siswa',
+          color: 'var(--rose)', onTap: function () { go('operator-siswa'); }
+        }),
+        operatorStatCard({
+          icon: 'people', label: 'Kelas', value: String(state.schoolClasses.length),
+          desc: 'kelas aktif', color: 'var(--blue)', onTap: function () { go('operator-kelas'); }
+        })
+      ]),
+      el('div', { class: 'stats-grid' }, [
+        operatorStatCard({
+          icon: 'book-outline', label: 'Materi', value: String(MATERIALS.length),
+          desc: 'semua guru', color: 'var(--blue)', onTap: function () { go('operator-materi'); }
+        }),
+        operatorStatCard({
+          icon: 'albums', label: 'Aset', value: custom + '/3',
+          desc: 'grafis aktif', color: 'var(--rose)', onTap: function () { go('operator-media'); }
+        })
+      ]),
+      listItemCard({
+        iconEmoji: '📝', tileColor: '#F8EBEC', title: 'Tugas sekolah',
+        meta: TASKS.length + ' tugas aktif lintas kelas',
+        status: 'Kelola', onTap: function () { go('operator-tugas'); }
+      }),
+      listItemCard({
+        iconEmoji: '📣', tileColor: '#F8EBEC', title: 'Pengumuman sekolah',
+        meta: ANNOUNCEMENTS.length + ' pengumuman aktif',
+        status: 'Kelola', onTap: function () { go('operator-pengumuman'); }
+      }),
+      listItemCard({
+        iconEmoji: '📅', tileColor: '#F8EBEC', title: 'Agenda sekolah',
+        meta: CLASS_EVENTS.length + ' agenda tersimpan',
+        status: 'Kelola', onTap: function () { go('operator-agenda'); }
+      }),
+      listItemCard({
+        iconEmoji: '📊', tileColor: '#F8EBEC', title: 'Nilai kelas',
+        meta: 'Isi, ubah, dan hapus nilai ringkas siswa',
+        status: 'Kelola', onTap: function () { go('operator-nilai'); }
+      }),
+      listItemCard({
+        iconEmoji: '🗂️', tileColor: '#F8EBEC', title: 'Logo & banner sekolah',
+        meta: custom === 0 ? 'Masih memakai aset bawaan aplikasi'
+          : custom + ' grafis memakai gambar pilihan operator',
+        status: 'Ubah', onTap: function () { go('operator-media'); }
+      }),
+      operatorIdentityCard()
+    ]);
+  }
+
+  /* Kartu identitas operator: cermin _OperatorIdentityCard di Flutter. */
+  function operatorIdentityCard() {
+    var op = state.operatorProfile || {};
+    var parts = (op.name || '').trim().split(/\s+/).filter(function (w) { return w; });
+    var initials = parts.length
+      ? (parts.length === 1
+          ? parts[0].charAt(0)
+          : parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+      : '?';
+    var filled = ['name', 'nip', 'role', 'email', 'phone', 'unit']
+      .filter(function (k) { return (op[k] || '').trim(); }).length;
+    var contact = [op.email, op.phone].filter(function (v) { return v; }).join(' · ');
+
+    var card = el('div', {
+      class: 'clay-soft pressable',
+      style: 'padding:16px;margin-top:4px;cursor:pointer',
+      onclick: function () { openSetting('Informasi pribadi'); },
+      role: 'button', tabindex: '0',
+      'aria-label': 'Ubah data operator',
+      onkeydown: function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSetting('Informasi pribadi'); }
+      }
+    }, [
+      el('div', { style: 'display:flex;align-items:center;gap:12px' }, [
+        el('div', {
+          style: 'width:48px;height:48px;border-radius:24px;background:#fff;display:flex;' +
+                 'align-items:center;justify-content:center;font-weight:800;font-size:16px;color:var(--rose)'
+        }, [initials]),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 't-item-title', style: 'margin:0', text: op.name || 'Operator Sekolah' }),
+          el('p', { class: 't-small', style: 'margin:2px 0 0 0',
+            text: [op.role, op.nip ? 'NIP ' + op.nip : ''].filter(function (v) { return v; }).join(' · ') })
+        ]),
+        el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('chevron-forward', 18)])
+      ]),
+      contact ? el('p', { class: 't-small', style: 'margin:10px 0 0 0', text: contact }) : null,
+      el('p', { class: 't-small', style: 'margin:10px 0 0 0;color:var(--rose);font-weight:700',
+        text: filled < 6
+          ? 'Lengkapi data pribadi (' + filled + '/6 kolom)'
+          : 'Data pribadi sudah lengkap' })
+    ]);
+    return card;
+  }
+
+  function renderOperatorSiswa() {
+    var filter = state.filter === 'Semua kelas' ? 'Semua kelas' : state.filter;
+    var list = filter === 'Semua kelas' ? state.roster : rosterForClass(filter);
+    var query = (state.operatorQuery || '').trim().toLowerCase();
+    var visible = query === '' ? list : list.filter(function (s) {
+      return s.name.toLowerCase().indexOf(query) >= 0 || s.nisn.indexOf(query) >= 0;
+    });
+
+    var children = [
+      pageHeader('Data Siswa', state.roster.length + ' siswa · ' +
+        state.roster.filter(function (s) { return s.active; }).length + ' aktif'),
+      chips(['Semua kelas'].concat(CLASSES), filter, function (v) {
+        state.filter = v;
+        render();
+      }),
+      el('input', {
+        class: 'karsa-input', type: 'text', value: state.operatorQuery || '',
+        placeholder: 'Cari nama atau NISN', 'aria-label': 'Cari siswa',
+        oninput: function (e) { state.operatorQuery = e.target.value; render(); }
+      })
+    ];
+
+    if (!visible.length) {
+      children.push(noticeCard('Tidak ada siswa', 'Tidak ada siswa yang cocok dengan pencarian ini.'));
+    } else {
+      visible.forEach(function (s) {
+        children.push(listItemCard({
+          iconEmoji: s.gender === 'P' ? '👧🏻' : '👦🏻',
+          tileColor: '#F8EBEC', title: s.name,
+          meta: s.className + ' · NISN ' + (s.nisn || '-') +
+            (s.parentName ? ' · ' + s.parentName : ''),
+          status: s.active ? 'Aktif' : 'Nonaktif',
+          onTap: function () { openStudentForm(s); }
+        }));
+      });
+    }
+
+    children.push(el('button', {
+      class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
+      onclick: function () { openStudentForm(null); }
+    }, ['+ Tambah siswa']));
+    children.push(el('p', {
+      class: 't-small',
+      style: 'margin-top:12px;color:var(--muted);font-size:12px',
+      text: 'Data tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'
+    }));
+    return el('div', {}, children);
+  }
+
+  function renderOperatorKelas() {
+    var children = [
+      pageHeader('Kelas Sekolah', state.schoolClasses.length + ' kelas · ' +
+        state.staffAccounts.length + ' akun guru dan wali'),
+      segmentTabs(['Kelas', 'Akun', 'Siswa'], state.operatorClassSection || 'Kelas', function (v) {
+        state.operatorClassSection = v;
+        state.operatorError = '';
+        render();
+      })
+    ];
+
+    if (state.operatorError) {
+      children.push(el('p', {
+        class: 't-small',
+        style: 'margin:0 0 10px 0;color:var(--rose);font-weight:800;font-size:12px',
+        text: state.operatorError
+      }));
+    }
+
+    if ((state.operatorClassSection || 'Kelas') === 'Kelas') {
+      state.schoolClasses.forEach(function (schoolClass) {
+        var className = schoolClass.name;
+        var students = rosterForClass(className);
+        var tasks = TASKS.filter(function (t) { return t.className === className; }).length;
+        var materials = MATERIALS.filter(function (m) { return m.className === className; }).length;
+        children.push(clayCard([
+          el('div', { style: 'display:flex;align-items:center;gap:10px' }, [
+            el('p', { class: 't-item-title', style: 'flex:1;margin:0', text: className }),
+            el('p', { class: 't-small', style: 'margin:0', text: students.length + ' siswa' })
+          ]),
+          el('p', {
+            class: 't-small', style: 'margin:6px 0 0 0',
+            text: 'Wali kelas: ' + (schoolClass.teacherName || 'Belum ditentukan') +
+              ' · ' + tasks + ' tugas · ' + materials + ' materi'
+          }),
+          operatorRowActions([
+            operatorLink('Ubah', function () { openOperatorClassForm(schoolClass); }),
+            operatorLink('Hapus', function () { removeOperatorClass(schoolClass); })
+          ])
+        ]));
+      });
+      children.push(operatorBtn('+ Tambah kelas', function () { openOperatorClassForm(null); }));
+      children.push(el('p', {
+        class: 't-small', style: 'margin-top:12px;color:var(--muted);font-size:12px',
+        text: 'Menghapus kelas memindahkan siswanya ke kelas pertama yang tersisa.'
+      }));
+    }
+
+    if (state.operatorClassSection === 'Akun') {
+      state.staffAccounts.forEach(function (account) {
+        children.push(listItemCard({
+          iconEmoji: account.role === 'wali' ? '👩🏻‍🏫' : '📚',
+          tileColor: '#F8EBEC', title: account.name,
+          meta: 'NIP ' + account.nip + ' · ' +
+            (account.role === 'wali' ? 'Wali kelas' : 'Guru mata pelajaran') +
+            (account.className ? ' · ' + account.className : ''),
+          status: 'Ubah', onTap: function () { openOperatorStaffForm(account); }
+        }));
+        children.push(operatorRowActions([
+          operatorLink('Ubah', function () { openOperatorStaffForm(account); }),
+          operatorLink('Hapus', function () {
+            state.staffAccounts = state.staffAccounts.filter(function (a) {
+              return a.id !== account.id;
+            });
+            persistState();
+            render();
+          })
+        ]));
+      });
+      children.push(operatorBtn('+ Tambah akun', function () { openOperatorStaffForm(null); }));
+      children.push(el('p', {
+        class: 't-small', style: 'margin-top:12px;color:var(--muted);font-size:12px',
+        text: 'Akun guru dan wali yang dibuat operator tersimpan di perangkat ini.'
+      }));
+    }
+
+    if (state.operatorClassSection === 'Siswa') {
+      var filter = state.filter === 'Semua kelas' ? 'Semua kelas' : state.filter;
+      var students = filter === 'Semua kelas'
+        ? state.roster
+        : rosterForClass(filter);
+      children.push(chips(operatorFilterOptions(), filter, function (v) {
+        state.filter = v;
+        render();
+      }));
+      students.forEach(function (s) {
+        children.push(listItemCard({
+          iconEmoji: s.gender === 'P' ? '👧🏻' : '👦🏻', tileColor: '#F8EBEC', title: s.name,
+          meta: s.className + ' · NISN ' + (s.nisn || '-'),
+          status: s.active ? 'Aktif' : 'Nonaktif',
+          onTap: function () { openStudentForm(s); }
+        }));
+        children.push(operatorRowActions([
+          operatorLink('Ubah data', function () { openStudentForm(s); })
+        ]));
+      });
+      children.push(el('p', {
+        class: 't-small', style: 'margin-top:12px;color:var(--muted);font-size:12px',
+        text: 'Pindah kelas siswa lewat tombol "Ubah data" pada form siswa.'
+      }));
+    }
+
+    return el('div', {}, children);
+  }
+
+  function removeOperatorClass(schoolClass) {
+    var remaining = state.schoolClasses.filter(function (c) { return c.id !== schoolClass.id; });
+    if (!remaining.length) {
+      // Kelas terakhir tidak boleh dihapus karena seluruh data sekolah memakai
+      // nama kelas.
+      state.operatorError = 'Minimal satu kelas sekolah harus tetap ada.';
+      render();
+      return false;
+    }
+    state.operatorError = '';
+    var fallback = remaining[0].name;
+    state.roster = state.roster.map(function (s) {
+      if (s.className === schoolClass.name) {
+        return { id: s.id, nisn: s.nisn, name: s.name, className: fallback,
+          gender: s.gender, parentName: s.parentName, active: s.active };
+      }
+      return s;
+    });
+    state.schoolClasses = remaining;
+    persistState();
+    render();
+    return true;
+  }
+
+  function openOperatorClassForm(schoolClass) {
+    var draft = schoolClass
+      ? { id: schoolClass.id, name: schoolClass.name, teacherName: schoolClass.teacherName || '', error: '' }
+      : { id: '', name: '', teacherName: '', error: '' };
+
+    function refresh() {
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', {
+          class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
+          text: draft.id ? 'Ubah Kelas' : 'Tambah Kelas'
+        }),
+        el('p', { class: 't-muted', style: 'margin-bottom:14px', text: 'Kelas sekolah beserta wali kelasnya' }),
+        el('p', { class: 't-label', style: 'margin-bottom:8px', text: 'Nama kelas' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.name, placeholder: 'Mis. Kelas 7',
+          'aria-label': 'Nama kelas',
+          oninput: function (e) { draft.name = e.target.value; draft.error = ''; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Wali kelas' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.teacherName, placeholder: 'Nama wali kelas',
+          'aria-label': 'Wali kelas',
+          oninput: function (e) { draft.teacherName = e.target.value; }
+        }),
+        draft.error ? el('p', { class: 'notice-title', style: 'margin:0 0 10px 0', text: draft.error }) : null,
+        operatorBtn('Simpan kelas', function () {
+          var name = (draft.name || '').trim();
+          if (!name) {
+            draft.error = 'Isi nama kelas.';
+            refresh();
+            return;
+          }
+          var duplicate = state.schoolClasses.some(function (c) {
+            return c.name.toLowerCase() === name.toLowerCase() && c.id !== draft.id;
+          });
+          if (duplicate) {
+            draft.error = 'Kelas dengan nama itu sudah ada.';
+            refresh();
+            return;
+          }
+          var record = {
+            id: draft.id || ('local-class-' + Date.now()),
+            name: name,
+            teacherName: (draft.teacherName || '').trim()
+          };
+          var exists = false;
+          state.schoolClasses = state.schoolClasses.map(function (c) {
+            if (c.id === record.id) { exists = true; return record; }
+            return c;
+          });
+          if (!exists) state.schoolClasses = state.schoolClasses.concat([record]);
+          persistState();
+          closeSheet();
+          render();
+        }),
+        draft.id ? operatorLink('Hapus kelas ini', function () {
+          // Pakai nama yang tersimpan, bukan draft yang mungkin sudah diedit
+          // namun belum disimpan, agar siswa tetap dipindahkan dengan benar.
+          var matches = state.schoolClasses.filter(function (c) {
+            return c.id === draft.id;
+          });
+          if (!matches.length) { closeSheet(); render(); return; }
+          if (removeOperatorClass(matches[0])) {
+            closeSheet();
+            render();
+            return;
+          }
+          draft.error = state.operatorError ||
+            'Minimal satu kelas sekolah harus tetap ada.';
+          refresh();
+        }) : null,
+        operatorLink('Batal', function () { closeSheet(); render(); })
+      ]));
+    }
+    refresh();
+  }
+
+  function openOperatorStaffForm(account) {
+    var draft = account
+      ? { id: account.id, name: account.name, nip: account.nip, role: account.role,
+          className: account.className || '', error: '' }
+      : { id: '', name: '', nip: '', role: 'guru', className: '', error: '' };
+
+    function refresh() {
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', {
+          class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
+          text: draft.id ? 'Ubah Akun' : 'Tambah Akun'
+        }),
+        el('p', { class: 't-muted', style: 'margin-bottom:14px', text: 'Akun guru atau wali kelas' }),
+        el('p', { class: 't-label', style: 'margin-bottom:8px', text: 'Nama lengkap' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.name, placeholder: 'Nama pengguna',
+          'aria-label': 'Nama pengguna',
+          oninput: function (e) { draft.name = e.target.value; draft.error = ''; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'NIP' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.nip, placeholder: 'Nomor induk pegawai',
+          'aria-label': 'NIP',
+          oninput: function (e) { draft.nip = e.target.value; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Peran' }),
+        chips(['guru', 'wali'], draft.role, function (v) { draft.role = v; refresh(); }),
+        draft.role === 'wali' ? el('div', {}, [
+          el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Kelas yang diampu' }),
+          chips(operatorClassOptions(), draft.className, function (v) { draft.className = v; refresh(); })
+        ]) : null,
+        draft.error ? el('p', { class: 'notice-title', style: 'margin:0 0 10px 0', text: draft.error }) : null,
+        operatorBtn('Simpan akun', function () {
+          var name = (draft.name || '').trim();
+          var nip = (draft.nip || '').trim();
+          if (!name || !nip) {
+            draft.error = 'Isi nama lengkap dan NIP.';
+            refresh();
+            return;
+          }
+          var duplicate = state.staffAccounts.some(function (a) {
+            return a.nip === nip && a.id !== draft.id;
+          });
+          if (duplicate) {
+            draft.error = 'NIP itu sudah dipakai akun lain.';
+            refresh();
+            return;
+          }
+          var record = {
+            id: draft.id || ('local-user-' + Date.now()),
+            name: name,
+            nip: nip,
+            role: draft.role,
+            className: draft.role === 'wali' ? draft.className : ''
+          };
+          var exists = false;
+          state.staffAccounts = state.staffAccounts.map(function (a) {
+            if (a.id === record.id) { exists = true; return record; }
+            return a;
+          });
+          if (!exists) state.staffAccounts = state.staffAccounts.concat([record]);
+          persistState();
+          closeSheet();
+          render();
+        }),
+        draft.id ? operatorLink('Hapus akun ini', function () {
+          state.staffAccounts = state.staffAccounts.filter(function (a) { return a.id !== draft.id; });
+          persistState();
+          closeSheet();
+          render();
+        }) : null,
+        operatorLink('Batal', function () { closeSheet(); render(); })
+      ]));
+    }
+    refresh();
+  }
+
+  function renderOperatorMateri() {
+    var filter = state.filter === 'Semua kelas' ? 'Semua kelas' : state.filter;
+    var list = filter === 'Semua kelas'
+      ? MATERIALS
+      : MATERIALS.filter(function (m) { return m.className === filter; });
+
+    var children = [
+      pageHeader('Materi Sekolah', MATERIALS.length + ' materi dari semua guru'),
+      chips(operatorFilterOptions(), filter, function (v) {
+        state.filter = v;
+        render();
+      })
+    ];
+    if (!list.length) {
+      children.push(noticeCard('Belum ada materi', 'Belum ada materi untuk kelas ini.'));
+    }
+    list.forEach(function (m) {
+      children.push(el('div', {}, [
+        listItemCard({
+          iconEmoji: '📚', tileColor: '#F8EBEC', title: m.title,
+          meta: m.subject + ' · ' + m.className + ' · ' + m.teacher,
+          status: 'Ubah', onTap: function () { openOperatorMaterialForm(m); }
+        }),
+        operatorRowActions([
+          operatorLink('Ubah', function () { openOperatorMaterialForm(m); }),
+          operatorLink('Hapus', function () {
+            MATERIALS = MATERIALS.filter(function (x) { return x.id !== m.id; });
+            persistState();
+            render();
+          })
+        ])
+      ]));
+    });
+    children.push(operatorBtn('+ Tambah materi', function () { openOperatorMaterialForm(null); }));
+    children.push(el('p', {
+      class: 't-small',
+      style: 'margin-top:12px;color:var(--muted);font-size:12px',
+      text: 'Operator sekolah boleh menambah, mengubah, dan menghapus materi milik guru dan wali kelas.'
+    }));
+    return el('div', {}, children);
+  }
+
+  function openOperatorMaterialForm(material) {
+    var draft = material
+      ? { id: material.id, title: material.title, subject: material.subject,
+          className: material.className, summary: material.body || '', error: '' }
+      : { id: '', title: '', subject: 'Matematika',
+          className: operatorClassOptions()[0] || 'Kelas 1', summary: '', error: '' };
+
+    function refresh() {
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', {
+          class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
+          text: draft.id ? 'Ubah Materi' : 'Tambah Materi'
+        }),
+        el('p', { class: 't-muted', style: 'margin-bottom:14px', text: 'Materi untuk seluruh kelas' }),
+        el('p', { class: 't-label', style: 'margin-bottom:8px', text: 'Judul materi' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.title, placeholder: 'Mis. Ekosistem',
+          'aria-label': 'Judul materi',
+          oninput: function (e) { draft.title = e.target.value; draft.error = ''; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Mata pelajaran' }),
+        chips(SUBJECTS, draft.subject, function (v) { draft.subject = v; refresh(); }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Untuk kelas' }),
+        chips(operatorClassOptions(), draft.className, function (v) { draft.className = v; refresh(); }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Ringkasan materi' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.summary, placeholder: 'Ringkasan materi',
+          'aria-label': 'Ringkasan materi',
+          oninput: function (e) { draft.summary = e.target.value; }
+        }),
+        draft.error ? el('p', { class: 'notice-title', style: 'margin:0 0 10px 0', text: draft.error }) : null,
+        operatorBtn('Simpan materi', function () {
+          var title = (draft.title || '').trim();
+          if (!title) {
+            draft.error = 'Isi judul materi.';
+            refresh();
+            return;
+          }
+          if (!(draft.summary || '').trim()) {
+            draft.error = 'Isi ringkasan materi.';
+            refresh();
+            return;
+          }
+          if (subjectsForClass(draft.className).indexOf(draft.subject) < 0) {
+            draft.error = 'IPAS hanya boleh dipakai untuk kelas 3-6.';
+            refresh();
+            return;
+          }
+          var record = {
+            id: draft.id || ('local-material-' + Date.now()),
+            subject: draft.subject,
+            className: draft.className,
+            title: title,
+            teacher: state.teacherName,
+            body: (draft.summary || '').trim()
+          };
+          var exists = false;
+          MATERIALS = MATERIALS.map(function (m) {
+            if (m.id === record.id) { exists = true; return record; }
+            return m;
+          });
+          if (!exists) MATERIALS = [record].concat(MATERIALS);
+          persistState();
+          closeSheet();
+          render();
+        }),
+        draft.id ? operatorLink('Hapus materi ini', function () {
+          MATERIALS = MATERIALS.filter(function (m) { return m.id !== draft.id; });
+          persistState();
+          closeSheet();
+          render();
+        }) : null,
+        operatorLink('Batal', function () { closeSheet(); render(); })
+      ]));
+    }
+    refresh();
+  }
+
+  function renderOperatorMedia() {
+    var children = [
+      pageHeader('Foto & Grafis', 'Logo dan banner sekolah'),
+      noticeCard('Aset sekolah dikelola operator',
+        'Pilih gambar JPG atau PNG. Grafik yang dipilih langsung tampil di seluruh aplikasi - beranda siswa, beranda guru, dan kartu identitas sekolah. Slot yang dikosongkan kembali memakai aset bawaan.')
+    ];
+
+    MEDIA_SLOTS.forEach(function (slot) {
+      var custom = state.mediaAssets[slot.key];
+      var tile = el('div', {
+        style: 'width:76px;height:76px;border-radius:18px;overflow:hidden;' +
+          'border:1px solid var(--line);flex-shrink:0;background:var(--card)'
+      }, [
+        el('img', {
+          src: custom || slot.fallback, alt: slot.label,
+          style: 'width:100%;height:100%;object-fit:cover;display:block'
+        })
+      ]);
+
+      var actions = [
+        el('button', {
+          class: 'karsa-btn clay-raised pressable', type: 'button',
+          style: 'border:none;cursor:pointer;margin-top:12px',
+          onclick: function () { pickMediaImage(slot.key); }
+        }, [custom ? 'Ganti gambar' : 'Pilih gambar'])
+      ];
+      if (custom) {
+        actions.push(el('button', {
+          class: 't-link pressable', type: 'button', style: 'margin-top:8px;display:block;width:100%',
+          onclick: function () {
+            delete state.mediaAssets[slot.key];
+            persistState();
+            render();
+          }
+        }, ['Hapus gambar']));
+      }
+
+      children.push(clayCard([
+        el('div', { style: 'display:flex;gap:12px;align-items:center' }, [
+          tile,
+          el('div', { style: 'flex:1;min-width:0' }, [
+            el('p', { class: 't-item-title', style: 'margin:0', text: slot.label }),
+            el('p', { class: 't-small', style: 'margin:3px 0 0 0', text: slot.desc }),
+            el('p', {
+              class: 't-small', style: 'margin:6px 0 0 0',
+              text: custom ? 'Gambar pilihan operator aktif' : 'Memakai aset bawaan aplikasi'
+            })
+          ])
+        ])
+      ].concat(actions)));
+    });
+
+    children.push(el('p', {
+      class: 't-small',
+      style: 'margin-top:12px;color:var(--muted);font-size:12px',
+      text: 'Gambar disimpan di perangkat ini pada kunci "@karsa-demo-v1".'
+    }));
+    return el('div', {}, children);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Operator sekolah: helper
+   * ------------------------------------------------------------------ */
+  function operatorClassNames() {
+    return state.schoolClasses.map(function (c) { return c.name; });
+  }
+
+  function operatorClassOptions() {
+    var names = operatorClassNames();
+    return names.length ? names : CLASSES.slice();
+  }
+
+  function operatorFilterOptions() {
+    return ['Semua kelas'].concat(operatorClassOptions());
+  }
+
+  function operatorActiveCount() {
+    return state.roster.filter(function (s) { return s.active; }).length;
+  }
+
+  function operatorRosterScores(className) {
+    var values = state.roster.filter(function (s) {
+      return s.className === className && state.rosterScores[s.id] !== undefined;
+    }).map(function (s) { return state.rosterScores[s.id]; });
+    if (!values.length) return null;
+    var sum = values.reduce(function (a, b) { return a + b; }, 0);
+    return sum / values.length;
+  }
+
+  function operatorBtn(label, onClick, style) {
+    return el('button', {
+      class: 'karsa-btn clay-raised pressable', type: 'button',
+      style: 'border:none;cursor:pointer' + (style ? ';' + style : ''),
+      onclick: onClick
+    }, [label]);
+  }
+
+  function operatorLink(label, onClick) {
+    return el('button', {
+      class: 't-link pressable', type: 'button',
+      style: 'background:none;border:none;padding:4px 8px;cursor:pointer',
+      onclick: onClick
+    }, [label]);
+  }
+
+  function operatorRowActions(items) {
+    return el('div', { style: 'display:flex;justify-content:flex-end;gap:4px' }, items);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Operator sekolah: tugas
+   * ------------------------------------------------------------------ */
+  function renderOperatorTugas() {
+    var filter = state.filter === 'Semua kelas' ? 'Semua kelas' : state.filter;
+    var list = filter === 'Semua kelas'
+      ? TASKS
+      : TASKS.filter(function (t) { return t.className === filter; });
+
+    var children = [
+      pageHeader('Tugas Sekolah', TASKS.length + ' tugas dari semua guru', function () {
+        go('operator-beranda');
+      }),
+      chips(operatorFilterOptions(), filter, function (v) {
+        state.filter = v;
+        render();
+      })
+    ];
+
+    if (!list.length) {
+      children.push(noticeCard('Belum ada tugas', 'Belum ada tugas untuk kelas ini.'));
+    }
+    list.forEach(function (t) {
+      children.push(listItemCard({
+        iconEmoji: metaFor(t.subject).icon, tileColor: metaFor(t.subject).color, title: t.title,
+        meta: t.subject + ' · ' + t.className + (t.teacher ? ' · ' + t.teacher : '') +
+          ' · ' + t.minutes + ' menit',
+        status: 'Ubah', onTap: function () { openOperatorTaskForm(t); }
+      }));
+      children.push(operatorRowActions([
+        operatorLink('Ubah', function () { openOperatorTaskForm(t); }),
+        operatorLink('Hapus', function () {
+          TASKS = TASKS.filter(function (x) { return x.id !== t.id; });
+          persistState();
+          render();
+        })
+      ]));
+    });
+
+    children.push(operatorBtn('+ Tambah tugas', function () { openOperatorTaskForm(null); }));
+    children.push(el('p', {
+      class: 't-small', style: 'margin-top:12px;color:var(--muted);font-size:12px',
+      text: 'Operator sekolah boleh menambah, mengubah, dan menghapus tugas milik role lain.'
+    }));
+    return el('div', {}, children);
+  }
+
+  function openOperatorTaskForm(task) {
+    var draft = task
+      ? { id: task.id, title: task.title, subject: task.subject, className: task.className,
+          minutes: task.minutes, dueAt: task.dueAt || '', error: '' }
+      : { id: '', title: '', subject: 'Matematika', className: operatorClassOptions()[0] || 'Kelas 1',
+          minutes: '30', dueAt: dateKey(new Date(NOW.getTime() + 7 * 86400000)), error: '' };
+
+    function refresh() {
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', {
+          class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
+          text: draft.id ? 'Ubah Tugas' : 'Tambah Tugas'
+        }),
+        el('p', { class: 't-muted', style: 'margin-bottom:14px', text: 'Tersimpan di perangkat ini.' }),
+        el('p', { class: 't-label', style: 'margin-bottom:8px', text: 'Judul' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.title, placeholder: 'Judul tugas',
+          'aria-label': 'Judul tugas',
+          oninput: function (e) { draft.title = e.target.value; draft.error = ''; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Mata pelajaran' }),
+        chips(SUBJECTS, draft.subject, function (v) { draft.subject = v; refresh(); }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Untuk kelas' }),
+        chips(operatorClassOptions(), draft.className, function (v) { draft.className = v; refresh(); }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Durasi pengerjaan (menit)' }),
+        el('input', {
+          class: 'karsa-input', type: 'number', value: draft.minutes, placeholder: '30',
+          'aria-label': 'Durasi pengerjaan',
+          oninput: function (e) { draft.minutes = e.target.value; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Tenggat pengumpulan (YYYY-MM-DD)' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.dueAt, placeholder: '2026-12-31',
+          'aria-label': 'Tenggat pengumpulan',
+          oninput: function (e) { draft.dueAt = e.target.value; }
+        }),
+        draft.error ? el('p', { class: 'notice-title', style: 'margin:0 0 10px 0', text: draft.error }) : null,
+        operatorBtn('Simpan tugas', function () {
+          var title = (draft.title || '').trim();
+          var mins = parseFloat(draft.minutes);
+          if (!title || !isFinite(mins) || mins <= 0) {
+            draft.error = 'Isi judul dan batas waktu yang valid.';
+            refresh();
+            return;
+          }
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.dueAt || '') ||
+              isNaN(new Date(draft.dueAt + 'T23:59:59').getTime())) {
+            draft.error = 'Isi tanggal tenggat dengan format YYYY-MM-DD.';
+            refresh();
+            return;
+          }
+          if (subjectsForClass(draft.className).indexOf(draft.subject) < 0) {
+            draft.error = 'IPAS hanya boleh dipakai untuk kelas 3-6.';
+            refresh();
+            return;
+          }
+          var record = {
+            id: draft.id || ('local-task-' + Date.now()),
+            subject: draft.subject,
+            title: title,
+            className: draft.className,
+            minutes: String(mins),
+            kind: 'quiz',
+            teacher: state.teacherName,
+            dueAt: draft.dueAt ? new Date(draft.dueAt + 'T23:59:59').toISOString() : null,
+            demo: false
+          };
+          var exists = false;
+          TASKS = TASKS.map(function (x) {
+            if (x.id === record.id) { exists = true; return record; }
+            return x;
+          });
+          if (!exists) TASKS = TASKS.concat([record]);
+          persistState();
+          closeSheet();
+          render();
+        }),
+        draft.id ? operatorLink('Hapus tugas ini', function () {
+          TASKS = TASKS.filter(function (x) { return x.id !== draft.id; });
+          persistState();
+          closeSheet();
+          render();
+        }) : null,
+        operatorLink('Batal', function () { closeSheet(); render(); })
+      ]));
+    }
+    refresh();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Operator sekolah: pengumuman
+   * ------------------------------------------------------------------ */
+  function renderOperatorPengumuman() {
+    var filter = state.filter === 'Semua kelas' ? 'Semua kelas' : state.filter;
+    var list = filter === 'Semua kelas'
+      ? ANNOUNCEMENTS
+      : ANNOUNCEMENTS.filter(function (a) {
+        return a.className === filter || a.className === 'Semua kelas';
+      });
+
+    var children = [
+      pageHeader('Pengumuman Sekolah', ANNOUNCEMENTS.length + ' pengumuman aktif', function () {
+        go('operator-beranda');
+      }),
+      chips(operatorFilterOptions(), filter, function (v) {
+        state.filter = v;
+        render();
+      })
+    ];
+
+    if (!list.length) {
+      children.push(noticeCard('Belum ada pengumuman', 'Belum ada pengumuman untuk kelas ini.'));
+    }
+    list.forEach(function (a) {
+      children.push(listItemCard({
+        iconEmoji: '📣', tileColor: '#F8EBEC', title: a.title,
+        meta: a.className + ' · ' + a.body,
+        status: 'Ubah', onTap: function () { openOperatorAnnouncementForm(a); }
+      }));
+      children.push(operatorRowActions([
+        operatorLink('Ubah', function () { openOperatorAnnouncementForm(a); }),
+        operatorLink('Hapus', function () {
+          ANNOUNCEMENTS = ANNOUNCEMENTS.filter(function (x) { return x.id !== a.id; });
+          persistState();
+          render();
+        })
+      ]));
+    });
+
+    children.push(operatorBtn('+ Tambah pengumuman', function () { openOperatorAnnouncementForm(null); }));
+    children.push(el('p', {
+      class: 't-small', style: 'margin-top:12px;color:var(--muted);font-size:12px',
+      text: 'Pengumuman sekolah muncul di beranda siswa, orang tua, dan guru.'
+    }));
+    return el('div', {}, children);
+  }
+
+  function openOperatorAnnouncementForm(announcement) {
+    var draft = announcement
+      ? { id: announcement.id, title: announcement.title, body: announcement.body,
+          className: announcement.className, error: '' }
+      : { id: '', title: '', body: '', className: 'Semua kelas', error: '' };
+
+    function refresh() {
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', {
+          class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
+          text: draft.id ? 'Ubah Pengumuman' : 'Buat Pengumuman'
+        }),
+        el('p', { class: 't-muted', style: 'margin-bottom:14px', text: 'Tersimpan di perangkat ini.' }),
+        el('p', { class: 't-label', style: 'margin-bottom:8px', text: 'Judul' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.title, placeholder: 'Judul pengumuman',
+          'aria-label': 'Judul pengumuman',
+          oninput: function (e) { draft.title = e.target.value; draft.error = ''; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Isi pengumuman' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.body, placeholder: 'Isi pengumuman',
+          'aria-label': 'Isi pengumuman',
+          oninput: function (e) { draft.body = e.target.value; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Untuk kelas' }),
+        chips(operatorFilterOptions(), draft.className, function (v) { draft.className = v; refresh(); }),
+        draft.error ? el('p', { class: 'notice-title', style: 'margin:0 0 10px 0', text: draft.error }) : null,
+        operatorBtn('Simpan pengumuman', function () {
+          var title = (draft.title || '').trim();
+          var body = (draft.body || '').trim();
+          if (!title || !body) {
+            draft.error = 'Isi judul dan isi pengumuman.';
+            refresh();
+            return;
+          }
+          var record = {
+            id: draft.id || ('local-ann-' + Date.now()),
+            category: 'PENGUMUMAN SEKOLAH',
+            title: title,
+            detail: draft.id ? 'Diperbarui operator sekolah' : 'Baru saja · ' + draft.className,
+            body: body,
+            className: draft.className
+          };
+          var exists = false;
+          ANNOUNCEMENTS = ANNOUNCEMENTS.map(function (a) {
+            if (a.id === record.id) { exists = true; return record; }
+            return a;
+          });
+          if (!exists) ANNOUNCEMENTS = [record].concat(ANNOUNCEMENTS);
+          persistState();
+          closeSheet();
+          render();
+        }),
+        draft.id ? operatorLink('Hapus pengumuman ini', function () {
+          ANNOUNCEMENTS = ANNOUNCEMENTS.filter(function (a) { return a.id !== draft.id; });
+          persistState();
+          closeSheet();
+          render();
+        }) : null,
+        operatorLink('Batal', function () { closeSheet(); render(); })
+      ]));
+    }
+    refresh();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Operator sekolah: agenda
+   * ------------------------------------------------------------------ */
+  function renderOperatorAgenda() {
+    var filter = state.filter === 'Semua kelas' ? 'Semua kelas' : state.filter;
+    var list = filter === 'Semua kelas'
+      ? CLASS_EVENTS
+      : CLASS_EVENTS.filter(function (e) { return e.className === filter; });
+
+    var children = [
+      pageHeader('Agenda Sekolah', CLASS_EVENTS.length + ' agenda tersimpan', function () {
+        go('operator-beranda');
+      }),
+      chips(operatorFilterOptions(), filter, function (v) {
+        state.filter = v;
+        render();
+      })
+    ];
+
+    if (!list.length) {
+      children.push(noticeCard('Belum ada agenda', 'Belum ada agenda untuk kelas ini.'));
+    }
+    list.forEach(function (e) {
+      children.push(listItemCard({
+        iconEmoji: '📅', tileColor: '#F8EBEC', title: e.title,
+        meta: e.className + ' · ' + e.date + (e.note ? ' · ' + e.note : ''),
+        status: 'Ubah', onTap: function () { openOperatorAgendaForm(e); }
+      }));
+      children.push(operatorRowActions([
+        operatorLink('Ubah', function () { openOperatorAgendaForm(e); }),
+        operatorLink('Hapus', function () {
+          CLASS_EVENTS = CLASS_EVENTS.filter(function (x) { return x.id !== e.id; });
+          persistState();
+          render();
+        })
+      ]));
+    });
+
+    children.push(operatorBtn('+ Tambah agenda', function () { openOperatorAgendaForm(null); }));
+    children.push(el('p', {
+      class: 't-small', style: 'margin-top:12px;color:var(--muted);font-size:12px',
+      text: 'Agenda sekolah tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'
+    }));
+    return el('div', {}, children);
+  }
+
+  function openOperatorAgendaForm(event) {
+    var draft = event
+      ? { id: event.id, title: event.title, note: event.note || '', date: event.date,
+          className: event.className, error: '' }
+      : { id: '', title: '', note: '', date: dateKey(new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate())),
+          className: operatorClassOptions()[0] || 'Kelas 1', error: '' };
+
+    function refresh() {
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', {
+          class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
+          text: draft.id ? 'Ubah Agenda' : 'Tambah Agenda'
+        }),
+        el('p', { class: 't-muted', style: 'margin-bottom:14px', text: 'Tersimpan di perangkat ini.' }),
+        el('p', { class: 't-label', style: 'margin-bottom:8px', text: 'Judul agenda' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.title, placeholder: 'Judul agenda',
+          'aria-label': 'Judul agenda',
+          oninput: function (e) { draft.title = e.target.value; draft.error = ''; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Tanggal (YYYY-MM-DD)' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.date, placeholder: '2026-11-07',
+          'aria-label': 'Tanggal agenda',
+          oninput: function (e) { draft.date = e.target.value; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Untuk kelas' }),
+        chips(operatorClassOptions(), draft.className, function (v) { draft.className = v; refresh(); }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Catatan (opsional)' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.note, placeholder: 'Catatan kegiatan',
+          'aria-label': 'Catatan agenda',
+          oninput: function (e) { draft.note = e.target.value; }
+        }),
+        draft.error ? el('p', { class: 'notice-title', style: 'margin:0 0 10px 0', text: draft.error }) : null,
+        operatorBtn('Simpan agenda', function () {
+          var title = (draft.title || '').trim();
+          if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(draft.date)) {
+            draft.error = 'Isi judul dan tanggal valid dengan format YYYY-MM-DD.';
+            refresh();
+            return;
+          }
+          var record = {
+            id: draft.id || ('local-event-' + Date.now()),
+            title: title,
+            note: (draft.note || '').trim(),
+            date: draft.date,
+            className: draft.className,
+            time: event && event.time ? event.time : '—'
+          };
+          var exists = false;
+          CLASS_EVENTS = CLASS_EVENTS.map(function (x) {
+            if (x.id === record.id) { exists = true; return record; }
+            return x;
+          });
+          if (!exists) CLASS_EVENTS = CLASS_EVENTS.concat([record]);
+          persistState();
+          closeSheet();
+          render();
+        }),
+        draft.id ? operatorLink('Hapus agenda ini', function () {
+          CLASS_EVENTS = CLASS_EVENTS.filter(function (x) { return x.id !== draft.id; });
+          persistState();
+          closeSheet();
+          render();
+        }) : null,
+        operatorLink('Batal', function () { closeSheet(); render(); })
+      ]));
+    }
+    refresh();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Operator sekolah: nilai
+   * ------------------------------------------------------------------ */
+  function renderOperatorNilai() {
+    var options = operatorClassOptions();
+    var className = state.filter === 'Semua kelas'
+      ? (options[0] || 'Kelas 1')
+      : state.filter;
+    var students = rosterForClass(className);
+    var average = operatorRosterScores(className);
+
+    var children = [
+      pageHeader('Nilai Kelas', className, function () { go('operator-beranda'); }),
+      chips(options, className, function (v) {
+        state.filter = v;
+        render();
+      }),
+      el('p', {
+        class: 't-muted', style: 'margin:4px 0 12px 0',
+        text: average === null
+          ? 'Belum ada nilai yang diisi untuk kelas ini.'
+          : 'Rata-rata kelas: ' + average.toFixed(1)
+      })
+    ];
+
+    if (!students.length) {
+      children.push(noticeCard('Belum ada siswa', 'Belum ada siswa di kelas ini.'));
+    }
+    students.forEach(function (s) {
+      var score = state.rosterScores[s.id];
+      children.push(listItemCard({
+        iconEmoji: s.gender === 'P' ? '👧🏻' : '👦🏻', tileColor: '#F8EBEC', title: s.name,
+        meta: 'NISN ' + (s.nisn || '-'),
+        status: score === undefined ? 'Belum ada nilai' : 'Nilai ' + score,
+        onTap: function () { openOperatorScoreForm(s); }
+      }));
+      children.push(operatorRowActions([
+        operatorLink('Ubah nilai', function () { openOperatorScoreForm(s); }),
+        operatorLink('Hapus nilai', function () {
+          delete state.rosterScores[s.id];
+          persistState();
+          render();
+        })
+      ]));
+    });
+
+    children.push(el('p', {
+      class: 't-small', style: 'margin-top:12px;color:var(--muted);font-size:12px',
+      text: 'Nilai kosong berarti belum dinilai - tidak ada angka contoh yang dibuat operator.'
+    }));
+    return el('div', {}, children);
+  }
+
+  function openOperatorScoreForm(student) {
+    var draft = {
+      id: student.id,
+      value: state.rosterScores[student.id] === undefined
+        ? ''
+        : String(state.rosterScores[student.id]),
+      error: ''
+    };
+
+    function refresh() {
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', {
+          class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
+          text: 'Nilai ' + student.name
+        }),
+        el('p', { class: 't-muted', style: 'margin-bottom:14px', text: 'Nilai ringkas 0-100 · data lokal' }),
+        el('input', {
+          class: 'karsa-input', type: 'number', value: draft.value, placeholder: 'Nilai 0-100',
+          'aria-label': 'Nilai siswa',
+          oninput: function (e) { draft.value = e.target.value; draft.error = ''; }
+        }),
+        draft.error ? el('p', { class: 'notice-title', style: 'margin:0 0 10px 0', text: draft.error }) : null,
+        operatorBtn('Simpan nilai', function () {
+          var raw = (draft.value || '').trim();
+          if (raw === '') {
+            delete state.rosterScores[draft.id];
+          } else {
+            var parsed = parseFloat(raw);
+            if (!isFinite(parsed) || parsed < 0 || parsed > 100) {
+              draft.error = 'Nilai harus antara 0 dan 100.';
+              refresh();
+              return;
+            }
+            state.rosterScores[draft.id] = parsed;
+          }
+          persistState();
+          closeSheet();
+          render();
+        }),
+        operatorLink('Batal', function () { closeSheet(); render(); })
+      ]));
+    }
+    refresh();
+  }
+
+  /* Memilih gambar untuk satu slot media (input file tersembunyi). */
+  function pickMediaImage(slotKey) {
+    var input = el('input', { type: 'file', accept: 'image/png,image/jpeg', style: 'display:none' });
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        state.mediaAssets[slotKey] = String(reader.result);
+        persistState();
+        render();
+      };
+      reader.readAsDataURL(file);
+    });
+    document.body.appendChild(input);
+    input.click();
+    if (input.remove) input.remove();
+  }
+
+  /* Form tambah / ubah data siswa. */
+  function openStudentForm(student) {
+    var draft = student
+      ? { id: student.id, name: student.name, nisn: student.nisn, className: student.className,
+          gender: student.gender, parentName: student.parentName, active: student.active, error: '' }
+      : { id: '', name: '', nisn: '', className: operatorClassOptions()[0] || 'Kelas 1',
+          gender: 'L', parentName: '', active: true, error: '' };
+
+    function refresh() {
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', {
+          class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
+          text: draft.id ? 'Ubah Data Siswa' : 'Tambah Siswa'
+        }),
+        el('p', {
+          class: 't-muted', style: 'margin-bottom:14px',
+          text: 'Perubahan langsung tersimpan di perangkat ini'
+        }),
+        el('p', { class: 't-label', style: 'margin-bottom:8px', text: 'Nama lengkap' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.name, placeholder: 'Nama siswa',
+          'aria-label': 'Nama siswa',
+          oninput: function (e) { draft.name = e.target.value; draft.error = ''; }
+        }),
+        el('p', { class: 't-label', style: 'margin-bottom:8px', text: 'NISN' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.nisn, placeholder: 'Nomor induk siswa',
+          'aria-label': 'NISN',
+          oninput: function (e) { draft.nisn = e.target.value; }
+        }),
+        el('p', { class: 't-label', style: 'margin-bottom:8px', text: 'Kelas' }),
+        chips(operatorClassOptions(), draft.className, function (v) { draft.className = v; refresh(); }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Jenis kelamin' }),
+        chips(['L', 'P'], draft.gender, function (v) { draft.gender = v; refresh(); }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Orang tua / wali' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.parentName,
+          placeholder: 'Nama orang tua atau wali', 'aria-label': 'Nama orang tua',
+          oninput: function (e) { draft.parentName = e.target.value; }
+        }),
+        draft.error ? el('p', { class: 'notice-title', style: 'margin:0 0 10px 0', text: draft.error }) : null,
+        el('button', {
+          class: 'karsa-btn clay-raised pressable', type: 'button',
+          style: 'border:none;cursor:pointer',
+          onclick: function () {
+            var name = (draft.name || '').trim();
+            if (!name) {
+              draft.error = 'Nama siswa tidak boleh kosong.';
+              refresh();
+              return;
+            }
+            var record = {
+              id: draft.id || ('siswa-' + Date.now()),
+              nisn: (draft.nisn || '').trim(),
+              name: name,
+              className: draft.className,
+              gender: draft.gender,
+              parentName: (draft.parentName || '').trim(),
+              active: draft.active
+            };
+            var exists = false;
+            state.roster = state.roster.map(function (s) {
+              if (s.id === record.id) { exists = true; return record; }
+              return s;
+            });
+            if (!exists) state.roster = [record].concat(state.roster);
+            persistState();
+            closeSheet();
+            render();
+          }
+        }, ['Simpan data siswa']),
+        draft.id ? el('button', {
+          class: 't-link pressable', type: 'button', style: 'margin-top:12px;display:block;width:100%',
+          onclick: function () {
+            state.roster = state.roster.filter(function (s) { return s.id !== draft.id; });
+            persistState();
+            closeSheet();
+            render();
+          }
+        }, ['Hapus siswa ini']) : null,
+        el('button', {
+          class: 't-link pressable', type: 'button', style: 'margin-top:12px;display:block;width:100%',
+          onclick: function () { closeSheet(); render(); }
+        }, ['Batal'])
+      ]));
+    }
+    refresh();
   }
 
   /* ---------------- Shared pages ---------------- */
@@ -2895,6 +4448,7 @@
   var SCREENS = [
     { id: 'splash', label: 'Splash', group: 'Umum', render: renderSplash, nav: null },
     { id: 'welcome', label: 'Pilih Peran', group: 'Umum', render: renderWelcome, nav: null },
+    { id: 'login-operator', label: 'Login · Operator Sekolah', group: 'Umum', render: function () { return renderLogin('operator'); }, nav: null },
     { id: 'login-wali', label: 'Login · Wali Kelas', group: 'Umum', render: function () { return renderLogin('wali'); }, nav: null },
     { id: 'login-guru', label: 'Login · Guru', group: 'Umum', render: function () { return renderLogin('guru'); }, nav: null },
     { id: 'login-ortu', label: 'Login · Orang Tua', group: 'Umum', render: function () { return renderLogin('orangtua'); }, nav: null },
@@ -2917,6 +4471,15 @@
     { id: 'ortu-tugas', label: 'Orang Tua · Tugas', group: 'Orang Tua', render: renderOrtuTugas, nav: 'orangtua' },
     { id: 'ortu-latihan', label: 'Orang Tua · Latihan', group: 'Orang Tua', render: renderOrtuLatihan, nav: 'orangtua' },
     { id: 'ortu-profil', label: 'Orang Tua · Profil', group: 'Orang Tua', render: renderOrtuProfil, nav: 'orangtua' },
+    { id: 'operator-beranda', label: 'Operator · Beranda', group: 'Operator Sekolah', render: renderOperatorBeranda, nav: 'operator' },
+    { id: 'operator-siswa', label: 'Operator · Siswa', group: 'Operator Sekolah', render: renderOperatorSiswa, nav: 'operator' },
+    { id: 'operator-kelas', label: 'Operator · Kelas', group: 'Operator Sekolah', render: renderOperatorKelas, nav: 'operator' },
+    { id: 'operator-materi', label: 'Operator · Materi', group: 'Operator Sekolah', render: renderOperatorMateri, nav: 'operator' },
+    { id: 'operator-media', label: 'Operator · Media', group: 'Operator Sekolah', render: renderOperatorMedia, nav: 'operator' },
+    { id: 'operator-tugas', label: 'Operator · Tugas', group: 'Operator Sekolah', render: renderOperatorTugas, nav: null, role: 'operator' },
+    { id: 'operator-pengumuman', label: 'Operator · Pengumuman', group: 'Operator Sekolah', render: renderOperatorPengumuman, nav: null, role: 'operator' },
+    { id: 'operator-agenda', label: 'Operator · Agenda', group: 'Operator Sekolah', render: renderOperatorAgenda, nav: null, role: 'operator' },
+    { id: 'operator-nilai', label: 'Operator · Nilai', group: 'Operator Sekolah', render: renderOperatorNilai, nav: null, role: 'operator' },
     { id: 'materi', label: 'Materi', group: 'Umum', render: renderMateri, nav: null },
     { id: 'notifikasi', label: 'Notifikasi', group: 'Umum', render: renderNotifikasi, nav: null },
     { id: 'kuis', label: 'Kuis', group: 'Umum', render: renderQuiz, nav: null },
@@ -2945,7 +4508,8 @@
    * ------------------------------------------------------------------ */
   var NAV_ICONS = {
     Beranda: 'home', Anggota: 'people', Rekap: 'bar-chart', Agenda: 'calendar', Profil: 'person',
-    Kelas: 'grid', Tugas: 'book', Kalender: 'calendar', Latihan: 'albums'
+    Kelas: 'grid', Tugas: 'book', Kalender: 'calendar', Latihan: 'albums',
+    Siswa: 'person', Materi: 'book', Media: 'albums'
   };
 
   function navScreenFor(role, tab) {
@@ -2953,7 +4517,8 @@
     var map = {
       Beranda: prefix + 'beranda', Anggota: prefix + 'anggota', Rekap: prefix + 'recap',
       Agenda: prefix + 'agenda', Profil: prefix + 'profil', Kelas: prefix + 'kelas',
-      Tugas: prefix + 'tugas', Kalender: prefix + 'kalender', Latihan: prefix + 'latihan'
+      Tugas: prefix + 'tugas', Kalender: prefix + 'kalender', Latihan: prefix + 'latihan',
+      Siswa: prefix + 'siswa', Materi: prefix + 'materi', Media: prefix + 'media'
     };
     return map[tab] || prefix + 'beranda';
   }
@@ -2987,6 +4552,7 @@
     if (!resolved) return;
     var def = screenDef(resolved);
     state.screen = resolved;
+    if (def.role) state.role = def.role;
     if (def.nav) {
       state.role = def.nav;
       var tabs = ROLE_TABS[def.nav] || [];
@@ -3153,6 +4719,16 @@
     screens: SCREENS.map(function (s) { return s.id; }),
     go: go,
     toggleTheme: toggleTheme,
-    render: render
+    render: render,
+    persistState: persistState,
+    restoreState: restoreState,
+    materials: function () { return MATERIALS; },
+    tasks: function () { return TASKS; },
+    operator: {
+      classNames: operatorClassNames,
+      classOptions: operatorClassOptions,
+      subjectsForClass: subjectsForClass,
+      rosterScores: state.rosterScores
+    }
   };
 })();
