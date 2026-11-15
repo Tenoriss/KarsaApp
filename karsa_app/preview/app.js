@@ -432,6 +432,15 @@
     teacherName: 'Ibu Sari',
     waliName: 'Ibu Sari',
     operatorName: 'Operator Sekolah',
+    // Cermin OperatorProfile di Flutter: identitas kerja operator.
+    operatorProfile: {
+      name: 'Operator Sekolah',
+      nip: '19870003',
+      role: 'Operator Sekolah',
+      email: '',
+      phone: '',
+      unit: 'SD Karitas Purwokerto'
+    },
     personalDraft: null,
     readNotifications: {},
     mediaAssets: {},
@@ -963,6 +972,7 @@
         teacherName: state.teacherName,
         waliName: state.waliName,
         operatorName: state.operatorName,
+        operatorProfile: state.operatorProfile,
         studentClass: state.studentClass,
         parentClass: state.parentClass,
         religion: state.religion,
@@ -995,6 +1005,17 @@
         .forEach(function (key) {
           if (typeof saved[key] === 'string' && saved[key]) state[key] = saved[key];
         });
+      if (saved.operatorProfile && typeof saved.operatorProfile === 'object') {
+        var savedProfile = saved.operatorProfile;
+        ['name', 'nip', 'role', 'email', 'phone', 'unit'].forEach(function (key) {
+          if (typeof savedProfile[key] === 'string') {
+            state.operatorProfile[key] = savedProfile[key];
+          }
+        });
+        if (typeof savedProfile.name === 'string' && savedProfile.name) {
+          state.operatorName = savedProfile.name;
+        }
+      }
       if (saved.readNotifications && typeof saved.readNotifications === 'object') {
         state.readNotifications = saved.readNotifications;
       }
@@ -1708,10 +1729,16 @@
     var isStudent = state.role === 'siswa';
     var isLearner = isStudent || state.role === 'orangtua';
     if (!state.personalDraft) {
+      var op = state.operatorProfile || {};
       state.personalDraft = {
         name: currentPersonalName(),
         className: isStudent ? state.studentClass : state.parentClass,
         religion: state.religion,
+        nip: op.nip || '',
+        role: op.role || '',
+        email: op.email || '',
+        phone: op.phone || '',
+        unit: op.unit || '',
         error: ''
       };
     }
@@ -1729,8 +1756,11 @@
         }),
         el('p', {
           class: 't-muted', style: 'margin-bottom:14px',
-          text: 'Data pribadi tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'
+          text: state.role === 'operator'
+            ? 'Identitas kerja operator tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'
+            : 'Data pribadi tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'
         }),
+        state.role === 'operator' ? operatorProfileHero() : null,
         personalInfoForm(),
         el('button', {
           class: 'karsa-btn clay-raised pressable', type: 'button',
@@ -1743,6 +1773,59 @@
           onclick: function () { closeSheet(); render(); }
         }, ['Batal'])
       ]));
+    }
+
+    // Indikator kelengkapan profil operator (6 kolom).
+    function operatorProfileHero() {
+      var op = state.operatorProfile || {};
+      var parts = (op.name || '').trim().split(/\s+/).filter(function (w) { return w; });
+      var initials = parts.length
+        ? (parts.length === 1
+            ? parts[0].charAt(0)
+            : parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+        : '?';
+      var filled = ['name', 'nip', 'role', 'email', 'phone', 'unit']
+        .filter(function (k) { return (op[k] || '').trim(); }).length;
+      var contact = [op.email, op.phone].filter(function (v) { return v; }).join(' · ');
+
+      return el('div', { class: 'clay-soft', style: 'padding:16px;margin-bottom:16px' }, [
+        el('div', { style: 'display:flex;align-items:center;gap:12px' }, [
+          el('div', {
+            style: 'width:56px;height:56px;border-radius:28px;background:#fff;display:flex;' +
+                   'align-items:center;justify-content:center;font-weight:800;font-size:19px;color:var(--rose)'
+          }, [initials]),
+          el('div', { style: 'flex:1;min-width:0' }, [
+            el('p', { class: 't-item-title', style: 'margin:0', text: op.name || 'Operator Sekolah' }),
+            el('p', { class: 't-small', style: 'margin:2px 0 0 0',
+              text: [op.role, op.nip ? 'NIP ' + op.nip : ''].filter(function (v) { return v; }).join(' · ') }),
+            op.unit ? el('p', { class: 't-small', style: 'margin:2px 0 0 0', text: op.unit }) : null
+          ])
+        ]),
+        contact ? el('p', { class: 't-small', style: 'margin:10px 0 0 0', text: contact }) : null,
+        el('div', {
+          style: 'height:7px;border-radius:8px;background:var(--line);margin-top:12px;overflow:hidden'
+        }, [
+          el('div', {
+            style: 'height:100%;width:' + Math.round(filled / 6 * 100) + '%;background:var(--rose)'
+          })
+        ]),
+        el('p', { class: 't-small', style: 'margin:6px 0 0 0',
+          text: filled >= 6
+            ? 'Profil lengkap - semua kolom terisi.'
+            : 'Profil ' + filled + '/6 kolom terisi. Lengkapi surel dan telepon agar sekolah mudah menghubungi Anda.' })
+      ]);
+    }
+
+    function operatorInput(field, placeholder, ariaLabel) {
+      return el('input', {
+        class: 'karsa-input', type: field === 'email' ? 'email' : (field === 'phone' ? 'tel' : 'text'),
+        value: draft[field] || '', id: 'pi-' + field,
+        placeholder: placeholder, 'aria-label': ariaLabel,
+        oninput: function (e) {
+          draft[field] = e.target.value;
+          draft.error = '';
+        }
+      });
     }
 
     function personalInfoForm() {
@@ -1778,6 +1861,31 @@
         nameInput,
         draft.error ? el('p', {
           class: 'notice-title', style: 'margin:0 0 10px 0', text: draft.error
+        }) : null,
+        state.role === 'operator' ? el('p', {
+          class: 't-label', style: 'margin:6px 0 8px 0', text: 'NIP'
+        }) : null,
+        state.role === 'operator' ? operatorInput('nip', 'Nomor induk pegawai', 'NIP operator') : null,
+        state.role === 'operator' ? el('p', {
+          class: 't-label', style: 'margin:12px 0 8px 0', text: 'Jabatan'
+        }) : null,
+        state.role === 'operator' ? operatorInput('role', 'Mis. Operator Sekolah', 'Jabatan operator') : null,
+        state.role === 'operator' ? el('p', {
+          class: 't-label', style: 'margin:12px 0 8px 0', text: 'Unit kerja'
+        }) : null,
+        state.role === 'operator' ? operatorInput('unit', 'Mis. SD Karitas Purwokerto', 'Unit kerja operator') : null,
+        state.role === 'operator' ? el('p', {
+          class: 't-label', style: 'margin:16px 0 8px 0', text: 'Surel'
+        }) : null,
+        state.role === 'operator' ? operatorInput('email', 'nama@sekolah.sch.id', 'Surel operator') : null,
+        state.role === 'operator' ? el('p', {
+          class: 't-label', style: 'margin:12px 0 8px 0', text: 'Telepon'
+        }) : null,
+        state.role === 'operator' ? operatorInput('phone', '08xxxxxxxxxx', 'Telepon operator') : null,
+        state.role === 'operator' ? el('p', {
+          class: 't-small', style: 'margin:2px 0 14px 0',
+          text: 'Nama dan NIP wajib diisi. Surel dan telepon boleh dikosongkan, tetapi kalau '
+              + 'diisi formatnya harus benar.'
         }) : null,
         isLearner ? el('p', {
           class: 't-label', style: 'margin-bottom:8px',
@@ -1822,7 +1930,44 @@
     } else if (state.role === 'guru') {
       state.teacherName = name;
     } else if (state.role === 'operator') {
-      // Operator sekolah bukan pelajar: hanya namanya yang tersimpan.
+      // Operator punya profil kerja lengkap; validasi cermin
+      // AppState.saveOperatorProfileForm().
+      var nip = (draft.nip || '').trim();
+      var email = (draft.email || '').trim();
+      var phone = (draft.phone || '').trim();
+      if (!nip) {
+        draft.error = 'NIP tidak boleh kosong.';
+        openPersonalInfoForm();
+        return;
+      }
+      if (!/^[0-9]{6,20}$/.test(nip)) {
+        draft.error = 'NIP harus berupa 6-20 angka.';
+        openPersonalInfoForm();
+        return;
+      }
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        draft.error = 'Format surel belum benar, mis. nama@sekolah.sch.id';
+        openPersonalInfoForm();
+        return;
+      }
+      if (phone) {
+        if (!/^[0-9+()\-\s]+$/.test(phone) ||
+            phone.replace(/\D/g, '').length < 8 ||
+            phone.replace(/\D/g, '').length > 16) {
+          draft.error = 'Nomor telepon harus 8-16 angka.';
+          openPersonalInfoForm();
+          return;
+        }
+      }
+      var base = state.operatorProfile || {};
+      state.operatorProfile = {
+        name: name,
+        nip: nip,
+        role: (draft.role || '').trim() || base.role || 'Operator Sekolah',
+        email: email,
+        phone: phone,
+        unit: (draft.unit || '').trim() || base.unit || 'SD Karitas Purwokerto'
+      };
       state.operatorName = name;
     } else {
       state.studentName = name;
@@ -2787,12 +2932,52 @@
           : custom + ' grafis memakai gambar pilihan operator',
         status: 'Ubah', onTap: function () { go('operator-media'); }
       }),
-      listItemCard({
-        iconEmoji: '👤', tileColor: '#F8EBEC', title: 'Ubah data operator',
-        meta: state.operatorName + ' · NIP ' + ACCOUNTS.operator.id,
-        status: 'Ubah', onTap: function () { openSetting('Informasi pribadi'); }
-      })
+      operatorIdentityCard()
     ]);
+  }
+
+  /* Kartu identitas operator: cermin _OperatorIdentityCard di Flutter. */
+  function operatorIdentityCard() {
+    var op = state.operatorProfile || {};
+    var parts = (op.name || '').trim().split(/\s+/).filter(function (w) { return w; });
+    var initials = parts.length
+      ? (parts.length === 1
+          ? parts[0].charAt(0)
+          : parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+      : '?';
+    var filled = ['name', 'nip', 'role', 'email', 'phone', 'unit']
+      .filter(function (k) { return (op[k] || '').trim(); }).length;
+    var contact = [op.email, op.phone].filter(function (v) { return v; }).join(' · ');
+
+    var card = el('div', {
+      class: 'clay-soft pressable',
+      style: 'padding:16px;margin-top:4px;cursor:pointer',
+      onclick: function () { openSetting('Informasi pribadi'); },
+      role: 'button', tabindex: '0',
+      'aria-label': 'Ubah data operator',
+      onkeydown: function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSetting('Informasi pribadi'); }
+      }
+    }, [
+      el('div', { style: 'display:flex;align-items:center;gap:12px' }, [
+        el('div', {
+          style: 'width:48px;height:48px;border-radius:24px;background:#fff;display:flex;' +
+                 'align-items:center;justify-content:center;font-weight:800;font-size:16px;color:var(--rose)'
+        }, [initials]),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 't-item-title', style: 'margin:0', text: op.name || 'Operator Sekolah' }),
+          el('p', { class: 't-small', style: 'margin:2px 0 0 0',
+            text: [op.role, op.nip ? 'NIP ' + op.nip : ''].filter(function (v) { return v; }).join(' · ') })
+        ]),
+        el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('chevron-forward', 18)])
+      ]),
+      contact ? el('p', { class: 't-small', style: 'margin:10px 0 0 0', text: contact }) : null,
+      el('p', { class: 't-small', style: 'margin:10px 0 0 0;color:var(--rose);font-weight:700',
+        text: filled < 6
+          ? 'Lengkapi data pribadi (' + filled + '/6 kolom)'
+          : 'Data pribadi sudah lengkap' })
+    ]);
+    return card;
   }
 
   function renderOperatorSiswa() {

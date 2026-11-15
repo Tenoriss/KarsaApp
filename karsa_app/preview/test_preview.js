@@ -1314,24 +1314,104 @@ preview.state.filter = 'Semua kelas';
 preview.state.role = 'operator';
 preview.state.studentName = 'Dimas Nugroho';
 preview.go('operator-beranda');
-const opInfoCard = viewport.querySelectorAll('.list-item-card')
-  .filter((c) => (c.textContent || '').indexOf('Ubah data operator') >= 0)[0];
-ok(!!opInfoCard, 'the operator home can open the personal info form');
+// Mock DOM tidak mendukung selector `[attr=value]`; saring manual.
+const opInfoCard = viewport.querySelectorAll('[aria-label]')
+  .filter((n) => n.getAttribute('aria-label') === 'Ubah data operator')[0];
+ok(!!opInfoCard, 'the operator home renders the identity card');
 if (opInfoCard) {
+  // Kartu identitas menampilkan jabatan, NIP, dan indikator kelengkapan.
+  ok(viewport.textContent.indexOf('Operator Sekolah') >= 0,
+    'the identity card shows the operator role');
+  ok(viewport.textContent.indexOf('NIP 19870003') >= 0,
+    'the identity card shows the operator NIP');
+  ok(/Lengkapi data pribadi \(\d\/6 kolom\)/.test(viewport.textContent),
+    'the identity card shows how complete the profile is');
+  ok(viewport.textContent.indexOf('Data pribadi sudah lengkap') < 0,
+    'the demo operator profile is reported as incomplete until contact is filled');
+
   opInfoCard.click();
-  const opNameInput = sheetPanel.querySelectorAll('input')[0];
+  ok(sheetBackdrop.hidden === false, 'the operator identity card opens the personal info sheet');
+  ok(sheetPanel.textContent.indexOf('Identitas kerja operator') >= 0,
+    'the operator sheet explains that this is work identity');
+
+  const opNameInput = sheetPanel.querySelectorAll('#pi-name')[0];
   ok(!!opNameInput, 'the operator personal info form has a name input');
+  // Form profil operator lengkap: NIP, jabatan, unit, surel, telepon.
+  const opFieldIds = ['pi-name', 'pi-nip', 'pi-role', 'pi-unit', 'pi-email', 'pi-phone'];
+  eq(opFieldIds.filter((id) => sheetPanel.querySelectorAll('#' + id).length === 1).length, 6,
+    'the operator personal info form has all six profile fields');
+
+  const field = (id) => sheetPanel.querySelectorAll('#' + id)[0];
+  const typeInto = (id, value) => {
+    const input = field(id);
+    if (!input) return;
+    input.value = value;
+    input.dispatch('input', { target: input });
+  };
+
+  // NIP wajib.
   if (opNameInput) {
     opNameInput.value = 'Sari Operator';
     opNameInput.dispatch('input', { target: opNameInput });
   }
-  const opSave = sheetPanel.querySelectorAll('button')
+  typeInto('pi-nip', '');
+  const saveBtn = () => sheetPanel.querySelectorAll('button')
     .filter((b) => (b.textContent || '').indexOf('Simpan perubahan') >= 0)[0];
-  if (opSave) opSave.click();
-  eq(preview.state.operatorName, 'Sari Operator', 'the operator name is saved');
+  if (saveBtn()) saveBtn().click();
+  ok(sheetPanel.textContent.indexOf('NIP tidak boleh kosong.') >= 0,
+    'an empty NIP is rejected with a visible error');
+  eq(preview.state.operatorName, 'Operator Sekolah',
+    'a rejected save leaves the stored operator name untouched');
+
+  // NIP harus angka.
+  typeInto('pi-nip', 'abc');
+  if (saveBtn()) saveBtn().click();
+  ok(sheetPanel.textContent.indexOf('NIP harus berupa 6-20 angka.') >= 0,
+    'a non-numeric NIP is rejected with a visible error');
+
+  // Surel harus valid bila diisi.
+  typeInto('pi-nip', '19870099');
+  typeInto('pi-email', 'bukan-surel');
+  if (saveBtn()) saveBtn().click();
+  ok(sheetPanel.textContent.indexOf('Format surel belum benar') >= 0,
+    'an invalid email is rejected with a visible error');
+
+  // Telepon harus 8-16 angka.
+  typeInto('pi-email', 'sari@sekolah.sch.id');
+  typeInto('pi-phone', '123');
+  if (saveBtn()) saveBtn().click();
+  ok(sheetPanel.textContent.indexOf('Nomor telepon harus 8-16 angka.') >= 0,
+    'a too-short phone number is rejected with a visible error');
+
+  // Penyimpanan yang sah menyimpan seluruh kolom.
+  typeInto('pi-phone', '081234567890');
+  typeInto('pi-role', 'Operator Data');
+  typeInto('pi-unit', 'SD Karitas Purwokerto');
+  if (saveBtn()) saveBtn().click();
+  const savedProfile = preview.state.operatorProfile || {};
+  eq(savedProfile.name, 'Sari Operator', 'the operator name is saved');
+  eq(savedProfile.nip, '19870099', 'the operator NIP is saved');
+  eq(savedProfile.role, 'Operator Data', 'the operator role is saved');
+  eq(savedProfile.email, 'sari@sekolah.sch.id', 'the operator email is saved');
+  eq(savedProfile.phone, '081234567890', 'the operator phone is saved');
+  eq(savedProfile.unit, 'SD Karitas Purwokerto', 'the operator unit is saved');
   eq(preview.state.studentName, 'Dimas Nugroho',
-    'saving the operator name does not overwrite the student name');
+    'saving the operator profile does not overwrite the student name');
+
+  // Profil lengkap sekarang dilaporkan lengkap.
+  preview.go('operator-beranda');
+  ok(viewport.textContent.indexOf('Data pribadi sudah lengkap') >= 0,
+    'the identity card reports a complete profile once every field is filled');
+  ok(viewport.textContent.indexOf('sari@sekolah.sch.id') >= 0,
+    'the identity card shows the saved contact details');
+
+  // Kembalikan profil demo untuk pemeriksaan berikutnya.
+  preview.state.operatorProfile = {
+    name: 'Operator Sekolah', nip: '19870003', role: 'Operator Sekolah',
+    email: '', phone: '', unit: 'SD Karitas Purwokerto'
+  };
   preview.state.operatorName = 'Operator Sekolah';
+  if (typeof preview.persistState === 'function') preview.persistState();
 }
 
 // Login operator.

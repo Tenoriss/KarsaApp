@@ -17,6 +17,7 @@ import '../models/karsa_store_data.dart';
 import '../models/local_notification.dart';
 import '../models/material_item.dart';
 import '../models/practice_item.dart';
+import '../models/operator_profile.dart';
 import '../models/quiz_question.dart';
 import '../models/school_class.dart';
 import '../models/staff_account.dart';
@@ -106,6 +107,13 @@ class AppState extends ChangeNotifier {
 
   // Pencarian data siswa pada tab operator.
   String _operatorStudentQuery = '';
+
+  // Form "Informasi pribadi" operator: kolom selain nama.
+  String _draftOperatorNip = '';
+  String _draftOperatorRole = '';
+  String _draftOperatorEmail = '';
+  String _draftOperatorPhone = '';
+  String _draftOperatorUnit = '';
 
   // Pesan galat saat operator memilih gambar.
   String _operatorMediaError = '';
@@ -538,6 +546,118 @@ class AppState extends ChangeNotifier {
 
   /// Apakah role ini boleh mengelola seluruh isi aplikasi (operator sekolah).
   bool get canManageAll => _role?.canManageAll ?? false;
+
+  /// Profil lengkap operator sekolah (nama, NIP, jabatan, kontak, unit).
+  OperatorProfile get operatorProfile => _data.operatorProfile;
+
+  String get draftOperatorNip => _draftOperatorNip;
+  String get draftOperatorRole => _draftOperatorRole;
+  String get draftOperatorEmail => _draftOperatorEmail;
+  String get draftOperatorPhone => _draftOperatorPhone;
+  String get draftOperatorUnit => _draftOperatorUnit;
+
+  void setDraftOperatorNip(String value) {
+    _draftOperatorNip = value;
+    if (_error.isNotEmpty) _error = '';
+    notifyListeners();
+  }
+
+  void setDraftOperatorRole(String value) {
+    _draftOperatorRole = value;
+    if (_error.isNotEmpty) _error = '';
+    notifyListeners();
+  }
+
+  void setDraftOperatorEmail(String value) {
+    _draftOperatorEmail = value;
+    if (_error.isNotEmpty) _error = '';
+    notifyListeners();
+  }
+
+  void setDraftOperatorPhone(String value) {
+    _draftOperatorPhone = value;
+    if (_error.isNotEmpty) _error = '';
+    notifyListeners();
+  }
+
+  void setDraftOperatorUnit(String value) {
+    _draftOperatorUnit = value;
+    if (_error.isNotEmpty) _error = '';
+    notifyListeners();
+  }
+
+  /// Validering surel sederhana: cukup satu `@` dengan bagian sebelum/sesudah.
+  static bool isValidEmail(String value) {
+    final text = value.trim();
+    if (text.isEmpty) return true; // opsional
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(text);
+  }
+
+  /// Validering telepon: hanya digit, spasi, `+`, `-`, dan tanda kurung.
+  static bool isValidPhone(String value) {
+    final text = value.trim();
+    if (text.isEmpty) return true; // opsional
+    if (!RegExp(r'^[0-9+()\-\s]+$').hasMatch(text)) return false;
+    final digits = text.replaceAll(RegExp(r'\D'), '');
+    return digits.length >= 8 && digits.length <= 16;
+  }
+
+  /// Menyimpan seluruh profil operator dari form "Informasi pribadi".
+  ///
+  /// Mengembalikan `true` bila tersimpan. Kolom kontak boleh kosong, tetapi
+  /// nama wajib diisi dan format surel/telepon harus masuk akal supaya galat
+  /// bisa ditampilkan langsung di form, bukan diam-diam tersimpan.
+  bool saveOperatorProfileForm() {
+    final name = _draftTitle.trim();
+    if (name.isEmpty) {
+      _error = 'Nama operator tidak boleh kosong.';
+      notifyListeners();
+      return false;
+    }
+    final nip = _draftOperatorNip.trim();
+    if (nip.isEmpty) {
+      _error = 'NIP tidak boleh kosong.';
+      notifyListeners();
+      return false;
+    }
+    if (!RegExp(r'^[0-9]{6,20}$').hasMatch(nip)) {
+      _error = 'NIP harus berupa 6-20 angka.';
+      notifyListeners();
+      return false;
+    }
+    final email = _draftOperatorEmail.trim();
+    if (!isValidEmail(email)) {
+      _error = 'Format surel belum benar, mis. nama@sekolah.sch.id';
+      notifyListeners();
+      return false;
+    }
+    final phone = _draftOperatorPhone.trim();
+    if (!isValidPhone(phone)) {
+      _error = 'Nomor telepon harus 8-16 angka.';
+      notifyListeners();
+      return false;
+    }
+
+    final nextProfile = _data.operatorProfile.copyWith(
+      name: name,
+      nip: nip,
+      role: _draftOperatorRole.trim().isEmpty
+          ? _data.operatorProfile.role
+          : _draftOperatorRole.trim(),
+      email: email,
+      phone: phone,
+      unit: _draftOperatorUnit.trim().isEmpty
+          ? _data.operatorProfile.unit
+          : _draftOperatorUnit.trim(),
+    );
+    _error = '';
+    _screen = 'main';
+    _persistData(_data.copyWith(
+      operatorName: name,
+      operatorProfile: nextProfile,
+    ));
+    return true;
+  }
 
   /// Grafis yang dikelola operator sekolah.
   Map<String, AttachmentFile> get mediaAssets => _data.mediaAssets;
@@ -2191,6 +2311,14 @@ class AppState extends ChangeNotifier {
             : isTeacher
                 ? _data.teacherName
                 : _data.studentName;
+    if (isOperator) {
+      final profile = _data.operatorProfile;
+      _draftOperatorNip = profile.nip;
+      _draftOperatorRole = profile.role;
+      _draftOperatorEmail = profile.email;
+      _draftOperatorPhone = profile.phone;
+      _draftOperatorUnit = profile.unit;
+    }
     _error = '';
     _screen = 'setting';
     notifyListeners();
@@ -2213,6 +2341,12 @@ class AppState extends ChangeNotifier {
   }
 
   void savePersonalInfo() {
+    // Operator punya profil lengkap (NIP, jabatan, kontak, unit) sehingga
+    // validasinya ditangani terpisah.
+    if (isOperator) {
+      saveOperatorProfileForm();
+      return;
+    }
     final trimmed = _draftTitle.trim();
     if (trimmed.isEmpty) {
       _error = 'Nama tidak boleh kosong.';
@@ -2221,9 +2355,7 @@ class AppState extends ChangeNotifier {
     }
     _error = '';
     _screen = 'main';
-    if (isOperator) {
-      _persistData(_data.copyWith(operatorName: trimmed));
-    } else if (isWali) {
+    if (isWali) {
       _persistData(_data.copyWith(waliName: trimmed));
     } else if (isTeacher) {
       _persistData(_data.copyWith(teacherName: trimmed));

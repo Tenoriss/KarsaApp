@@ -30,12 +30,12 @@ sebagai rujukan audit dan perbandingan visual.
 
 | Komponen | Jumlah | Baris |
 | --- | --- | --- |
-| Berkas Dart (`lib/` + `test/`) | 119 | 15.867 |
-| Top-level class / enum / mixin | 144 | — |
+| Berkas Dart (`lib/` + `test/`) | 120 | 16.623 |
+| Top-level class / enum / mixin | 148 | — |
 | Layar/tab Flutter (`lib/features/`) | 53 berkas (11 di antaranya operator) | 7.626 |
 | Widget reusable (`lib/core/widgets/`) | 15 | — |
-| Model domain (`lib/models/`) | 20 | 1.391 |
-| Pratinjau HTML (`preview/`) | 7 berkas | 8.935 (JS/CSS/HTML/Python) |
+| Model domain (`lib/models/`) | 21 | 1.544 |
+| Pratinjau HTML (`preview/`) | 7 berkas | 9.200 (JS/CSS/HTML/Python) |
 
 ---
 
@@ -300,10 +300,10 @@ Pemeriksaan yang dilakukan:
 
 | Pemeriksaan | Perintah | Hasil |
 | --- | --- | --- |
-| Sintaks & struktur Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 119 berkas, 15.867 baris, 144 class/enum/mixin; semua import, aset, referensi member, inisialisasi field `final`, argumen bernama `Image`, null-check `.isEmpty`, dan import simbol lokal resolve |
+| Sintaks & struktur Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 120 berkas, 16.623 baris, 148 class/enum/mixin; semua import, aset, referensi member, inisialisasi field `final`, argumen bernama `Image`, null-check `.isEmpty`, dan import simbol lokal resolve |
 | Uji unit Flutter (disiapkan, belum dieksekusi) | `flutter test` | **Tidak dijalankan** — SDK tidak tersedia (termasuk uji baru: ringkasan nilai kelas + pengeditan data pribadi) |
 | Sintaks JS pratinjau | `node --check` | OK untuk `app.js`, `curriculum-data.js`, `test_preview.js`, `tool/generate_preview_data.js` |
-| Perilaku pratinjau (mock DOM) | `node karsa_app/preview/test_preview.js` | OK — 369 pemeriksaan lulus |
+| Perilaku pratinjau (mock DOM) | `node karsa_app/preview/test_preview.js` | OK — 388 pemeriksaan lulus |
 | Server pratinjau | `curl http://127.0.0.1:8000/...` | OK — `/healthz` 200, HTML/CSS/JS 200 + charset utf-8, 6 PNG 200, `Ionicons.ttf` 200, 404 untuk berkas tak dikenal |
 
 Rencana uji lengkap: [`03_TESTING_PLAN.md`](03_TESTING_PLAN.md).
@@ -366,8 +366,19 @@ HTML. Kode React Native di root repository tetap tidak disentuh.
 * **Persistensi**: array kosong yang tersimpan sengaja dihormati, sehingga
   data seed yang dihapus operator tidak muncul lagi setelah aplikasi dibuka
   ulang. Perilaku sama diterapkan di pratinjau lewat `restoreState()`.
+* **Profil operator lengkap**: halaman "Informasi pribadi" operator bukan lagi
+  satu kolom nama. `OperatorProfile` (model baru) menyimpan nama, NIP,
+  jabatan, unit kerja, surel, dan telepon; form menampilkan kartu identitas
+  dengan avatar inisial plus indikator kelengkapan 6 kolom, dan beranda
+  operator memuat kartu identitas yang sama sehingga entri ke halaman ini
+  mudah ditemukan. Data lama yang hanya punya `operatorName` tetap terbaca:
+  `OperatorProfile.fromSaved()` memakai nama tersimpan dan mengisi kolom lain
+  dengan nilai bawaan.
+* **Validasi profil**: nama dan NIP wajib (NIP 6-20 angka), surel harus
+  `x@y.z` bila diisi, telepon 8-16 angka bila diisi. Galat tampil di dalam
+  form dan tidak menyimpan apa pun.
 * **Regresi**: `test/operator_crud_test.dart` (Flutter, belum dieksekusi karena
-  SDK tidak ada) dan blok operator di `preview/test_preview.js` (369
+  SDK tidak ada) dan blok operator di `preview/test_preview.js` (388
   pemeriksaan lulus), termasuk pembuktian bahwa uji gagal bila perlindungan
   kelas terakhir atau penghapusan materi dimatikan.
 

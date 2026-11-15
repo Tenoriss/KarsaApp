@@ -33,7 +33,7 @@ SDK, dan (C) matriks ACCEPTANCE yang memetakan setiap criteria ke bukti.
 
 ### 2.1 Validasi statis Dart — `python3 tool/check_syntax.py`
 
-Memeriksa 119 berkas Dart (15.867 baris):
+Memeriksa 120 berkas Dart (16.623 baris):
 
 1. keseimbangan `{}`, `[]`, `()` di luar string/komentar;
 2. string literal (tunggal/ganda/triple) dan komentar tidak rusak;
@@ -57,7 +57,7 @@ Ketiganya sudah diperbaiki dan kini dijaga oleh pemeriksa statis.
 
 ```bash
 $ python3 karsa_app/tool/check_syntax.py
-OK: Checked 119 Dart files (15867 lines), 144 top-level classes/enums/mixins, all imports & assets resolved.
+OK: Checked 120 Dart files (16623 lines), 148 top-level classes/enums/mixins, all imports & assets resolved.
 ```
 
 ### 2.2 Uji unit Flutter — **disiapkan, belum dieksekusi**
@@ -84,7 +84,7 @@ flutter test
 
 ```bash
 $ node karsa_app/preview/test_preview.js
-Checks passed: 369
+Checks passed: 388
 ALL PREVIEW CHECKS PASSED
 ```
 
@@ -199,6 +199,9 @@ Untuk setiap peran: splash → pilih peran → login dengan akun demo → dashbo
 | N9 | Layar sangat kecil (320×568) & tablet (≥800dp) | Tidak ada overflow; shell maksimum 480px |
 | N10 | Geser cepat / putar layar | Tidak ada exception; state tidak hilang |
 | N11 | Operator menyimpan nilai `101`, `-1`, `NaN`, atau `abc` | Ditolak dengan pesan terlihat; nilai lama tetap tersimpan |
+| N20 | Operator mengosongkan NIP atau mengisi NIP non-angka | Ditolak dengan `NIP tidak boleh kosong.` / `NIP harus berupa 6-20 angka.`; tidak ada yang tersimpan |
+| N21 | Operator mengisi surel `bukan-surel` atau telepon `123` | Ditolak dengan pesan format yang terlihat; profil lama tetap utuh |
+| N22 | Operator menyimpan profil lalu aplikasi dibuka ulang | Nama, NIP, jabatan, unit, surel, dan telepon tetap ada; data lama tanpa `operatorProfile` tetap terbaca |
 | N12 | Operator menghapus kelas terakhir | Ditolak dengan `Minimal satu kelas sekolah harus tetap ada.`, form tetap terbuka |
 | N13 | Operator menghapus siswa/kelas/akun seed lalu membuka ulang aplikasi | Data yang dihapus tidak muncul kembali |
 | N14 | Operator membuat kelas bernama "Kelas Persiapan" | Semua mata pelajaran (termasuk IPAS) tersedia di form materi/tugas |
@@ -246,8 +249,8 @@ Untuk setiap peran: splash → pilih peran → login dengan akun demo → dashbo
 | A4 | Normalisasi `"IPA"` dan seeding demo | `KarsaStoreData.fromSavedJson()` | ✅ |
 | A5 | 5 peran + kredensial + dashboard/tab/profil berbeda | `AppState.authenticate()`, `lib/features/dashboard/*`, `lib/features/settings/profile_tab.dart` | ✅ |
 | A6 | Kurikulum utuh (9 mapel, 10 PG + 5 esai, 6 agama) | `lib/data/curriculum_data.dart` + `tool/generate_curriculum.py` | ✅ |
-| A7 | Struktur Flutter modular, tanpa layar placeholder / tombol mati | 119 berkas Dart, `tool/check_syntax.py` lolos | ✅ |
-| A8 | Pratinjau 38 layar, mobile-first, tanpa CDN, tanpa label "Pratinjau" | `karsa_app/preview/*`, `node karsa_app/preview/test_preview.js` (369 cek) | ✅ |
+| A7 | Struktur Flutter modular, tanpa layar placeholder / tombol mati | 120 berkas Dart, `tool/check_syntax.py` lolos | ✅ |
+| A8 | Pratinjau 38 layar, mobile-first, tanpa CDN, tanpa label "Pratinjau" | `karsa_app/preview/*`, `node karsa_app/preview/test_preview.js` (388 cek) | ✅ |
 | A8b | Peran operator sekolah lengkap, CRUD persisten, validasi terlihat, 5 tab | `lib/features/operator/*`, `providers/app_state.dart`, `test/operator_crud_test.dart`, blok operator di harness pratinjau | ✅ (uji Flutter belum dieksekusi) |
 | A9 | Ekspor XLSX & PDF benar-benar dapat dibuat & dibuka | `lib/services/grade_export_service.dart` | ⚠️ belum diuji di perangkat |
 | A10 | `flutter analyze` / `flutter test` hijau | — | ❌ **belum dijalankan** (SDK tidak ada) |
@@ -267,9 +270,9 @@ diuji. Tidak ada klaim "selesai" tanpa bukti eksekusi.
 
 | Pemeriksaan | Perintah | Hasil |
 | --- | --- | --- |
-| Sintaks Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 119 berkas / 15.867 baris / 144 class |
+| Sintaks Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 120 berkas / 16.623 baris / 148 class |
 | Sintaks JS | `node --check` ×4 | OK |
-| Harness pratinjau | `node karsa_app/preview/test_preview.js` | OK — 369 cek lulus |
+| Harness pratinjau | `node karsa_app/preview/test_preview.js` | OK — 388 cek lulus |
 | Regresi negatif | Varian scratch: perlindungan kelas terakhir dimatikan / penghapusan materi dibuat no-op / validasi IPAS-per-kelas dihapus / entri `operator` di `LOGIN_SCREEN` dihapus / label NIP staf dikembalikan ke NISN | Gagal sesuai dugaan (1, 3, 3, 4, dan 2 cek), membuktikan uji baru bermakna |
 | Regresi statis | Varian scratch: guard `existing == null` dihapus / tiga field `KarsaStoreData` dihapus dari konstruktor / import `karsa_icons.dart` dihapus | `check_syntax.py` gagal dengan 4 cek yang tepat menunjuk penyebabnya |
 | Server pratinjau | `curl` ×13 | OK — semua aset 200, `/healthz` 200 |

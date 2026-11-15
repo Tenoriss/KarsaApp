@@ -5,6 +5,7 @@ import 'attachment_file.dart';
 import 'class_event.dart';
 import 'local_notification.dart';
 import 'material_item.dart';
+import 'operator_profile.dart';
 import 'practice_item.dart';
 import 'school_class.dart';
 import 'staff_account.dart';
@@ -25,6 +26,11 @@ class KarsaStoreData {
 
   /// Nama operator sekolah.
   final String operatorName;
+
+  /// Profil lengkap operator sekolah: NIP, jabatan, kontak, dan unit kerja.
+  /// Disimpan terpisah dari `operatorName` supaya kompatibel dengan data lama
+  /// yang hanya punya nama.
+  final OperatorProfile operatorProfile;
   final bool notifications;
   final List<String> reviewed;
   final String childClass;
@@ -68,6 +74,7 @@ class KarsaStoreData {
     required this.waliName,
     required this.studentName,
     required this.operatorName,
+    required this.operatorProfile,
     required this.notifications,
     required this.reviewed,
     required this.childClass,
@@ -103,7 +110,8 @@ class KarsaStoreData {
       teacherName: 'Ibu Sari',
       waliName: 'Ibu Sari',
       studentName: 'Dimas Nugroho',
-      operatorName: 'Operator Sekolah',
+      operatorName: OperatorProfile.defaults().name,
+      operatorProfile: OperatorProfile.defaults(),
       notifications: true,
       reviewed: const <String>[],
       childClass: 'Kelas 1',
@@ -138,6 +146,7 @@ class KarsaStoreData {
     String? waliName,
     String? studentName,
     String? operatorName,
+    OperatorProfile? operatorProfile,
     bool? notifications,
     List<String>? reviewed,
     String? childClass,
@@ -171,6 +180,7 @@ class KarsaStoreData {
       waliName: waliName ?? this.waliName,
       studentName: studentName ?? this.studentName,
       operatorName: operatorName ?? this.operatorName,
+      operatorProfile: operatorProfile ?? this.operatorProfile,
       notifications: notifications ?? this.notifications,
       reviewed: reviewed ?? this.reviewed,
       childClass: childClass ?? this.childClass,
@@ -376,6 +386,10 @@ class KarsaStoreData {
       waliName: (saved['waliName'] ?? base.waliName).toString(),
       studentName: (saved['studentName'] ?? base.studentName).toString(),
       operatorName: (saved['operatorName'] ?? base.operatorName).toString(),
+      operatorProfile: OperatorProfile.fromSaved(
+        saved['operatorProfile'],
+        fallbackName: (saved['operatorName'] ?? base.operatorName).toString(),
+      ),
       notifications: saved['notifications'] is bool ? saved['notifications'] as bool : true,
       reviewed: (saved['reviewed'] is List)
           ? (saved['reviewed'] as List).map((e) => e.toString()).toList()
@@ -452,6 +466,7 @@ class KarsaStoreData {
       'waliName': waliName,
       'studentName': studentName,
       'operatorName': operatorName,
+      'operatorProfile': operatorProfile.toJson(),
       'notifications': notifications,
       'reviewed': reviewed,
       'childClass': childClass,

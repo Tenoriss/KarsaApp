@@ -153,6 +153,11 @@ Deep link memakai hash: `index.html#guru-tugas`, `#wali-recap`, `#wali-rekap`,
   lembar isinya (detail tugas atau materi) langsung dibuka. Notifikasi hanya
   untuk kelas belajar masing-masing (siswa: kelasnya, orang tua: kelas
   anaknya).
+* **Profil operator** — kartu identitas di beranda operator (avatar inisial,
+  jabatan, NIP, indikator kelengkapan) membuka form "Informasi pribadi" yang
+  berisi enam kolom: nama, NIP, jabatan, unit kerja, surel, dan telepon.
+  Nama/NIP wajib, surel dan telepon divalidasi formatnya, dan semuanya
+  tersimpan di `localStorage`.
 * **CRUD operator sekolah** — tambah/ubah/hapus siswa, kelas, akun guru/wali,
   materi, tugas, pengumuman, agenda, dan input nilai; semua lewat sheet form
   dengan validasi terlihat (kolom wajib, nilai 0-100, minimal satu kelas) dan
@@ -186,7 +191,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar pilih peran
 juga diuji satu per satu: masing-masing harus membuka layar login perannya
 sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak bereaksi),
 dan label medan masuk harus NIP untuk staf vs NISN untuk siswa/orang tua.
-Total **369 pemeriksaan**.
+Total **388 pemeriksaan**.
 
 ---
 

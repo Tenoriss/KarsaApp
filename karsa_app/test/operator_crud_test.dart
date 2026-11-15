@@ -413,6 +413,79 @@ void main() {
       );
     });
 
+    test('operator menyimpan profil kerja lengkap dengan validasi', () async {
+      final state = await loggedInOperator();
+
+      // Profil bawaan mengikuti akun demo.
+      expect(state.operatorProfile.nip, '19870003');
+      expect(state.operatorProfile.unit, 'SD Karitas Purwokerto');
+
+      // Nama kosong ditolak dan tidak mengubah apa pun.
+      state.openSetting('Informasi pribadi');
+      expect(state.draftOperatorNip, '19870003');
+      state.setDraftTitle('   ');
+      expect(state.saveOperatorProfileForm(), isFalse);
+      expect(state.error, 'Nama operator tidak boleh kosong.');
+      expect(state.operatorProfile.nip, '19870003');
+
+      // NIP wajib dan harus angka.
+      state.setDraftTitle('Sari Operator');
+      state.setDraftOperatorNip('');
+      expect(state.saveOperatorProfileForm(), isFalse);
+      expect(state.error, 'NIP tidak boleh kosong.');
+      state.setDraftOperatorNip('abc');
+      expect(state.saveOperatorProfileForm(), isFalse);
+      expect(state.error, 'NIP harus berupa 6-20 angka.');
+
+      // Surel harus valid bila diisi.
+      state.setDraftOperatorNip('19870099');
+      state.setDraftOperatorEmail('bukan-surel');
+      expect(state.saveOperatorProfileForm(), isFalse);
+      expect(state.error, 'Format surel belum benar, mis. nama@sekolah.sch.id');
+
+      // Telepon harus 8-16 angka.
+      state.setDraftOperatorEmail('sari@sekolah.sch.id');
+      state.setDraftOperatorPhone('123');
+      expect(state.saveOperatorProfileForm(), isFalse);
+      expect(state.error, 'Nomor telepon harus 8-16 angka.');
+
+      // Simpan yang sah menyimpan semua kolom dan menutup form.
+      state.setDraftOperatorPhone('081234567890');
+      state.setDraftOperatorRole('Operator Data');
+      expect(state.saveOperatorProfileForm(), isTrue);
+      expect(state.screen, 'main');
+      expect(state.operatorProfile.name, 'Sari Operator');
+      expect(state.operatorProfile.nip, '19870099');
+      expect(state.operatorProfile.role, 'Operator Data');
+      expect(state.operatorProfile.email, 'sari@sekolah.sch.id');
+      expect(state.operatorProfile.phone, '081234567890');
+      // Nama operator tidak menimpa nama siswa.
+      expect(state.data.studentName, 'Dimas Nugroho');
+
+      state.dispose();
+    });
+
+    test('profil operator tersimpan di store setelah dimuat ulang', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final state = await loggedInOperator();
+
+      state.openSetting('Informasi pribadi');
+      state.setDraftTitle('Sari Operator');
+      state.setDraftOperatorNip('19870099');
+      state.setDraftOperatorEmail('sari@sekolah.sch.id');
+      state.saveOperatorProfileForm();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      final reopened = AppState(autoLoad: false);
+      await reopened.loadFromStorage();
+      expect(reopened.operatorProfile.name, 'Sari Operator');
+      expect(reopened.operatorProfile.nip, '19870099');
+      expect(reopened.operatorProfile.email, 'sari@sekolah.sch.id');
+
+      state.dispose();
+      reopened.dispose();
+    });
+
     test('StaffAccount menyimpan peran dan kelas', () {
       const wali = StaffAccount(
         id: 'u1',

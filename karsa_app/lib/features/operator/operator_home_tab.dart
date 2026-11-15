@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/theme/clay_styles.dart';
 import '../../core/theme/karsa_theme.dart';
 import '../../core/widgets/karsa_button.dart';
 import '../../core/widgets/karsa_icons.dart';
@@ -9,6 +10,7 @@ import '../../core/widgets/motion_pressable.dart';
 import '../../core/widgets/notice_card.dart';
 import '../../core/widgets/page_header.dart';
 import '../../core/widgets/stat_card.dart';
+import '../../models/operator_profile.dart';
 import '../../providers/app_state.dart';
 import '../../shared/widgets/media_image.dart';
 
@@ -151,26 +153,104 @@ class OperatorHomeTab extends StatelessWidget {
           status: 'Ubah',
           onTap: () => state.changeTab('Media'),
         ),
-        const SizedBox(height: 4),
-        MotionPressable(
-          semanticsLabel: 'Ubah data operator',
-          onTap: () => state.openSetting('Informasi pribadi'),
-          child: Container(
-            margin: const EdgeInsets.only(top: 6),
-            padding: const EdgeInsets.symmetric(vertical: 13),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: c.card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: c.line),
-            ),
-            child: Text(
-              'Ubah data operator',
-              style: theme.text.itemTitle,
-            ),
-          ),
-        ),
+        const SizedBox(height: 10),
+        _OperatorIdentityCard(state: state, theme: theme),
       ],
+    );
+  }
+}
+
+/// Kartu identitas operator di beranda: avatar inisial, nama, jabatan, NIP,
+/// dan kelengkapan profil. Mengetuk kartu membuka form "Informasi pribadi".
+class _OperatorIdentityCard extends StatelessWidget {
+  final AppState state;
+  final KarsaThemeScope theme;
+
+  const _OperatorIdentityCard({required this.state, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = theme.colors;
+    final profile = state.operatorProfile;
+    final filled = profile.filledFields;
+
+    return MotionPressable(
+      semanticsLabel: 'Ubah data operator',
+      onTap: () => state.openSetting('Informasi pribadi'),
+      child: Container(
+        margin: const EdgeInsets.only(top: 4),
+        padding: const EdgeInsets.all(16),
+        decoration: ClayStyles.soft(
+          color: const Color(0xFFFBEAEC),
+          isDark: c.isDark,
+          radius: 20,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Container(
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.center,
+                  decoration: ClayStyles.soft(
+                    color: Colors.white,
+                    isDark: c.isDark,
+                    customRadius: BorderRadius.circular(24),
+                  ),
+                  child: Text(
+                    profile.initials,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: c.rose,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(profile.name, style: theme.text.itemTitle),
+                      const SizedBox(height: 2),
+                      Text(
+                        <String>[
+                          if (profile.role.isNotEmpty) profile.role,
+                          if (profile.nip.isNotEmpty) 'NIP ${profile.nip}',
+                        ].join(' · '),
+                        style: theme.text.smallMuted,
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(KarsaIcons.chevronForward, size: 18, color: c.rose),
+              ],
+            ),
+            if (profile.email.isNotEmpty || profile.phone.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 10),
+              Text(
+                <String>[
+                  if (profile.email.isNotEmpty) profile.email,
+                  if (profile.phone.isNotEmpty) profile.phone,
+                ].join(' · '),
+                style: theme.text.smallMuted,
+              ),
+            ],
+            const SizedBox(height: 10),
+            Text(
+              filled < OperatorProfile.totalFields
+                  ? 'Lengkapi data pribadi ($filled/${OperatorProfile.totalFields} kolom)'
+                  : 'Data pribadi sudah lengkap',
+              style: theme.text.smallMuted.copyWith(
+                color: c.rose,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
