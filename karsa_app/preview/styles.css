@@ -138,79 +138,24 @@ body.is-splash {
   user-select: none;
 }
 
-/* ------------------------------------------------------------------ *
- * Bingkai ponsel: pratinjau ini khusus mobile.
- * Di desktop, shell aplikasi duduk di dalam bezel berukuran ponsel supaya
- * proporsi, tinggi, dan lipatan konten terlihat sama seperti di HP.
- * Di ponsel asli (<= 560px atau pointer kasar), bezel dilepas dan shell
- * mengisi penuh layar tanpa hiasan.
- * ------------------------------------------------------------------ */
-.device-frame {
-  min-height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 28px 16px;
-}
-
-.device-frame__bezel {
-  position: relative;
-  padding: 12px;
-  border-radius: 52px;
-  background: linear-gradient(150deg, #33302F 0%, #201E22 55%, #2C2930 100%);
-  box-shadow:
-    0 2px 0 rgba(255, 255, 255, 0.28) inset,
-    0 30px 60px -18px rgba(48, 38, 44, 0.45),
-    0 10px 22px -12px rgba(48, 38, 44, 0.35);
-}
-
-.device-frame__screen {
-  position: relative;
-  width: 390px;
-  height: 844px;
-  border-radius: 42px;
-  overflow: hidden;
-  background: var(--bg);
-  box-shadow: 0 0 0 2px #0F0E11 inset;
-}
-
-/* Tombol samping perangkat, murni hiasan. */
-.device-frame__button {
-  position: absolute;
-  width: 3px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, #4A464C, #2A272C);
-}
-.device-frame__button--silent { top: 132px; left: -3px; height: 26px; }
-.device-frame__button--volup { top: 178px; left: -3px; height: 52px; }
-.device-frame__button--voldown { top: 244px; left: -3px; height: 52px; }
-.device-frame__button--power { top: 196px; right: -3px; height: 78px; }
-
-/* Notch: hanya hiasan, tidak menutupi konten (shell tetap mulai dari atas). */
-.device-notch {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 122px;
-  height: 26px;
-  border-radius: 14px;
-  background: #141317;
-  z-index: 30;
-  pointer-events: none;
-}
-
-/* Shell: mengisi layar ponsel di dalam frame. */
+/* Mobile-first App Shell: 100dvh di ponsel, kolom 480px di layar lebar.
+   Tidak ada bingkai perangkat - tampilan ini harus terasa seperti aplikasi
+   sungguhan di HP, bukan mockup. */
 .app-shell {
-  position: relative;
   width: 100%;
-  height: 100%;
+  max-width: 480px;
+  /* Fallback dulu untuk iOS < 15.4 / Android lama yang belum kenal dvh. */
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0 auto;
   background-color: var(--bg);
   display: flex;
   flex-direction: column;
+  position: relative;
   overflow: hidden;
-  /* Ruang status bar/notch di dalam bingkai desktop, meniru SafeArea Flutter. */
-  padding-top: 34px;
+  padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -218,10 +163,16 @@ body.is-splash {
   background-color: #A2D7FB;
 }
 
-/* Bar pengembang sengaja tidak ditampilkan; elemennya tetap ada di DOM
-   karena app.js dan uji memakai #screen-select dan #theme-toggle. */
+/* Bar pengembang: dropdown pemilih layar + tombol mode gelap. */
 .switcher-bar {
-  display: none !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background-color: var(--card);
+  border-bottom: 1px solid var(--line);
+  z-index: 20;
+  flex-shrink: 0;
 }
 
 .screen-select {
@@ -252,50 +203,6 @@ body.is-splash {
   transition: transform 110ms ease-out;
 }
 
-/* Ponsel asli: lepas bezel, aplikasi memakai seluruh layar. */
-@media (max-width: 560px), (hover: none) and (pointer: coarse) {
-  .device-frame {
-    padding: 0;
-  }
-  .device-frame__bezel {
-    padding: 0;
-    border-radius: 0;
-    background: none;
-    box-shadow: none;
-  }
-  .device-frame__screen {
-    width: 100vw;
-    height: 100dvh;
-    border-radius: 0;
-    box-shadow: none;
-  }
-  .device-frame__button,
-  .device-notch {
-    display: none;
-  }
-  /* Di ponsel asli cukup safe-area perangkat, tanpa ruang notch buatan. */
-  .app-shell {
-    padding-top: env(safe-area-inset-top, 0px);
-  }
-}
-
-/* Layar pendek (mis. laptop kecil): kecilkan frame agar tetap utuh.
-   `height: 0` + `flex: 1` membuat layar mengisi sisa tinggi tanpa overflow. */
-@media (min-width: 561px) and (max-height: 900px) {
-  .device-frame {
-    padding: 14px;
-    box-sizing: border-box;
-  }
-  .device-frame__bezel {
-    max-height: 100%;
-    display: flex;
-  }
-  .device-frame__screen {
-    height: calc(100dvh - 76px);
-    min-height: 0;
-  }
-}
-
 .pressable {
   cursor: pointer;
   transition: transform 110ms cubic-bezier(0.22, 1, 0.36, 1), opacity 110ms ease;
@@ -316,6 +223,10 @@ body.is-splash {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0 20px 30px 20px;
+  /* Scroll di dalam shell tidak boleh memantul ke halaman dan memicu
+     pull-to-refresh di HP. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .scroll-viewport.no-pad {
@@ -619,16 +530,22 @@ body.is-splash {
   background-color: var(--surface-input);
   color: var(--ink);
   padding: 15px;
-  font-size: 14px;
+  /* 16px, bukan 14px: Safari iOS memperbesar (zoom) halaman saat input
+     ber-font < 16px difokus, dan zoom itu tidak kembali sendiri. */
+  font-size: 16px;
   margin-bottom: 18px;
   outline: none;
   font-family: inherit;
+  /* Cegah pembesaran otomatis teks pada orientasi lanskap di iOS. */
+  -webkit-text-size-adjust: 100%;
 }
 
 .chips-row {
   display: flex;
   overflow-x: auto;
   padding: 4px 0;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   margin-bottom: 8px;
   scrollbar-width: none;
 }
@@ -1432,8 +1349,11 @@ body.is-splash {
   border-top-right-radius: 28px;
   border: 2px solid var(--clay-soft-border);
   box-shadow: var(--clay-soft-shadow);
-  padding: 0 20px 28px 20px;
+  /* Ruang ekstra di bawah untuk home indicator iPhone. */
+  padding: 0 20px calc(28px + env(safe-area-inset-bottom, 0px)) 20px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sheet-handle {

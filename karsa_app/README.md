@@ -220,15 +220,14 @@ Jumlah soal dan kunci jawaban **tidak dikurangi maupun diubah** dari
 ## Pratinjau HTML
 
 `karsa_app/preview/` — 40 layar HTML interaktif, **tanpa dependensi CDN**,
-**khusus mobile**: di desktop tampil di dalam bingkai ponsel 390×844, di
-ponsel asli memakai seluruh layar (`100dvh` + `env(safe-area-inset-*)`).
-Bar pengembang (pemilih layar & tombol tema) disembunyikan agar terlihat
-seperti aplikasi sungguhan. Aplikasi Flutter juga dikunci ke orientasi potret.
+mobile-first (`100dvh` di ponsel, kolom `480px` di layar lebar,
+`env(safe-area-inset-*)`), **bukan** mock bingkai ponsel. Aplikasi Flutter
+dikunci ke orientasi potret.
 
 ```bash
 python3 karsa_app/preview/serve.py --host 0.0.0.0 --port 8000
 curl http://127.0.0.1:8000/healthz
-node karsa_app/preview/test_preview.js    # 519 pemeriksaan, mock DOM
+node karsa_app/preview/test_preview.js    # 525 pemeriksaan, mock DOM
 ```
 
 ---
@@ -276,7 +275,7 @@ node karsa_app/preview/test_preview.js    # 519 pemeriksaan, mock DOM
   125 berkas Dart,
   impor, aset, inisialisasi field `final`, argumen bernama `Image()`, dan
   null-check `.isEmpty` secara statis, sementara
-  `node karsa_app/preview/test_preview.js` menjalankan 519 pemeriksaan alur.
+  `node karsa_app/preview/test_preview.js` menjalankan 525 pemeriksaan alur.
 * Uji visual di perangkat iOS/Android nyata belum dilakukan.
 * Pembukaan berkas ekspor `.xlsx`/`.pdf` di perangkat belum diuji.
 * Perilaku `file_picker` di iOS belum diuji.

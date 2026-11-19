@@ -2012,41 +2012,49 @@ if (splashImg) ok(String(splashImg.getAttribute('src')).indexOf('splash-art.png'
 ok(viewport.textContent.indexOf('Menyiapkan pengalaman belajar') >= 0, 'splash shows the "Menyiapkan pengalaman belajar" pill');
 
 /* ------------------------------------------------------------------ *
- * 12b. Bingkai ponsel & bar pengembang yang disembunyikan
+ * 12b. Kontrak tampilan mobile (tanpa mockup bingkai ponsel)
  * ------------------------------------------------------------------ */
-// Tampilan ini khusus mobile: shell dibungkus bezel berukuran ponsel.
-ok(html.indexOf('device-frame') >= 0, 'index.html wraps the shell in a phone frame');
-ok(html.indexOf('device-notch') >= 0, 'the phone frame draws a notch');
-ok(/app-viewport/.test(html), 'the app viewport still lives inside the shell');
-
-// Bar pengembang tidak boleh tampil, tetapi elemennya tetap ada karena
-// app.js memakai #screen-select dan #theme-toggle.
-// Mock DOM tidak membangun ulang markup index.html, jadi kontrak ini dibaca
-// dari sumber HTML-nya.
-const switcherMatch = html.match(/<header class="switcher-bar"([^>]*)>/);
-ok(!!switcherMatch, 'the developer bar still exists in the DOM for the harness');
-ok(!!switcherMatch && /\bhidden\b/.test(switcherMatch[1]),
-  'the developer bar is hidden so screens look like a real app');
+// Pratinjau harus terasa seperti aplikasi sungguhan di HP. Sebelumnya ada
+// bingkai ponsel hiasan; sekarang tidak boleh ada lagi.
+ok(html.indexOf('device-frame') < 0, 'index.html has no phone-frame mockup');
+ok(html.indexOf('device-notch') < 0, 'index.html has no decorative notch');
+ok(/id="app-shell"/.test(html), 'the app shell is the outermost container');
+ok(/id="app-viewport"/.test(html), 'the app viewport still lives inside the shell');
+ok(/<header class="switcher-bar">/.test(html),
+  'the developer bar (screen picker + theme toggle) is visible again');
 ok(html.indexOf('id="screen-select"') >= 0 && html.indexOf('id="theme-toggle"') >= 0,
-  'screen select and theme toggle stay available to app.js');
-ok(!!screenSelect && !!themeToggle,
-  'the mock still provides screen select and theme toggle');
+  'screen select and theme toggle are present');
+ok(!!screenSelect && !!themeToggle, 'the mock provides screen select and theme toggle');
 
-// CSS harus memuat aturan bingkai + pelepasannya di ponsel asli.
+// CSS: shell mobile-first + safe-area, tanpa sisa aturan bingkai.
 const cssText = fs.readFileSync(path.join(previewDir, 'styles.css'), 'utf8');
-ok(cssText.indexOf('.device-frame__screen') >= 0, 'styles define the phone screen area');
-ok(/\.switcher-bar\s*\{[^}]*display:\s*none/.test(cssText),
-  'styles hide the developer bar');
-ok(cssText.indexOf('@media (max-width: 560px)') >= 0,
-  'styles drop the frame on real phones');
-ok(cssText.indexOf('844px') >= 0 && cssText.indexOf('390px') >= 0,
-  'the frame uses phone-sized dimensions (390x844)');
+ok(cssText.indexOf('device-frame') < 0, 'styles carry no phone-frame rules');
+ok(/\.app-shell\s*\{[^}]*max-width:\s*480px/.test(cssText),
+  'the shell stays a 480px column on wide screens');
+ok(/\.app-shell\s*\{[^}]*100dvh/.test(cssText),
+  'the shell fills the viewport height on phones');
+ok(cssText.indexOf('safe-area-inset-top') >= 0,
+  'the shell respects the device safe area');
+ok(/\.switcher-bar\s*\{[^}]*display:\s*flex/.test(cssText),
+  'styles show the developer bar');
 
-// Tema tetap bisa diganti lewat API pratinjau meski tombolnya tersembunyi.
+// Perbaikan khusus HP: input 16px (iOS tidak auto-zoom), fallback vh,
+// dan overscroll yang tidak memicu pull-to-refresh.
+ok(/\.karsa-input\s*\{[^}]*font-size:\s*16px/.test(cssText),
+  'inputs use 16px so iOS Safari does not zoom on focus');
+ok(cssText.indexOf('min-height: 100vh') >= 0,
+  'the shell has a vh fallback for older mobile browsers');
+ok(/\.scroll-viewport\s*\{[^}]*overscroll-behavior:\s*contain/.test(cssText),
+  'the scroll area does not bounce the whole page (no pull-to-refresh)');
+ok(/env\(safe-area-inset-bottom/.test(cssText),
+  'sheets and the shell respect the home-indicator inset');
+
+// Tema tetap bisa diganti lewat tombol maupun API pratinjau.
 const themeBefore = preview.state.dark;
-preview.toggleTheme();
-ok(preview.state.dark === !themeBefore, 'the theme can still be toggled programmatically');
-preview.toggleTheme();
+themeToggle.click();
+ok(preview.state.dark === !themeBefore, 'the theme button still toggles dark mode');
+themeToggle.click();
+ok(preview.state.dark === themeBefore, 'toggling twice returns to the original theme');
 
 /* ------------------------------------------------------------------ *
  * 13. No "Pratinjau" label in the top bar

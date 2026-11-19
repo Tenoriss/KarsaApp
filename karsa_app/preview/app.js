@@ -5427,8 +5427,6 @@
   function applyTheme() {
     document.documentElement.setAttribute('data-theme', state.dark ? 'dark' : 'light');
     document.body.classList.toggle('is-splash', state.screen === 'splash');
-    // Tombol tema ada di bar pengembang yang disembunyikan sejak tampilan
-    // menjadi khusus mobile; tetap diisi bila elemennya ada.
     var toggle = document.getElementById('theme-toggle');
     if (!toggle) return;
     clear(toggle);
