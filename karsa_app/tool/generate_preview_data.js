@@ -20,6 +20,9 @@ const OUT_FILE = path.resolve(__dirname, '..', 'preview', 'curriculum-data.js');
 /* Ionicons codepoints, extracted from @expo/vector-icons 15.0.2
  * (see tool/extract_ionicons.py and lib/core/widgets/karsa_icons.dart). */
 const ICON_PROPS = {
+  close: 0xf24a,
+  closeCircle: 0xf24b,
+  bulbOutline: 0xf1c1,
   chevronBack: 0xf229,
   chevronForward: 0xf23b,
   sunnyOutline: 0xf5ae,
@@ -55,10 +58,14 @@ const ICON_NAMES = [
   'refresh-outline', 'grid', 'megaphone', 'person-outline', 'book-outline',
   'shield-checkmark-outline', 'help-circle-outline', 'checkmark', 'albums',
   'checkmark-done', 'card-outline', 'lock-closed-outline', 'eye-off-outline',
-  'eye-outline', 'home', 'bar-chart', 'calendar', 'person'
+  'eye-outline', 'home', 'bar-chart', 'calendar', 'person',
+  'close', 'close-circle', 'bulb-outline'
 ];
 
 const ICON_PROPS_BY_NAME = {
+  'close': 'close',
+  'close-circle': 'closeCircle',
+  'bulb-outline': 'bulbOutline',
   'chevron-back': 'chevronBack',
   'chevron-forward': 'chevronForward',
   'sunny-outline': 'sunnyOutline',

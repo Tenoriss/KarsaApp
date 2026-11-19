@@ -1323,7 +1323,10 @@ window.KARSA_CURRICULUM = {
     "home": "",
     "bar-chart": "",
     "calendar": "",
-    "person": ""
+    "person": "",
+    "close": "",
+    "close-circle": "",
+    "bulb-outline": ""
   }
 };
 

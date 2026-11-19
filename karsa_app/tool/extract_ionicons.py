@@ -39,6 +39,9 @@ ICON_NAMES = [
     "bar-chart",
     "calendar",
     "person",
+    "close",
+    "close-circle",
+    "bulb-outline",
 ]
 
 

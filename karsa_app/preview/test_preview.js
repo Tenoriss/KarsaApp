@@ -565,7 +565,11 @@ if (taskCard) {
       if (checkButton) {
         checkButton.click();
         const explanation = viewport.textContent;
-        ok(explanation.indexOf('Jawaban benar:') >= 0, 'quiz reveals the correct answer explanation');
+        // Umpan balik kini berupa kartu (benar/salah) berisi kunci + alasan.
+        ok(explanation.indexOf('Tepat!') >= 0 || explanation.indexOf('Belum tepat') >= 0,
+          'quiz reveals whether the answer was right or wrong');
+        ok(!!viewport.querySelectorAll('.quiz-feedback')[0],
+          'the feedback is shown as a card, like the design');
         ok(explanation.indexOf('undefined') < 0, 'quiz explanation contains real data (no undefined)');
         ok(explanation.indexOf(QUIZ_ITEM.choices[QUIZ_ITEM.answerIndex]) >= 0,
           'quiz explanation names the correct choice from the curriculum bank');
@@ -2113,6 +2117,58 @@ ok(!!lightRose && !!darkRose && lightRose[1].trim() !== darkRose[1].trim(),
   preview.go(hash.replace('#', ''));
   ok(preview.state.screen.indexOf('-') > 0, 'deep link ' + hash + ' resolves to ' + preview.state.screen);
 });
+
+/* ------------------------------------------------------------------ *
+ * 11. Tata letak kuis mengikuti rancangan (warna tetap)
+ * ------------------------------------------------------------------ */
+preview.state.role = 'siswa';
+preview.startQuiz(preview.tasks()[0]);
+
+// Header: mapel+topik kecil, "Soal n dari m" besar, tombol tutup X.
+ok(!!viewport.querySelectorAll('.quiz-eyebrow')[0], 'quiz header shows the small subject line');
+ok(!!viewport.querySelectorAll('.quiz-step')[0], 'quiz header shows "Soal n dari m" prominently');
+const stepText = viewport.querySelectorAll('.quiz-step')[0].textContent;
+ok(/^Soal \d+ dari \d+$/.test(stepText), 'the step text reads "Soal n dari m", got: ' + stepText);
+const closeBtn = Array.from(viewport.querySelectorAll('button'))
+  .filter((b) => (b.getAttribute('aria-label') || '') === 'Tutup kuis')[0];
+ok(!!closeBtn, 'quiz has a close (X) button in the header like the design');
+ok(!!viewport.querySelectorAll('.quiz-progress')[0], 'quiz keeps the progress bar');
+
+// Keadaan pilihan: label "Dipilih" setelah memilih.
+const firstChoice = viewport.querySelectorAll('.choice-btn')[0];
+firstChoice.click();
+ok(viewport.textContent.indexOf('Dipilih') >= 0,
+  'the chosen option is labelled "Dipilih" like the design');
+ok(viewport.textContent.indexOf('Sudah yakin?') >= 0,
+  'a small hint appears under the choices after picking');
+ok(!!Array.from(viewport.querySelectorAll('.choice-state')).length,
+  'the choice state label is rendered');
+
+// Setelah diperiksa: label Benar/Salah + kartu umpan balik.
+const checkBtn = Array.from(viewport.querySelectorAll('button'))
+  .filter((b) => (b.textContent || '').indexOf('Periksa jawaban') >= 0)[0];
+checkBtn.click();
+const hasState = viewport.textContent.indexOf('Benar') >= 0 || viewport.textContent.indexOf('Salah') >= 0;
+ok(hasState, 'after checking, options are labelled Benar / Salah');
+ok(!!viewport.querySelectorAll('.quiz-feedback')[0], 'a feedback card appears after checking');
+ok(!!(Array.from(viewport.querySelectorAll('.choice-btn')).filter((b) => /correct|wrong/.test(b.className)).length),
+  'correct/wrong styling is applied to the options');
+
+// Tombol tutup benar-benar keluar dari kuis.
+preview.startQuiz(preview.tasks()[0]);
+const closeAgain = Array.from(viewport.querySelectorAll('button'))
+  .filter((b) => (b.getAttribute('aria-label') || '') === 'Tutup kuis')[0];
+if (closeAgain) {
+  closeAgain.click();
+  ok(preview.state.screen !== 'kuis', 'the X button leaves the quiz');
+}
+
+// Warna tetap memakai token yang ada: tidak ada warna rose/hijau baru yang
+// ditulis keras di luar token tema.
+const quizCss = fs.readFileSync(path.join(previewDir, 'styles.css'), 'utf8');
+ok(quizCss.indexOf('.quiz-feedback') >= 0, 'quiz feedback styles are defined');
+ok(quizCss.indexOf('--surface-quiz-feedback') >= 0,
+  'feedback surface uses a theme token (dark mode safe)');
 
 /* ------------------------------------------------------------------ *
  * 11a. Tombol kembali pada kuis & esai benar-benar berpindah layar

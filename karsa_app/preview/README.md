@@ -202,6 +202,12 @@ Media** — bukan lagi section yang menempel di ujung beranda.
   Jika tidak cocok → pesan galat **"NIP/NISN atau kata sandi tidak sesuai."**
   Kotak akun demo di bawahnya berbeda isi untuk tiap peran.
 
+* **Tata letak kuis** — header ringkas (mapel + topik kecil, "Soal n dari m"
+  besar), panah kembali **dan** tombol tutup (X); tiap pilihan punya label
+  keadaan `Dipilih` / `Benar` / `Salah`; petunjuk "Pilihanmu: B. Sudah yakin?"
+  muncul sebelum diperiksa; kartu umpan balik hijau/merah setelah diperiksa.
+  Warna tetap memakai token yang sudah ada (`--rose`, `--surface-*`,
+  `--surface-quiz-feedback`) sehingga aman di mode gelap.
 * **Dua metode tugas** — detail tugas menampilkan dua kartu setara:
   **Pilihan ganda** (dinilai otomatis) dan **Esai** (jawaban disimpan, tidak
   dinilai otomatis). Keduanya disimpan di `RESULTS[task.id]` yang sama, jadi
@@ -299,7 +305,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **603 pemeriksaan**.
+Total **618 pemeriksaan**.
 
 ---
 

@@ -54,6 +54,14 @@
   --quote-color: #385D76;
   --demo-footer-color: #C8AAB0;
   --student-hero-text: #71899B;
+
+  /* Umpan balik kuis: benar vs salah. */
+  --success: #2E7D5B;
+  --danger: #B1445D;
+  --surface-quiz-feedback: #EFF7EF;
+  --border-quiz-feedback: #DCEBDC;
+  --surface-quiz-wrong: #FBEDEF;
+  --border-quiz-wrong: #F1E0E2;
 }
 
 [data-theme='dark'] {
@@ -105,6 +113,13 @@
   --quote-color: #EEE7ED;
   --demo-footer-color: #F2A9BC;
   --student-hero-text: #EEE7ED;
+  /* Umpan balik kuis versi gelap (nullStyle: tetap kontras). */
+  --success: #7FD1A8;
+  --danger: #F09AB0;
+  --surface-quiz-feedback: #2C3B33;
+  --border-quiz-feedback: #3B4C42;
+  --surface-quiz-wrong: #3A2F36;
+  --border-quiz-wrong: #4E414A;
 }
 
 * {
@@ -1193,6 +1208,44 @@ body.is-splash {
   margin-top: 10px;
 }
 
+/* Header kuis: judul kecil di atas, "Soal n dari m" besar, tombol tutup (X). */
+.quiz-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 6px 0 14px 0;
+}
+
+.quiz-eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.quiz-step {
+  margin: 2px 0 0 0;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.quiz-close {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: 20px;
+  border: 2px solid var(--clay-soft-border);
+  background-color: var(--card);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--clay-soft-shadow);
+  touch-action: manipulation;
+}
+
 .quiz-progress {
   height: 7px;
   background-color: var(--surface-chart-track);
@@ -1230,7 +1283,76 @@ body.is-splash {
 
 .choice-btn.selected {
   border-color: var(--rose);
-  background-color: #FFF2F4;
+  background-color: var(--surface-rose);
+}
+
+/* Label keadaan di kanan pilihan: Dipilih / Benar / Salah. */
+.choice-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  color: var(--rose);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.choice-btn.correct .choice-state {
+  color: var(--success, #2E7D5B);
+}
+
+.choice-btn.wrong .choice-state {
+  color: var(--danger, #B1445D);
+}
+
+/* Pilihan yang tidak dipilih & bukan jawaban: diredupkan setelah diperiksa. */
+.choice-btn.muted-choice {
+  opacity: 0.72;
+}
+
+.choice-btn[disabled] {
+  cursor: default;
+}
+
+/* Petunjuk kecil di bawah pilihan. */
+.quiz-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* Kartu umpan balik setelah "Periksa jawaban". */
+.quiz-feedback {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border-quiz-feedback, #E6EDE4);
+  background-color: var(--surface-quiz-feedback, #EFF7EF);
+}
+
+.quiz-feedback-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.quiz-feedback-body {
+  margin: 5px 0 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.quiz-feedback.is-wrong {
+  border-color: var(--border-quiz-wrong, #F1E0E2);
+  background-color: var(--surface-quiz-wrong, #FBEDEF);
 }
 
 [data-theme='dark'] .choice-btn.selected {

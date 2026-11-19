@@ -5360,53 +5360,129 @@
     var q = quiz.bank[quiz.index];
     var letters = ['A', 'B', 'C', 'D'];
     var ratio = (quiz.index + 1) / quiz.bank.length;
+    var checked = quiz.checked;
+    var isLast = quiz.index + 1 >= quiz.bank.length;
 
+    function closeQuiz() {
+      var backTo = tasksScreenForRole();
+      state.quiz = null;
+      go(backTo);
+    }
+
+    // Tiap pilihan punya tiga keadaan: biasa, dipilih (belum diperiksa), dan
+    // setelah diperiksa -> benar / salah. Label di kanan mengikuti keadaan itu,
+    // seperti rancangan (Dipilih / Benar / Salah + ikon).
     var choices = q.choices.map(function (choice, i) {
-      var selected = quiz.choice === i;
-      var isCorrect = quiz.checked && i === q.answerIndex;
+      var isChosen = quiz.choice === i;
+      var isAnswer = i === q.answerIndex;
       var cls = 'choice-btn pressable';
-      if (isCorrect) cls += ' correct';
-      else if (selected) cls += ' selected';
+      var label = null;
+      var labelIcon = null;
+
+      if (checked) {
+        if (isAnswer) {
+          cls += ' correct';
+          label = 'Benar';
+          labelIcon = 'checkmark-circle';
+        } else if (isChosen) {
+          cls += ' wrong';
+          label = 'Salah';
+          labelIcon = 'close-circle';
+        } else {
+          cls += ' muted-choice';
+        }
+      } else if (isChosen) {
+        cls += ' selected';
+        label = 'Dipilih';
+        labelIcon = 'checkmark-circle';
+      }
+
       return el('button', {
         class: cls, type: 'button',
+        disabled: checked ? true : null,
         onclick: function () {
-          if (quiz.checked) return;
+          if (checked) return;
           quiz.choice = i;
           render();
         }
       }, [
         el('span', { class: 'choice-letter', text: letters[i % letters.length] }),
-        el('span', { style: 'flex:1;font-size:14px;color:var(--ink)', text: choice })
+        el('span', { style: 'flex:1;font-size:14px;color:var(--ink);text-align:left', text: choice }),
+        label ? el('span', { class: 'choice-state' }, [
+          // Teks label dipisah dari ikon agar teks tetap bersih saat dibaca
+          // pembaca layar maupun diuji.
+          el('span', { class: 'choice-state-text', text: label }),
+          el('span', { class: 'choice-state-icon', style: 'display:inline-flex' }, [icon(labelIcon, 15)])
+        ]) : null
       ]);
     });
 
-    return el('div', {}, [
-      // Tombol kembali dulu menuju 'kuis' - layar itu sendiri - sehingga
-      // tidak terjadi apa-apa saat diklik. Sekarang kembali ke daftar tugas
-      // role yang sedang aktif (guru/siswa/orang tua), dan keluar dari kuis.
-      pageHeader(quiz.task.subject + ' · ' + quiz.task.title, 'Soal ' + (quiz.index + 1) + ' dari ' + quiz.bank.length,
-        function () {
-          // Pulihkan role dari konteks kuis bila halaman dimuat ulang tepat
-          // di layar ini, lalu kembali ke daftar tugas role tersebut.
-          var backTo = tasksScreenForRole();
-          state.quiz = null;
-          go(backTo);
+    // Petunjuk kecil di bawah pilihan saat siswa sudah memilih tapi belum
+    // memeriksa: "Pilihanmu: B. Sudah yakin?" seperti rancangan.
+    var hint = null;
+    if (!checked && quiz.choice >= 0) {
+      hint = el('div', { class: 'quiz-hint' }, [
+        el('span', { style: 'display:inline-flex;color:var(--rose)' }, [icon('bulb-outline', 14)]),
+        el('span', {
+          text: 'Pilihanmu: ' + letters[quiz.choice % 4] + '. Sudah yakin?'
+        })
+      ]);
+    }
+
+    // Setelah diperiksa: kartu umpan balik benar/salah menggantikan petunjuk.
+    var feedback = null;
+    if (checked) {
+      var ok = quiz.choice === q.answerIndex;
+      feedback = el('div', { class: 'quiz-feedback ' + (ok ? 'is-correct' : 'is-wrong') }, [
+        el('p', {
+          class: 'quiz-feedback-title',
+          text: ok
+            ? '✓ Tepat! Jawabannya ' + letters[q.answerIndex % 4] + '.'
+            : 'Belum tepat. Jawaban yang benar: ' +
+              letters[q.answerIndex % 4] + '. ' + q.choices[q.answerIndex]
         }),
+        el('p', { class: 'quiz-feedback-body', text: q.explanation })
+      ]);
+    }
+
+    return el('div', {}, [
+      // Header ringkas seperti rancangan: mapel + topik kecil di atas, soal ke-n
+      // besar di bawah, dan tombol tutup (X) di kanan.
+      el('div', { class: 'quiz-top' }, [
+        // Panah kembali + tombol tutup, keduanya tetap ada: panah untuk
+        // navigasi seperti layar lain, X untuk keluar cepat seperti rancangan.
+        el('button', {
+          class: 'back-chevron pressable', type: 'button',
+          'aria-label': 'Kembali',
+          onclick: closeQuiz
+        }, [icon('chevron-back', 20)]),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 'quiz-eyebrow', text: quiz.task.subject + ' · ' + quiz.task.title }),
+          el('p', { class: 'quiz-step', text: 'Soal ' + (quiz.index + 1) + ' dari ' + quiz.bank.length })
+        ]),
+        el('button', {
+          class: 'quiz-close pressable', type: 'button',
+          'aria-label': 'Tutup kuis',
+          onclick: closeQuiz
+        }, [icon('close', 18)])
+      ]),
       el('div', { class: 'quiz-progress' }, [
         el('div', { class: 'quiz-progress-fill', style: 'width:' + (ratio * 100) + '%' })
       ]),
       el('p', { class: 'quiz-question', text: q.question }),
       choices,
-      quiz.checked ? noticeCard('Jawaban benar: ' + q.choices[q.answerIndex] + ' · ' + q.explanation) : null,
+      hint,
+      feedback,
       el('button', {
-        class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
+        class: 'karsa-btn clay-raised pressable', type: 'button',
+        style: 'border:none;cursor:pointer;margin-top:14px',
+        disabled: !checked && quiz.choice < 0 ? true : null,
         onclick: function () {
-          if (!quiz.checked) {
+          if (!checked) {
             if (quiz.choice < 0) return;
             quiz.checked = true;
             if (quiz.choice === q.answerIndex) quiz.score += 1;
-          } else if (quiz.index + 1 >= quiz.bank.length) {
-            quiz.answers = quiz.answers;
+          } else if (isLast) {
             RESULTS[quiz.task.id] = {
               score: quiz.score, total: quiz.bank.length, answers: quiz.answers, demo: quiz.task.demo
             };
@@ -5420,17 +5496,10 @@
           }
           render();
         }
-      }, [
-        quiz.checked
-          ? (quiz.index + 1 >= quiz.bank.length ? 'Selesai' : 'Soal berikutnya')
-          : 'Periksa jawaban'
-      ])
+      }, [checked
+        ? (isLast ? 'Lihat hasil' : 'Soal berikutnya')
+        : 'Periksa jawaban'])
     ]);
-  }
-
-  function showResult(task) {
-    state.quizResult = { task: task, result: RESULTS[task.id] };
-    go('hasil-kuis');
   }
 
   function renderHasilKuis() {
