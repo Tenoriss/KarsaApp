@@ -163,45 +163,7 @@ body.is-splash {
   background-color: #A2D7FB;
 }
 
-/* Bar pengembang: dropdown pemilih layar + tombol mode gelap. */
-.switcher-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  background-color: var(--card);
-  border-bottom: 1px solid var(--line);
-  z-index: 20;
-  flex-shrink: 0;
-}
-
-.screen-select {
-  flex: 1;
-  height: 36px;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  background-color: var(--surface-input);
-  color: var(--ink);
-  padding: 0 12px;
-  font-size: 12px;
-  font-weight: 700;
-  outline: none;
-}
-
-.switcher-theme-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  background-color: var(--card);
-  color: var(--rose);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: var(--clay-soft-shadow);
-  transition: transform 110ms ease-out;
-}
+/* Tidak ada bar pengembang di atas layar; aplikasi langsung tampil penuh. */
 
 .pressable {
   cursor: pointer;

@@ -8,11 +8,12 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
+  <!--
+    Tidak ada bar pengembang di atas: aplikasi harus langsung terlihat seperti
+    aplikasi sungguhan. Berpindah layar lewat alur aplikasi (login, bottom nav,
+    tombol di dalam layar) atau deep link `#<layar>`.
+  -->
   <div id="app-shell" class="app-shell">
-    <header class="switcher-bar">
-      <select id="screen-select" class="screen-select" aria-label="Pilih layar"></select>
-      <button id="theme-toggle" type="button" class="switcher-theme-btn pressable" aria-label="Ubah mode terang atau gelap"></button>
-    </header>
     <main id="app-viewport" class="scroll-viewport"></main>
     <nav id="bottom-nav" class="bottom-nav" hidden aria-label="Navigasi utama"></nav>
     <div id="sheet-backdrop" class="sheet-backdrop" hidden>

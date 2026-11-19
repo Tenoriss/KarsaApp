@@ -1987,10 +1987,18 @@ if (typeof preview.persistState === 'function') preview.persistState();
  * ------------------------------------------------------------------ */
 preview.go('welcome');
 eq(doc.documentElement.getAttribute('data-theme'), 'light', 'default theme is light');
-themeToggle.click();
-eq(doc.documentElement.getAttribute('data-theme'), 'dark', 'dark mode toggle switches the theme attribute');
-themeToggle.click();
-eq(doc.documentElement.getAttribute('data-theme'), 'light', 'dark mode toggle switches back to light');
+// Bar pengembang sudah dihapus: tema diganti dari tombol di dalam aplikasi.
+const themeBtnInApp = viewport.querySelectorAll('.round-icon-btn')
+  .filter((n) => (n.getAttribute('aria-label') || '').indexOf('mode gelap') >= 0)[0];
+ok(!!themeBtnInApp, 'an in-app button can switch to dark mode');
+if (themeBtnInApp) {
+  themeBtnInApp.click();
+  eq(doc.documentElement.getAttribute('data-theme'), 'dark', 'the in-app theme button switches the theme attribute');
+  const themeBtnBack = viewport.querySelectorAll('.round-icon-btn')
+    .filter((n) => (n.getAttribute('aria-label') || '').indexOf('mode terang') >= 0)[0];
+  if (themeBtnBack) themeBtnBack.click();
+  eq(doc.documentElement.getAttribute('data-theme'), 'light', 'the in-app theme button switches back to light');
+}
 
 /* ------------------------------------------------------------------ *
  * 11. Deep links (hash) resolve
@@ -2020,23 +2028,28 @@ ok(html.indexOf('device-frame') < 0, 'index.html has no phone-frame mockup');
 ok(html.indexOf('device-notch') < 0, 'index.html has no decorative notch');
 ok(/id="app-shell"/.test(html), 'the app shell is the outermost container');
 ok(/id="app-viewport"/.test(html), 'the app viewport still lives inside the shell');
-ok(/<header class="switcher-bar">/.test(html),
-  'the developer bar (screen picker + theme toggle) is visible again');
-ok(html.indexOf('id="screen-select"') >= 0 && html.indexOf('id="theme-toggle"') >= 0,
-  'screen select and theme toggle are present');
-ok(!!screenSelect && !!themeToggle, 'the mock provides screen select and theme toggle');
+ok(html.indexOf('switcher-bar') < 0, 'no developer bar at the top of the page');
+ok(html.indexOf('id="screen-select"') < 0, 'the "Login" screen dropdown is gone');
+ok(html.indexOf('id="theme-toggle"') < 0, 'no developer theme button outside the app');
+ok(/id="app-viewport"/.test(html), 'the viewport is the first thing inside the shell');
+ok(/<main id="app-viewport"[^>]*><\/main>/.test(html), 'the app starts immediately, without a bar above it');
 
-// CSS: shell mobile-first + safe-area, tanpa sisa aturan bingkai.
+// CSS: tidak ada sisa aturan bar pengembang.
 const cssText = fs.readFileSync(path.join(previewDir, 'styles.css'), 'utf8');
 ok(cssText.indexOf('device-frame') < 0, 'styles carry no phone-frame rules');
+ok(cssText.indexOf('switcher-bar') < 0, 'styles carry no developer-bar rules');
 ok(/\.app-shell\s*\{[^}]*max-width:\s*480px/.test(cssText),
   'the shell stays a 480px column on wide screens');
 ok(/\.app-shell\s*\{[^}]*100dvh/.test(cssText),
   'the shell fills the viewport height on phones');
 ok(cssText.indexOf('safe-area-inset-top') >= 0,
   'the shell respects the device safe area');
-ok(/\.switcher-bar\s*\{[^}]*display:\s*flex/.test(cssText),
-  'styles show the developer bar');
+
+// Tema tetap bisa diganti lewat API pratinjau (dipakai uji lain).
+const themeBeforeApi = preview.state.dark;
+preview.toggleTheme();
+ok(preview.state.dark === !themeBeforeApi, 'the theme can still be toggled programmatically');
+preview.toggleTheme();
 
 // Perbaikan khusus HP: input 16px (iOS tidak auto-zoom), fallback vh,
 // dan overscroll yang tidak memicu pull-to-refresh.
@@ -2049,12 +2062,6 @@ ok(/\.scroll-viewport\s*\{[^}]*overscroll-behavior:\s*contain/.test(cssText),
 ok(/env\(safe-area-inset-bottom/.test(cssText),
   'sheets and the shell respect the home-indicator inset');
 
-// Tema tetap bisa diganti lewat tombol maupun API pratinjau.
-const themeBefore = preview.state.dark;
-themeToggle.click();
-ok(preview.state.dark === !themeBefore, 'the theme button still toggles dark mode');
-themeToggle.click();
-ok(preview.state.dark === themeBefore, 'toggling twice returns to the original theme');
 
 /* ------------------------------------------------------------------ *
  * 13. No "Pratinjau" label in the top bar

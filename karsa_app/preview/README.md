@@ -37,7 +37,7 @@ curl http://127.0.0.1:8000/healthz
 
 | Berkas | Isi |
 | --- | --- |
-| `index.html` | Kerangka halaman: bar pemilih layar + tombol mode gelap, viewport, bottom nav, dan sheet modal. |
+| `index.html` | Kerangka halaman: viewport, bottom nav, dan sheet modal — tanpa bar pengembang di atas. |
 | `styles.css` | Token claymorphism, palet terang/gelap, tipografi, dan komponen (1:1 dengan `lib/core/theme/*`). |
 | `app.js` | Seluruh logika pratinjau: state, 40 layar, interaksi, router hash. |
 | `curriculum-data.js` | **Berkas hasil generate** — bank soal, bank esai, info mata pelajaran, daftar agama, dan peta glif Ionicons. |
@@ -59,8 +59,10 @@ node karsa_app/tool/generate_preview_data.js
   lebar, serta memakai `env(safe-area-inset-*)`.
 * **Bukan mock bingkai ponsel**: tidak ada frame perangkat, hanya shell
   aplikasi — di HP terasa seperti aplikasi sungguhan.
-* **Bar atas hanya berisi** dropdown pemilih layar + tombol mode gelap.
-  Tidak ada label "Pratinjau".
+* **Tanpa bar pengembang**: tidak ada dropdown pemilih layar maupun tombol
+  tema di atas aplikasi. Layar langsung tampil penuh seperti aplikasi asli;
+  mode gelap diganti dari tombol di header sapaan (di dalam layar).
+  Berpindah layar langsung tetap bisa lewat deep link `#<layar>`.
 * **Tanpa CDN**: seluruh aset (logo, banner, splash art, font ikon) berasal dari
   `karsa_app/assets/`.
 
@@ -286,7 +288,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **525 pemeriksaan**.
+Total **527 pemeriksaan**.
 
 ---
 

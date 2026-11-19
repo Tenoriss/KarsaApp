@@ -5427,10 +5427,8 @@
   function applyTheme() {
     document.documentElement.setAttribute('data-theme', state.dark ? 'dark' : 'light');
     document.body.classList.toggle('is-splash', state.screen === 'splash');
-    var toggle = document.getElementById('theme-toggle');
-    if (!toggle) return;
-    clear(toggle);
-    toggle.appendChild(icon(state.dark ? 'sunny-outline' : 'moon-outline', 18));
+    // Tema diganti lewat tombol di dalam layar (header sapaan), bukan dari
+    // bar pengembang yang sudah dihapus.
   }
 
   /* ------------------------------------------------------------------ *
@@ -5477,40 +5475,12 @@
       clear(nav);
       nav.hidden = true;
     }
-    var select = document.getElementById('screen-select');
-    if (select.value !== state.screen) select.value = state.screen;
   }
 
   /* ------------------------------------------------------------------ *
    * Boot
    * ------------------------------------------------------------------ */
-  function buildScreenSelect() {
-    var select = document.getElementById('screen-select');
-    clear(select);
-    var groups = [];
-    SCREENS.forEach(function (s) {
-      if (groups.indexOf(s.group) < 0) groups.push(s.group);
-    });
-    groups.forEach(function (group) {
-      var optgroup = el('optgroup', { label: group });
-      SCREENS.forEach(function (s) {
-        if (s.group !== group) return;
-        optgroup.appendChild(el('option', { value: s.id, text: s.label }));
-      });
-      select.appendChild(optgroup);
-    });
-    select.addEventListener('change', function (e) {
-      var value = e.target.value;
-      var resolved = resolveScreen(value);
-      if (resolved) {
-        go(resolved);
-      }
-    });
-  }
-
   function boot() {
-    buildScreenSelect();
-    document.getElementById('theme-toggle').addEventListener('click', function () { toggleTheme(); });
     applyTheme();
     restoreState();
 
