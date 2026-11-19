@@ -469,7 +469,7 @@
   };
 
   var ROLE_TABS = {
-    operator: ['Beranda', 'Siswa', 'Kelas', 'Materi', 'Media'],
+    operator: ['Beranda', 'Siswa', 'Kelas', 'Materi', 'Media', 'Profil'],
     wali: ['Beranda', 'Anggota', 'Rekap', 'Agenda', 'Profil'],
     guru: ['Beranda', 'Kelas', 'Tugas', 'Kalender', 'Profil'],
     siswa: ['Beranda', 'Tugas', 'Profil'],
@@ -3223,6 +3223,12 @@
     ]);
   }
 
+  /* Pindah ke tab Profil operator (tab keenam) dari beranda. */
+  function openOperatorProfilTab() {
+    state.tab = 'Profil';
+    go('operator-profil');
+  }
+
   function toggleOperatorCard(key) {
     if (!state.operatorOpen) state.operatorOpen = {};
     state.operatorOpen[key] = !state.operatorOpen[key];
@@ -3327,19 +3333,50 @@
         }),
         onManage: function () { go('operator-media'); }
       }),
-      el('p', { class: 't-section', style: 'margin:8px 0 10px 0', text: 'Profil operator' }),
-      operatorProfileSection(op)
+      // Profil operator kini tab sendiri (keenam, di sebelah Media); beranda
+      // hanya menyisakan pintasan ringkas supaya tidak menumpuk.
+      el('div', { style: 'height:8px' }),
+      el('div', {
+        class: 'clay-soft pressable',
+        style: 'padding:15px;background:#FBEAEC;cursor:pointer',
+        role: 'button', tabindex: '0',
+        'aria-label': 'Buka tab Profil operator',
+        onclick: function () { openOperatorProfilTab(); },
+        onkeydown: function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openOperatorProfilTab();
+          }
+        }
+      }, [
+        el('div', { style: 'display:flex;align-items:center;gap:12px' }, [
+          el('div', {
+            style: 'width:42px;height:42px;border-radius:21px;background:#fff;display:flex;' +
+                   'align-items:center;justify-content:center;font-weight:800;font-size:15px;color:var(--rose)'
+          }, [profileInitials(op)]),
+          el('div', { style: 'flex:1;min-width:0' }, [
+            el('p', { class: 't-item-title', style: 'margin:0',
+              text: (op.name || '').trim() || 'Operator Sekolah' }),
+            el('p', { class: 't-small', style: 'margin:2px 0 0 0',
+              text: 'Identitas kerja dan pengaturan ada di tab Profil' })
+          ]),
+          el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('chevron-forward', 18)])
+        ])
+      ])
     ]);
   }
 
-  /* Section profil operator: enam kolom read-only + tombol Ubah. */
-  function operatorProfileSection(op) {
-    var parts = (op.name || '').trim().split(/\s+/).filter(function (w) { return w; });
-    var initials = parts.length
-      ? (parts.length === 1
-          ? parts[0].charAt(0)
-          : parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
-      : '?';
+  /* Inisial dua huruf untuk avatar operator, mis. "Operator Sekolah" -> "OS". */
+  function profileInitials(op) {
+    var parts = ((op && op.name) || '').trim().split(/\s+/).filter(function (w) { return w; });
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  }
+
+  /* Enam kolom profil read-only + indikator kelengkapan.
+     Dipakai tab Profil operator (cermin _ProfileFields di Flutter). */
+  function operatorProfileFields(op) {
     var fields = [
       ['Nama lengkap', op.name],
       ['NIP', op.nip],
@@ -3353,24 +3390,8 @@
     if (!(op.email || '').trim()) missing.push('surel');
     if (!(op.phone || '').trim()) missing.push('telepon');
 
-    return el('div', { class: 'clay-soft', style: 'padding:16px' }, [
-      el('div', { style: 'display:flex;align-items:center;gap:13px' }, [
-        el('div', {
-          style: 'width:54px;height:54px;border-radius:27px;background:#FBEAEC;display:flex;' +
-                 'align-items:center;justify-content:center;font-weight:800;font-size:19px;color:var(--rose)'
-        }, [initials]),
-        el('div', { style: 'flex:1;min-width:0' }, [
-          el('p', { class: 't-item-title', style: 'margin:0', text: op.name || 'Operator Sekolah' }),
-          el('p', { class: 't-small', style: 'margin:3px 0 0 0',
-            text: (op.unit || '').trim() || 'Unit kerja belum diisi' })
-        ]),
-        el('button', {
-          class: 'status-badge pressable', type: 'button',
-          'aria-label': 'Ubah profil operator',
-          onclick: function () { openSetting('Informasi pribadi'); }
-        }, ['Ubah'])
-      ]),
-      el('div', { style: 'margin-top:14px' }, fields.map(function (f, i) {
+    return el('div', { class: 'clay-soft', style: 'padding:4px 16px 12px 16px' }, [
+      el('div', {}, fields.map(function (f, i) {
         var value = (f[1] || '').trim();
         return el('div', {
           class: 'profile-field' + (i === fields.length - 1 ? ' last' : '')
@@ -3391,6 +3412,82 @@
             : 'Data pribadi sudah lengkap'
         })
       ])
+    ]);
+  }
+
+  /* Tab Profil operator: cermin OperatorProfileTab (tab keenam, di sebelah
+     Media). Identitas kerja read-only + pengaturan akun. */
+  function renderOperatorProfil() {
+    var op = state.operatorProfile || {};
+    var settings = [
+      ['Tampilan', 'sunny-outline'],
+      ['Notifikasi', 'notifications-outline'],
+      ['Privasi dan keamanan', 'shield-checkmark-outline'],
+      ['Pusat bantuan', 'help-circle-outline']
+    ];
+
+    return el('div', {}, [
+      pageHeader('Profil Operator', 'Identitas kerja dan pengaturan akun'),
+      schoolIdentity(false),
+      el('div', { class: 'clay-soft', style: 'padding:18px;margin-bottom:20px;background:#FBEAEC' }, [
+        el('div', { style: 'display:flex;align-items:center;gap:14px' }, [
+          el('div', {
+            style: 'width:62px;height:62px;border-radius:31px;background:#fff;display:flex;' +
+                   'align-items:center;justify-content:center;font-weight:800;font-size:22px;color:var(--rose)'
+          }, [profileInitials(op)]),
+          el('div', { style: 'flex:1;min-width:0' }, [
+            el('p', {
+              class: 't-item-title',
+              style: 'margin:0;font-size:16px',
+              text: (op.name || '').trim() || 'Operator Sekolah'
+            }),
+            el('p', {
+              class: 't-small',
+              style: 'margin:3px 0 0 0',
+              text: (op.role || '').trim() || 'Operator sekolah'
+            }),
+            el('p', {
+              class: 't-small',
+              style: 'margin:2px 0 0 0',
+              text: (op.unit || '').trim() || 'Unit kerja belum diisi'
+            })
+          ])
+        ]),
+        el('button', {
+          class: 'karsa-btn clay-raised pressable', type: 'button',
+          style: 'margin-top:14px;border:none;cursor:pointer;height:44px',
+          'aria-label': 'Ubah profil operator',
+          onclick: function () { openSetting('Informasi pribadi'); }
+        }, ['Ubah profil'])
+      ]),
+      el('p', { class: 't-section', style: 'margin-bottom:10px', text: 'Informasi pribadi' }),
+      operatorProfileFields(op),
+      el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Pengaturan' }),
+      el('div', { class: 'clay-soft', style: 'padding:0;overflow:hidden' },
+        settings.map(function (item, index) {
+          return el('button', {
+            class: 'setting-row pressable' + (index === settings.length - 1 ? ' last' : ''),
+            type: 'button',
+            style: 'width:100%;border:none;cursor:pointer',
+            onclick: function () { openSetting(item[0]); }
+          }, [
+            el('span', { class: 'setting-row-icon' }, [icon(item[1], 18)]),
+            el('span', { class: 'setting-row-label', text: item[0] }),
+            el('span', { style: 'display:inline-flex;color:var(--muted)' }, [icon('chevron-forward', 17)])
+          ]);
+        })
+      ),
+      el('div', { style: 'text-align:center' }, [
+        el('button', {
+          class: 't-link pressable', type: 'button', style: 'padding:20px',
+          onclick: logoutDemo
+        }, ['Keluar dari akun demo'])
+      ]),
+      el('p', {
+        class: 't-small',
+        style: 'text-align:center;color:var(--muted);font-size:12px',
+        text: 'Data profil tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'
+      })
     ]);
   }
 
@@ -4891,6 +4988,7 @@
     { id: 'operator-kelas', label: 'Operator · Kelas', group: 'Operator Sekolah', render: renderOperatorKelas, nav: 'operator' },
     { id: 'operator-materi', label: 'Operator · Materi', group: 'Operator Sekolah', render: renderOperatorMateri, nav: 'operator' },
     { id: 'operator-media', label: 'Operator · Media', group: 'Operator Sekolah', render: renderOperatorMedia, nav: 'operator' },
+    { id: 'operator-profil', label: 'Operator · Profil', group: 'Operator Sekolah', render: renderOperatorProfil, nav: 'operator' },
     { id: 'operator-tugas', label: 'Operator · Tugas', group: 'Operator Sekolah', render: renderOperatorTugas, nav: null, role: 'operator' },
     { id: 'operator-pengumuman', label: 'Operator · Pengumuman', group: 'Operator Sekolah', render: renderOperatorPengumuman, nav: null, role: 'operator' },
     { id: 'operator-agenda', label: 'Operator · Agenda', group: 'Operator Sekolah', render: renderOperatorAgenda, nav: null, role: 'operator' },
@@ -4931,7 +5029,10 @@
     var prefix = ROLE_SCREEN_PREFIX[role];
     var map = {
       Beranda: prefix + 'beranda', Anggota: prefix + 'anggota', Rekap: prefix + 'recap',
-      Agenda: prefix + 'agenda', Profil: prefix + 'profil', Kelas: prefix + 'kelas',
+      Agenda: prefix + 'agenda',
+      // Operator memakai 'operator-profil'; peran lain tetap '<prefix>profil'.
+      Profil: role === 'operator' ? 'operator-profil' : prefix + 'profil',
+      Kelas: prefix + 'kelas',
       Tugas: prefix + 'tugas', Kalender: prefix + 'kalender', Latihan: prefix + 'latihan',
       Siswa: prefix + 'siswa', Materi: prefix + 'materi', Media: prefix + 'media'
     };

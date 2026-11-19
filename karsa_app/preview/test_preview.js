@@ -2,7 +2,7 @@
  *
  * Runs the preview script inside a tiny mock DOM (no browser required) and
  * asserts that:
- *   - every one of the 39 canonical screens renders without throwing,
+ *   - every one of the 40 canonical screens renders without throwing,
  *   - the splash screen auto-advances to the welcome screen,
  *   - each role login validates credentials exactly like AppState.authenticate(),
  *   - the bottom navigation switches tabs,
@@ -304,7 +304,7 @@ const preview = sandbox.window.KARSA_PREVIEW;
 ok(!!preview, 'KARSA_PREVIEW global is exposed');
 
 /* ------------------------------------------------------------------ *
- * 1. Screen registry — 39 canonical screens + alias
+ * 1. Screen registry — 40 canonical screens + alias
  * ------------------------------------------------------------------ */
 const EXPECTED_SCREENS = [
   'splash', 'welcome', 'login',
@@ -314,14 +314,14 @@ const EXPECTED_SCREENS = [
   'guru-beranda', 'guru-kelas', 'guru-tugas', 'guru-kalender', 'guru-profil',
   'siswa-beranda', 'siswa-tugas', 'siswa-profil',
   'ortu-beranda', 'ortu-tugas', 'ortu-latihan', 'ortu-profil',
-  'operator-beranda', 'operator-siswa', 'operator-kelas', 'operator-materi',
+  'operator-beranda', 'operator-siswa', 'operator-kelas', 'operator-materi', 'operator-profil',
   'operator-media', 'operator-tugas', 'operator-pengumuman',
   'operator-agenda', 'operator-nilai',
   'materi', 'notifikasi', 'kuis', 'hasil-kuis'
 ];
 
-eq(preview.screens.length, 39, 'screen registry contains 39 screens');
-eq(EXPECTED_SCREENS.length, 39, 'the expected screen list has 39 entries');
+eq(preview.screens.length, 40, 'screen registry contains 40 screens');
+eq(EXPECTED_SCREENS.length, 40, 'the expected screen list has 40 entries');
 EXPECTED_SCREENS.forEach((id) => {
   ok(preview.screens.indexOf(id) >= 0, 'screen "' + id + '" is registered');
 });
@@ -855,11 +855,11 @@ if (manageBtn) {
     'the manage button opens the related operator page');
 }
 
-// Tombol Ubah profil membuka form, bukan menutup section.
-preview.go('operator-beranda');
+// Tombol Ubah profil di tab Profil membuka form.
+preview.go('operator-profil');
 const editProfileBtn = viewport.querySelectorAll('[aria-label]')
   .filter((n) => n.getAttribute('aria-label') === 'Ubah profil operator')[0];
-ok(!!editProfileBtn, 'the profile section keeps an edit button');
+ok(!!editProfileBtn, 'the profile tab keeps an edit button');
 if (editProfileBtn) {
   editProfileBtn.click();
   ok(sheetBackdrop.hidden === false, 'the profile edit button opens the personal info form');
@@ -881,9 +881,57 @@ preview.toggleTheme();
 preview.state.operatorOpen = {};
 preview.go('operator-beranda');
 
-// Tab operator: 5 tab dan fifth screen media.
+// Tab Profil operator: tab keenam, tepat di kanan Media.
+preview.state.role = 'operator';
+preview.state.tab = 'Beranda';
+preview.go('operator-beranda');
+// textContent tiap tab menyertakan glyph ikon Ionicons, jadi bandingkan
+// dengan akhiran labelnya.
+const opTabLabels = bottomNav.querySelectorAll('.nav-item')
+  .map((n) => (n.textContent || '').replace(/[^A-Za-z ]/g, '').trim());
+eq(opTabLabels[opTabLabels.length - 1], 'Profil',
+  'the operator Profile tab sits on the far right');
+eq(opTabLabels.indexOf('Media') + 1, opTabLabels.indexOf('Profil'),
+  'the Profile tab is directly beside Media');
+
+// Mengetuk tab Profil membuka halaman profil operator.
+bottomNav.querySelectorAll('.nav-item')[opTabLabels.length - 1].click();
+eq(preview.state.screen, 'operator-profil', 'the Profile tab opens operator-profil');
+eq(preview.state.tab, 'Profil', 'the active tab is Profil');
+
+// Isi halaman profil: identitas, enam kolom, pengaturan, dan tombol keluar.
+const profileText = viewport.textContent;
+ok(profileText.indexOf('Profil Operator') >= 0, 'the profile tab has its own heading');
+ok(profileText.indexOf('SD Karitas Purwokerto') >= 0,
+  'the profile tab shows the school identity');
+ok(profileText.indexOf('Ubah profil') >= 0, 'the profile tab offers an edit button');
+['Nama lengkap', 'NIP', 'Jabatan', 'Unit kerja', 'Surel', 'Telepon'].forEach((label) => {
+  ok(profileText.indexOf(label) >= 0, 'the profile tab lists "' + label + '"');
+});
+ok(profileText.indexOf('Pengaturan') >= 0, 'the profile tab has a settings section');
+eq(viewport.querySelectorAll('.setting-row').length, 4,
+  'the profile tab lists four settings rows');
+ok(profileText.indexOf('Keluar dari akun demo') >= 0,
+  'the profile tab offers logout');
+
+// Beranda tidak lagi memuat section profil penuh — hanya pintasan ke tab.
+preview.go('operator-beranda');
+ok(viewport.querySelectorAll('.profile-field').length === 0,
+  'the operator home no longer renders the full profile fields');
+ok(viewport.querySelectorAll('.profile-complete').length === 0,
+  'the operator home no longer renders the completeness banner');
+const profileShortcut = viewport.querySelectorAll('[aria-label]')
+  .filter((n) => n.getAttribute('aria-label') === 'Buka tab Profil operator')[0];
+ok(!!profileShortcut, 'the operator home links to the Profile tab');
+if (profileShortcut) {
+  profileShortcut.click();
+  eq(preview.state.screen, 'operator-profil',
+    'the home shortcut jumps to the Profile tab');
+}
+
+// Tab operator: 6 tab, Profil di kanan Media.
 const opTabs = bottomNav.querySelectorAll('.nav-item');
-eq(opTabs.length, 5, 'the operator bottom nav has 5 tabs');
+eq(opTabs.length, 6, 'the operator bottom nav has 6 tabs');
 ok(opTabs.some((t) => (t.textContent || '').indexOf('Media') >= 0),
   'the operator nav has a Media tab');
 
@@ -1409,11 +1457,12 @@ preview.state.filter = 'Semua kelas';
 // Data pribadi operator tidak boleh menimpa nama siswa.
 preview.state.role = 'operator';
 preview.state.studentName = 'Dimas Nugroho';
-preview.go('operator-beranda');
+// Profil operator kini tab sendiri (keenam, di sebelah Media).
+preview.go('operator-profil');
 // Mock DOM tidak mendukung selector `[attr=value]`; saring manual.
 const opInfoCard = viewport.querySelectorAll('[aria-label]')
   .filter((n) => n.getAttribute('aria-label') === 'Ubah profil operator')[0];
-ok(!!opInfoCard, 'the operator home renders the profile section with an edit button');
+ok(!!opInfoCard, 'the operator profile tab renders an edit button');
 if (opInfoCard) {
   // Section profil menampilkan jabatan, NIP, dan indikator kelengkapan.
   ok(viewport.textContent.indexOf('Operator Sekolah') >= 0,
@@ -1503,7 +1552,7 @@ if (opInfoCard) {
     'saving the operator profile does not overwrite the student name');
 
   // Profil lengkap sekarang dilaporkan lengkap.
-  preview.go('operator-beranda');
+  preview.go('operator-profil');
   ok(viewport.textContent.indexOf('Data pribadi sudah lengkap') >= 0,
     'the identity card reports a complete profile once every field is filled');
   ok(viewport.textContent.indexOf('sari@sekolah.sch.id') >= 0,

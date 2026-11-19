@@ -39,7 +39,7 @@ curl http://127.0.0.1:8000/healthz
 | --- | --- |
 | `index.html` | Kerangka halaman: bar pemilih layar + tombol mode gelap, viewport, bottom nav, dan sheet modal. |
 | `styles.css` | Token claymorphism, palet terang/gelap, tipografi, dan komponen (1:1 dengan `lib/core/theme/*`). |
-| `app.js` | Seluruh logika pratinjau: state, 39 layar, interaksi, router hash. |
+| `app.js` | Seluruh logika pratinjau: state, 40 layar, interaksi, router hash. |
 | `curriculum-data.js` | **Berkas hasil generate** — bank soal, bank esai, info mata pelajaran, daftar agama, dan peta glif Ionicons. |
 | `serve.py` | Server statis tanpa cache + `/healthz`. |
 | `test_preview.js` | Harness verifikasi (mock DOM) — `node test_preview.js`. |
@@ -65,7 +65,7 @@ node karsa_app/tool/generate_preview_data.js
 
 ---
 
-## Layar (39)
+## Layar (40)
 
 | # | Layar | Catatan |
 | --- | --- | --- |
@@ -95,33 +95,36 @@ node karsa_app/tool/generate_preview_data.js
 | 24 | `ortu-tugas` |  |
 | 25 | `ortu-latihan` |  |
 | 26 | `ortu-profil` |  |
-| 27 | `operator-beranda` |  |
+| 27 | `operator-beranda` | pintasan bisa dilipat |
 | 28 | `operator-siswa` |  |
 | 29 | `operator-kelas` |  |
 | 30 | `operator-materi` |  |
 | 31 | `operator-media` |  |
-| 32 | `operator-tugas` |  |
-| 33 | `operator-pengumuman` |  |
-| 34 | `operator-agenda` |  |
-| 35 | `operator-nilai` |  |
-| 36 | `materi` |  |
-| 37 | `notifikasi` |  |
-| 38 | `kuis` |  |
-| 39 | `hasil-kuis` |  |
+| 32 | `operator-profil` | identitas kerja + pengaturan akun |
+| 33 | `operator-tugas` |  |
+| 34 | `operator-pengumuman` |  |
+| 35 | `operator-agenda` |  |
+| 36 | `operator-nilai` |  |
+| 37 | `materi` |  |
+| 38 | `notifikasi` |  |
+| 39 | `kuis` |  |
+| 40 | `hasil-kuis` |  |
 
 ## Cakupan operator sekolah
 
-Lima tab bawah: **Beranda, Siswa, Kelas, Materi, Media** (Foto & Grafis).
+Enam tab bawah: **Beranda, Siswa, Kelas, Materi, Media** (Foto & Grafis), dan
+**Profil** (identitas kerja & pengaturan akun).
 Halaman tambahan yang dibuka dari pintasan/form: tugas, pengumuman, agenda,
 nilai, form siswa, form materi, form kelas, dan form akun guru/wali.
 
 | Layar | Isi |
 | --- | --- |
-| `operator-beranda` | Sapaan operator, 4 statistik, 5 pintasan yang bisa dilipat, dan section profil operator |
+| `operator-beranda` | Sapaan operator, 4 statistik, 5 pintasan yang bisa dilipat, dan pintasan ke tab Profil |
 | `operator-siswa` | Roster seluruh kelas, pencarian, filter, tambah/ubah/hapus |
 | `operator-kelas` | Sub-tab **Kelas / Akun / Siswa** + form kelas & akun guru/wali |
 | `operator-materi` | Materi seluruh kelas + tambah/ubah/hapus, lampiran URL/berkas |
 | `operator-media` | Unggah logo sekolah, banner siswa & banner guru (pratinjau langsung) |
+| `operator-profil` | Identitas kerja read-only (6 kolom), indikator kelengkapan, pengaturan akun, dan tombol keluar |
 | `operator-tugas` | Tugas seluruh kelas + form tambah/ubah/hapus |
 | `operator-pengumuman` | Pengumuman sekolah + form tambah/ubah/hapus |
 | `operator-agenda` | Agenda sekolah + form tambah/ubah/hapus |
@@ -150,9 +153,25 @@ di bawah judul layar.
 | Tertutup | Hanya judul + ringkasan satu baris + tombol `Kelola`/`Ubah`; daftar tetap ringkas |
 | Terbuka | Rincian nyata dari data tersimpan (mis. 3 judul pengumuman, agenda + tanggal, ringkasan mapel/kelas, status tiap slot grafis) |
 | Mandiri | Membuka satu kartu tidak menutup kartu lain — bukan akordeon; status buka bertahan saat layar dirender ulang |
-| Profil operator | Section read-only berisi enam kolom (nama, NIP, jabatan, unit kerja, surel, telepon) + indikator kelengkapan dan tombol `Ubah` ke form |
+| Profil operator | **Tab tersendiri** (keenam, di kanan Media) berisi enam kolom read-only + indikator kelengkapan + pengaturan akun; beranda hanya menyisakan pintasan ke tab itu |
 
 ---
+
+---
+
+## Tab Profil operator
+
+Profil operator kini tab sendiri — **tab keenam, persis di sebelah kanan
+Media** — bukan lagi section yang menempel di ujung beranda.
+
+| Bagian | Isi |
+| --- | --- |
+| Kepala | Avatar inisial, nama, jabatan, unit kerja, tombol **Ubah profil** |
+| Informasi pribadi | Enam kolom read-only: nama lengkap, NIP, jabatan, unit kerja, surel, telepon |
+| Kelengkapan | `Lengkapi surel & telepon (4/6 kolom terisi)` — menyebut kolom yang masih kosong |
+| Pengaturan | Tampilan, Notifikasi, Privasi dan keamanan, Pusat bantuan |
+| Keluar | `Keluar dari akun demo` → kembali ke form login |
+| Beranda | Hanya pintasan ringkas "Identitas kerja dan pengaturan ada di tab Profil" |
 
 ---
 
@@ -225,7 +244,7 @@ node karsa_app/preview/test_preview.js
 ```
 
 Harness memakai **mock DOM** (tanpa browser) dan memverifikasi:
-39 layar ter-render tanpa error, transisi splash 2300 ms yang langsung membuka
+40 layar ter-render tanpa error, transisi splash 2300 ms yang langsung membuka
 form login tunggal, deteksi peran dari NIP/NISN (kelima akun masuk lewat form
 yang sama, termasuk pesan galat per kolom kosong), "Ingat saya" yang menyimpan
 identitas tanpa kata sandi, navigasi bawah, filter chip/segmen/pencarian,
@@ -240,7 +259,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **455 pemeriksaan**.
+Total **477 pemeriksaan**.
 
 ---
 

@@ -219,11 +219,12 @@ class _OperatorHomeTabState extends State<OperatorHomeTab> {
           onManage: () => state.changeTab('Media'),
         ),
         const SizedBox(height: 8),
-        Text('Profil operator', style: theme.text.section),
-        const SizedBox(height: 10),
-        _OperatorProfileSection(
-          profile: profile,
-          onEdit: () => state.openSetting('Informasi pribadi'),
+        // Profil operator punya tab sendiri (tab keenam, di sebelah Media),
+        // jadi tidak lagi menumpuk di ujung beranda.
+        _ProfileShortcut(
+          initials: profile.initials,
+          name: profile.name,
+          onTap: () => state.changeTab('Profil'),
         ),
       ],
     );
@@ -266,188 +267,72 @@ class _OperatorWelcomeLine extends StatelessWidget {
   }
 }
 
-/// Section profil operator: enam kolom profil ditampilkan lengkap
-/// (read-only) dengan tombol Ubah yang membuka form "Informasi pribadi".
-class _OperatorProfileSection extends StatelessWidget {
-  const _OperatorProfileSection({required this.profile, required this.onEdit});
-
-  final OperatorProfile profile;
-  final VoidCallback onEdit;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = KarsaThemeScope.of(context);
-    final c = theme.colors;
-    final filled = profile.filledFields;
-    final contactHint = [
-      if (profile.email.isEmpty) 'surel',
-      if (profile.phone.isEmpty) 'telepon',
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: ClayStyles.soft(color: c.card, isDark: c.isDark),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Container(
-                width: 54,
-                height: 54,
-                alignment: Alignment.center,
-                decoration: ClayStyles.soft(
-                  color: const Color(0xFFFBEAEC),
-                  isDark: c.isDark,
-                  customRadius: BorderRadius.circular(27),
-                ),
-                child: Text(
-                  profile.initials,
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                    color: c.rose,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      profile.name.isEmpty ? 'Operator Sekolah' : profile.name,
-                      style: theme.text.itemTitle,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      profile.unit.isEmpty ? 'Unit kerja belum diisi' : profile.unit,
-                      style: theme.text.smallMuted,
-                    ),
-                  ],
-                ),
-              ),
-              MotionPressable(
-                semanticsLabel: 'Ubah profil operator',
-                onTap: onEdit,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 13,
-                    vertical: 7,
-                  ),
-                  decoration: ClayStyles.soft(
-                    color: const Color(0xFFF9E8ED),
-                    isDark: c.isDark,
-                    radius: 13,
-                    borderWidth: 1,
-                  ),
-                  child: Text(
-                    'Ubah',
-                    style: theme.text.badge.copyWith(
-                      color: c.rose,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _ProfileField(label: 'Nama lengkap', value: profile.name),
-          _ProfileField(label: 'NIP', value: profile.nip),
-          _ProfileField(label: 'Jabatan', value: profile.role),
-          _ProfileField(label: 'Unit kerja', value: profile.unit),
-          _ProfileField(label: 'Surel', value: profile.email),
-          _ProfileField(label: 'Telepon', value: profile.phone, isLast: true),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: ClayStyles.inset(
-              color: DarkColorMapper.surface(
-                const Color(0xFFFBF3F4),
-                isDark: c.isDark,
-              ),
-              isDark: c.isDark,
-              radius: 13,
-              borderColor: const Color(0xFFF1E5E2),
-              borderWidth: 1,
-            ),
-            child: Row(
-              children: <Widget>[
-                Icon(
-                  filled < OperatorProfile.totalFields
-                      ? KarsaIcons.helpCircleOutline
-                      : KarsaIcons.checkmarkCircle,
-                  size: 17,
-                  color: filled < OperatorProfile.totalFields ? c.rose : c.blue,
-                ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    filled < OperatorProfile.totalFields
-                        ? 'Lengkapi ${contactHint.isEmpty ? 'data pribadi' : contactHint.join(' & ')} '
-                            '($filled/${OperatorProfile.totalFields} kolom terisi)'
-                        : 'Data pribadi sudah lengkap',
-                    style: theme.text.smallMuted.copyWith(
-                      color: c.rose,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Satu baris label–nilai pada section profil operator.
-class _ProfileField extends StatelessWidget {
-  const _ProfileField({
-    required this.label,
-    required this.value,
-    this.isLast = false,
+/// Pintasan ringkas ke tab Profil: section profil lengkap sudah pindah ke
+/// sana supaya beranda operator tetap ringkas.
+class _ProfileShortcut extends StatelessWidget {
+  const _ProfileShortcut({
+    required this.initials,
+    required this.name,
+    required this.onTap,
   });
 
-  final String label;
-  final String value;
-  final bool isLast;
+  final String initials;
+  final String name;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = KarsaThemeScope.of(context);
     final c = theme.colors;
-    final empty = value.trim().isEmpty;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 9),
-      decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : Border(bottom: BorderSide(color: c.line, width: 1)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          SizedBox(
-            width: 104,
-            child: Text(label, style: theme.text.smallMuted),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              empty ? 'Belum diisi' : value,
-              style: TextStyle(
-                fontSize: 13,
-                height: 18 / 13,
-                fontWeight: empty ? FontWeight.w500 : FontWeight.w700,
-                color: empty ? c.muted : c.ink,
-                fontStyle: empty ? FontStyle.italic : FontStyle.normal,
+    return MotionPressable(
+      semanticsLabel: 'Buka tab Profil operator',
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: ClayStyles.soft(
+          color: const Color(0xFFFBEAEC),
+          isDark: c.isDark,
+        ),
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: ClayStyles.soft(
+                color: Colors.white,
+                isDark: c.isDark,
+                customRadius: BorderRadius.circular(21),
+              ),
+              child: Text(
+                initials,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: c.rose,
+                ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    name.isEmpty ? 'Operator Sekolah' : name,
+                    style: theme.text.itemTitle,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Identitas kerja dan pengaturan ada di tab Profil',
+                    style: theme.text.smallMuted,
+                  ),
+                ],
+              ),
+            ),
+            Icon(KarsaIcons.chevronForward, size: 18, color: c.rose),
+          ],
+        ),
       ),
     );
   }

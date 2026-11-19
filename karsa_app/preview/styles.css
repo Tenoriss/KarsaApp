@@ -1596,3 +1596,43 @@ body.is-splash {
 .profile-complete .ion {
   flex: 0 0 auto;
 }
+
+/* Baris pengaturan di tab Profil operator */
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 15px;
+  background: none;
+  border-bottom: 1px solid var(--line);
+  font: inherit;
+  text-align: left;
+}
+
+.setting-row.last {
+  border-bottom: none;
+}
+
+.setting-row-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #F8EBEC;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rose);
+  flex: 0 0 auto;
+}
+
+[data-theme='dark'] .setting-row-icon {
+  background: #493640;
+}
+
+.setting-row-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}

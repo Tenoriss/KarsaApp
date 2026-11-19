@@ -24,7 +24,7 @@ sebagai rujukan audit dan perbandingan visual.
 | Aset | `assets/*.png` | `karsa_app/assets/images/*.png` (salinan identik) |
 | Ikon | `@expo/vector-icons` Ionicons | Font `Ionicons.ttf` + `KarsaIcons` (27 codepoint) |
 | Bank soal | `curriculum.js` | `lib/data/curriculum_data.dart` (generate 1:1) |
-| Pratinjau | — | `karsa_app/preview/` — 39 layar HTML interaktif, offline |
+| Pratinjau | — | `karsa_app/preview/` — 40 layar HTML interaktif, offline |
 
 **Skala implementasi**
 
@@ -46,7 +46,9 @@ Hasil lengkap ada di [`01_AUDIT_MAPPING.md`](01_AUDIT_MAPPING.md). Ringkasan:
 * **41 tampilan** pada state `screen` RN dipetakan ke 42 widget Flutter
   (layar RN `taskDetail`/`practiceDetail` menjadi bottom sheet modal di
   `lib/shared/widgets/main_shell.dart`).
-* **5 tab** untuk masing-masing peran dipetakan ke `MainShell` role-aware.
+* **5 tab** untuk peran hasil migrasi (wali, guru, siswa, orang tua);
+  **6 tab** untuk operator sekolah (termasuk Profil). Semuanya dipetakan ke
+  `MainShell` role-aware.
 * **27 ikon Ionicons** dipakai di `App.js` diekstrak menjadi tabel codepoint
   (`lib/core/widgets/karsa_icons.dart`) memakai font `Ionicons.ttf` dari
   `@expo/vector-icons@15.0.2` (389.724 byte, identik dengan berkas RN).
@@ -90,7 +92,7 @@ karsa_app/
 │                           # operator (11 layar CRUD sekolah)
 ├── test/                   # 5 berkas uji
 ├── tool/                   # generator kurikulum & ikon, check_syntax.py
-├── preview/                # pratinjau HTML 39 layar
+├── preview/                # pratinjau HTML 40 layar
 └── docs/                   # 01–03
 ```
 
@@ -318,7 +320,7 @@ Pemeriksaan yang dilakukan:
 | Sintaks & struktur Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 120 berkas, 16.623 baris, 148 class/enum/mixin; semua import, aset, referensi member, inisialisasi field `final`, argumen bernama `Image`, null-check `.isEmpty`, dan import simbol lokal resolve |
 | Uji unit Flutter (disiapkan, belum dieksekusi) | `flutter test` | **Tidak dijalankan** — SDK tidak tersedia (termasuk uji baru: ringkasan nilai kelas + pengeditan data pribadi) |
 | Sintaks JS pratinjau | `node --check` | OK untuk `app.js`, `curriculum-data.js`, `test_preview.js`, `tool/generate_preview_data.js` |
-| Perilaku pratinjau (mock DOM) | `node karsa_app/preview/test_preview.js` | OK — 455 pemeriksaan lulus |
+| Perilaku pratinjau (mock DOM) | `node karsa_app/preview/test_preview.js` | OK — 477 pemeriksaan lulus |
 | Server pratinjau | `curl http://127.0.0.1:8000/...` | OK — `/healthz` 200, HTML/CSS/JS 200 + charset utf-8, 6 PNG 200, `Ionicons.ttf` 200, 404 untuk berkas tak dikenal |
 
 Rencana uji lengkap: [`03_TESTING_PLAN.md`](03_TESTING_PLAN.md).
@@ -327,7 +329,7 @@ Rencana uji lengkap: [`03_TESTING_PLAN.md`](03_TESTING_PLAN.md).
 
 ## 7. Tahap 9 — Pratinjau HTML (`karsa_app/preview/`)
 
-Pratinjau HTML interaktif 39 layar dibuat agar tampilan dan alur dapat
+Pratinjau HTML interaktif 40 layar dibuat agar tampilan dan alur dapat
 diperiksa **tanpa Flutter** dan **tanpa browser automation**.
 
 * **Mobile-first**: `100dvh` pada ponsel, kolom `480px` pada layar lebar,
@@ -336,9 +338,9 @@ diperiksa **tanpa Flutter** dan **tanpa browser automation**.
   `/assets/...` milik `serve.py`.
 * **Bar atas** hanya berisi dropdown pemilih layar + tombol mode gelap
   (tanpa label "Pratinjau").
-* **39 layar**: splash, login tunggal, pilih peran (arsip), 5 login per peran
+* **40 layar**: splash, login tunggal, pilih peran (arsip), 5 login per peran
   (deep link), lupa kata sandi, 5 tab wali,
-  5 tab guru, 3 tab siswa, 4 tab orang tua, 9 layar operator sekolah, materi,
+  5 tab guru, 3 tab siswa, 4 tab orang tua, 10 layar operator sekolah, materi,
   notifikasi, kuis, hasil kuis.
 * **CRUD operator**: seluruh tambah/ubah/hapus siswa, kelas, akun guru/wali,
   materi, tugas, pengumuman, agenda, dan nilai tersimpan di `localStorage`
@@ -370,7 +372,8 @@ Peran **Operator Sekolah** ditambahkan baik di Flutter maupun di pratinjau
 HTML. Kode React Native di root repository tetap tidak disentuh.
 
 * **Akun demo**: NIP `19870003`, kata sandi `operator123`.
-* **Lima tab**: Beranda, Siswa, Kelas, Materi, Media (Foto & Grafis). Halaman
+* **Enam tab**: Beranda, Siswa, Kelas, Materi, Media (Foto & Grafis), dan
+  Profil (identitas kerja + pengaturan akun). Halaman
   turunan: tugas, pengumuman, agenda, nilai, form siswa, form materi, form
   kelas, form akun guru/wali, dan data pribadi operator.
 * **Model baru**: `SchoolClass`, `StaffAccount`, `StudentProfile`,
@@ -403,7 +406,7 @@ HTML. Kode React Native di root repository tetap tidak disentuh.
   `x@y.z` bila diisi, telepon 8-16 angka bila diisi. Galat tampil di dalam
   form dan tidak menyimpan apa pun.
 * **Regresi**: `test/operator_crud_test.dart` (Flutter, belum dieksekusi karena
-  SDK tidak ada) dan blok operator di `preview/test_preview.js` (455
+  SDK tidak ada) dan blok operator di `preview/test_preview.js` (477
   pemeriksaan lulus), termasuk pembuktian bahwa uji gagal bila perlindungan
   kelas terakhir atau penghapusan materi dimatikan.
 

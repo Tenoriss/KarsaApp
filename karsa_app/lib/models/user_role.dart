@@ -43,7 +43,14 @@ enum UserRole {
       case UserRole.orangtua:
         return <String>['Beranda', 'Tugas', 'Latihan', 'Profil'];
       case UserRole.operator:
-        return <String>['Beranda', 'Siswa', 'Kelas', 'Materi', 'Media'];
+        return <String>[
+          'Beranda',
+          'Siswa',
+          'Kelas',
+          'Materi',
+          'Media',
+          'Profil',
+        ];
     }
   }
 

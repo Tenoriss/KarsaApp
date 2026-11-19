@@ -37,6 +37,7 @@ import '../../features/operator/operator_home_tab.dart';
 import '../../features/operator/operator_materials_tab.dart';
 import '../../features/operator/operator_material_form_page.dart';
 import '../../features/operator/operator_media_tab.dart';
+import '../../features/operator/operator_profile_tab.dart';
 import '../../features/operator/operator_students_tab.dart';
 import '../../features/operator/operator_student_form_page.dart';
 import '../../features/operator/operator_tasks_page.dart';
@@ -122,6 +123,8 @@ class MainShell extends StatelessWidget {
           return const OperatorMaterialsTab();
         case 'Media':
           return const OperatorMediaTab();
+        case 'Profil':
+          return const OperatorProfileTab();
         default:
           return const OperatorHomeTab();
       }

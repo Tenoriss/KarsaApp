@@ -165,12 +165,14 @@ void main() {
       expect(state.role, UserRole.operator);
       expect(state.isOperator, isTrue);
       expect(state.canManageAll, isTrue);
+      // Operator punya enam tab: Profil di paling kanan, di sebelah Media.
       expect(state.role!.navTabs, <String>[
         'Beranda',
         'Siswa',
         'Kelas',
         'Materi',
         'Media',
+        'Profil',
       ]);
 
       // Roster siswa tersedia lintas kelas.
