@@ -208,6 +208,11 @@ Media** — bukan lagi section yang menempel di ujung beranda.
   muncul sebelum diperiksa; kartu umpan balik hijau/merah setelah diperiksa.
   Warna tetap memakai token yang sudah ada (`--rose`, `--surface-*`,
   `--surface-quiz-feedback`) sehingga aman di mode gelap.
+* **Rekap pengumpulan guru** — notifikasi guru menyebut **nama siswa + nilai**
+  ("Aisyah Putri mengumpulkan tugas · Matematika · Kelas 1 · Nilai 9/10") dan
+  mengetuknya membuka rekap: sudah kumpul berapa dari berapa siswa, rata-rata,
+  dan daftar per siswa (yang belum ditandai "Belum mengumpulkan"). Guru tidak
+  lagi diarahkan ke halaman tugas untuk dikerjakan sendiri.
 * **Pengumuman guru** — layar `guru-pengumuman`: guru mapel membuat dan
   mengubah pengumumannya sendiri. Pilihan kelas hanya "Semua kelas" + kelas
   yang benar-benar diajar mapelnya (guru IPAS: Kelas 3–6, bukan 1–2).
@@ -312,7 +317,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **674 pemeriksaan**.
+Total **692 pemeriksaan**.
 
 ---
 

@@ -356,6 +356,10 @@
   // Latihan yang sudah dikerjakan (esai maupun pilihan ganda).
   var PRACTICE_DONE = {};
 
+
+  // SUBMISSIONS[taskId][studentId] di atas dipakai guru untuk melihat siapa
+  // saja yang sudah mengerjakan dan nilainya.
+
   var PRACTICES = SUBJECTS.map(function (subject, i) {
     var id = subject === 'Matematika' ? 'p1'
       : subject === 'Bahasa Indonesia' ? 'p2'
@@ -397,9 +401,28 @@
       createdAt: new Date(NOW.getTime() - 7200000).toISOString()
     },
     {
+      // Notifikasi guru harus menyebut SIAPA yang mengumpulkan dan nilainya.
+      // Sebelumnya hanya "Tugas dikumpulkan siswa" tanpa nama, dan tombolnya
+      // membuka tugas untuk dikerjakan guru sendiri.
       id: 'n3', target: 'teachers', subject: 'Matematika', className: 'Kelas 1',
-      title: 'Tugas dikumpulkan siswa', kind: 'task', contentId: 't1',
+      title: 'Aisyah Putri mengumpulkan Matematika', kind: 'submission',
+      contentId: 't1', studentName: 'Aisyah Putri', studentId: 's1a',
+      score: 9, total: 10,
       createdAt: new Date(NOW.getTime() - 10800000).toISOString()
+    },
+    {
+      id: 'n3b', target: 'teachers', subject: 'Matematika', className: 'Kelas 1',
+      title: 'Bagas Wicaksono mengumpulkan Matematika', kind: 'submission',
+      contentId: 't1', studentName: 'Bagas Wicaksono', studentId: 's1b',
+      score: 7, total: 10,
+      createdAt: new Date(NOW.getTime() - 9000000).toISOString()
+    },
+    {
+      id: 'n3c', target: 'teachers', subject: 'Matematika', className: 'Kelas 1',
+      title: 'Dimas Nugroho mengumpulkan Matematika', kind: 'submission',
+      contentId: 't1', studentName: 'Dimas Nugroho', studentId: 's1d',
+      score: 10, total: 10,
+      createdAt: new Date(NOW.getTime() - 8400000).toISOString()
     },
     // Notifikasi untuk kelas siswa (Kelas 5). Nuris ini memakai kelas belajar
     // masing-masing, jadi siswa harus melihat notifikasi kelasnya sendiri.
@@ -414,6 +437,16 @@
       createdAt: new Date(NOW.getTime() - 9000000).toISOString()
     }
   ];
+
+  // Pengumpulan yang sudah ada di data demo (cermin TaskResult siswa pada
+  // seed): tiga siswa Kelas 1 sudah mengumpulkan Matematika t1.
+  var SUBMISSIONS = {
+    t1: {
+      s1a: { score: 9, total: 10, at: new Date(NOW.getTime() - 10800000).toISOString(), name: 'Aisyah Putri', className: 'Kelas 1' },
+      s1b: { score: 7, total: 10, at: new Date(NOW.getTime() - 9000000).toISOString(), name: 'Bagas Wicaksono', className: 'Kelas 1' },
+      s1d: { score: 10, total: 10, at: new Date(NOW.getTime() - 8400000).toISOString(), name: 'Dimas Nugroho', className: 'Kelas 1' }
+    }
+  };
 
   var MATERIALS = [
     {
@@ -478,6 +511,8 @@
     mood: null,
     studentClass: 'Kelas 5',
     parentClass: 'Kelas 1',
+    // NISN/roster id siswa yang sedang login, dipakai mencatat pengumpulan.
+    studentId: null,
     teacherSubject: 'Matematika',
     religion: '',
     studentName: 'Dimas Nugroho',
@@ -975,6 +1010,42 @@
       if (state.role === 'guru') return true;
       return a.className === 'Semua kelas' || a.className === state.parentClass;
     });
+  }
+
+  /* Menyimpan satu pengumpulan siswa + membuat notifikasi untuk guru. */
+  function recordSubmission(task, payload) {
+    if (!task) return;
+    var sid = state.studentId || 'self';
+    if (!SUBMISSIONS[task.id]) SUBMISSIONS[task.id] = {};
+    SUBMISSIONS[task.id][sid] = {
+      score: payload.score,
+      total: payload.total,
+      at: new Date().toISOString(),
+      name: payload.name || state.studentName,
+      className: payload.className || task.className
+    };
+    var notif = {
+      id: 'n' + Date.now() + '-' + Math.floor(Math.random() * 9000 + 1000),
+      target: 'teachers',
+      subject: task.subject,
+      className: task.className,
+      title: (payload.name || state.studentName) + ' mengumpulkan ' + task.subject,
+      kind: 'submission',
+      contentId: task.id,
+      studentName: payload.name || state.studentName,
+      studentId: sid,
+      score: payload.score,
+      total: payload.total,
+      createdAt: new Date().toISOString()
+    };
+    NOTIFICATIONS = [notif].concat(NOTIFICATIONS);
+    persistState();
+  }
+
+  /* "9/10" atau "Belum dinilai" untuk satu notifikasi pengumpulan. */
+  function scoreLabel(n) {
+    if (n.score === null || n.score === undefined) return 'Belum dinilai';
+    return 'Nilai ' + n.score + '/' + (n.total || 10);
   }
 
   function unreadAnnouncementsCount() {
@@ -5284,10 +5355,19 @@
     } else {
       list.forEach(function (n) {
         var read = isNotificationRead(n.id);
+        // Notifikasi pengumpulan menampilkan nama siswa + nilainya, bukan
+        // sekadar "Tugas dikumpulkan siswa".
+        var isSubmission = n.kind === 'submission' || n.target === 'teachers';
+        var meta = isSubmission && n.studentName
+          ? n.subject + ' · ' + n.className + ' · ' +
+            scoreLabel(n) + ' · ' + createdAtId(n.createdAt)
+          : n.subject + ' · ' + n.className + ' · ' + createdAtId(n.createdAt);
         children.push(listItemCard({
-          iconEmoji: n.target === 'teachers' ? '✅' : (n.kind === 'material' ? '📚' : '📝'),
-          tileColor: '#F8EBEC', title: n.title,
-          meta: n.subject + ' · ' + n.className + ' · ' + createdAtId(n.createdAt),
+          iconEmoji: isSubmission ? '✅' : (n.kind === 'material' ? '📚' : '📝'),
+          tileColor: '#F8EBEC',
+          // Nama cukup muncul sekali, di judul; meta mengisi kelas + nilai.
+          title: isSubmission && n.studentName ? n.studentName + ' mengumpulkan tugas' : n.title,
+          meta: meta,
           status: read ? 'Dibaca' : 'Baru',
           onTap: function () { openNotification(n); }
         }));
@@ -5310,6 +5390,13 @@
   function openNotification(n) {
     markNotificationRead(n.id);
     render();
+    // Guru tidak mengerjakan tugas: klik notifikasi pengumpulan membuka daftar
+    // siapa saja yang sudah mengumpulkan beserta nilainya.
+    if (state.role === 'guru' && (n.kind === 'submission' || n.target === 'teachers')) {
+      var submissionTask = TASKS.filter(function (t) { return t.id === n.contentId; })[0];
+      openSubmissions(submissionTask, n);
+      return;
+    }
     if (n.kind === 'task') {
       var task = TASKS.filter(function (t) { return t.id === n.contentId; })[0];
       if (task) {
@@ -5729,6 +5816,11 @@
             RESULTS[quiz.task.id] = {
               score: quiz.score, total: quiz.bank.length, answers: quiz.answers, demo: quiz.task.demo
             };
+            // Catat siapa yang mengumpulkan supaya muncul di daftar guru.
+            recordSubmission(quiz.task, {
+              score: quiz.score, total: quiz.bank.length,
+              name: state.studentName, className: quiz.task.className
+            });
             state.quiz = null;
             go('hasil-kuis');
             return;
@@ -5747,6 +5839,138 @@
 
   /* Hasil latihan: menampilkan skor pilihan ganda bila latihan dikerjakan
      lewat metode itu; esai tidak dinilai otomatis sehingga tanpa skor. */
+  /* ------------------------------------------------------------------ *
+   * Daftar pengumpulan tugas untuk guru
+   * Menjawab "siapa saja yang sudah mengerjakan dan nilainya berapa".
+   * ------------------------------------------------------------------ */
+  function submissionsFor(task) {
+    // Siswa nyata (roster) + hasil yang tersimpan, ditambah siswa yang
+    // memang mengirim dari perangkat ini.
+    var rows = (state.roster || [])
+      .filter(function (r) { return task && r.className === task.className; })
+      .map(function (r) {
+        var res = RESULTS[task.id];
+        var own = SUBMISSIONS[task.id] && SUBMISSIONS[task.id][r.id];
+        return {
+          id: r.id, name: r.name, className: r.className,
+          score: own ? own.score : null,
+          total: own ? own.total : (res && res.total) || null,
+          at: own ? own.at : null
+        };
+      });
+
+    // Siswa di luar roster (mis. siswa demo yang mengirim) tidak boleh hilang.
+    var known = rows.map(function (r) { return r.id; });
+    var extra = SUBMISSIONS[task.id] || {};
+    Object.keys(extra).forEach(function (sid) {
+      if (known.indexOf(sid) >= 0) return;
+      var row = extra[sid];
+      rows.push({
+        id: sid, name: row.name || state.studentName, className: row.className || task.className,
+        score: row.score, total: row.total, at: row.at
+      });
+    });
+    return rows;
+  }
+
+  function openSubmissions(task, notification) {
+    if (!task) {
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0', text: 'Pengumpulan tugas' }),
+        el('p', { class: 't-muted', text: 'Tugas tidak ditemukan di perangkat ini.' })
+      ]));
+      return;
+    }
+    var rows = submissionsFor(task);
+    var done = rows.filter(function (r) { return r.score !== null && r.score !== undefined; });
+    var avg = done.length
+      ? Math.round(done.reduce(function (a, r) { return a + r.score; }, 0) / done.length * 10) / 10
+      : null;
+
+    var children = [
+      el('div', { class: 'sheet-handle' }),
+      el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 2px 0', text: task.title }),
+      el('p', { class: 't-muted', style: 'margin-bottom:12px',
+        text: task.subject + ' · ' + task.className }),
+      el('div', { class: 'stats-grid', style: 'margin-bottom:6px' }, [
+        statCard({
+          icon: 'checkmark-circle', label: 'Sudah kumpul', value: String(done.length),
+          desc: 'dari ' + rows.length + ' siswa', color: 'var(--rose)', onTap: function () {}
+        }),
+        statCard({
+          icon: 'bar-chart', label: 'Rata-rata', value: avg === null ? '—' : String(avg),
+          desc: avg === null ? 'belum ada nilai' : 'dari 10', color: 'var(--blue)', onTap: function () {}
+        })
+      ])
+    ];
+
+    if (!rows.length) {
+      children.push(noticeCard('Belum ada siswa', 'Kelas ini belum punya daftar siswa.'));
+    } else {
+      // Yang sudah mengumpulkan tampil lebih dulu, nilai tertinggi di atas.
+      rows.sort(function (a, b) {
+        var aDone = a.score !== null && a.score !== undefined;
+        var bDone = b.score !== null && b.score !== undefined;
+        if (aDone !== bDone) return aDone ? -1 : 1;
+        if (aDone && bDone) return b.score - a.score;
+        return a.name.localeCompare(b.name);
+      });
+      rows.forEach(function (r) {
+        var submitted = r.score !== null && r.score !== undefined;
+        children.push(listItemCard({
+          iconEmoji: submitted ? '✅' : '⏳',
+          tileColor: submitted ? '#D1F4D8' : '#F8EBEC',
+          title: r.name,
+          meta: submitted
+            ? r.className + ' · Nilai ' + r.score + '/' + (r.total || 10) +
+              (r.at ? ' · ' + createdAtId(r.at) : '')
+            : r.className + ' · Belum mengumpulkan',
+          status: submitted ? (r.score >= 8 ? 'Baik' : 'Perlu latihan') : 'Belum',
+          onTap: function () {
+            if (!submitted) return;
+            // Sorot siswa yang diklik dari notifikasi.
+            openStudentSubmission(task, r);
+          }
+        }));
+      });
+    }
+
+    children.push(el('p', {
+      class: 't-small', style: 'margin-top:14px',
+      text: 'Nilai pilihan ganda dihitung otomatis. Esai tidak dinilai otomatis ' +
+        'sehingga tidak mengubah angka di atas.'
+    }));
+    openSheet(el('div', {}, children));
+  }
+
+  function openStudentSubmission(task, row) {
+    var esai = (SUBMISSIONS[task.id] && SUBMISSIONS[task.id][row.id] &&
+      SUBMISSIONS[task.id][row.id].essayAnswers) || [];
+    openSheet(el('div', {}, [
+      el('div', { class: 'sheet-handle' }),
+      el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 2px 0', text: row.name }),
+      el('p', { class: 't-muted', style: 'margin-bottom:12px',
+        text: task.subject + ' · ' + task.className }),
+      clayCard([
+        el('p', { class: 't-overline', style: 'margin:0 0 4px 0', text: 'NILAI PILIHAN GANDA' }),
+        el('p', { style: 'margin:0;font-size:30px;font-weight:800;color:var(--ink)',
+          text: row.score + ' / ' + (row.total || 10) }),
+        el('p', { class: 't-small', style: 'margin:4px 0 0 0',
+          text: row.at ? 'Dikumpulkan ' + createdAtId(row.at) : 'Waktu pengumpulan tidak tercatat' })
+      ]),
+      el('p', { class: 't-section', style: 'margin:16px 0 8px 0', text: 'Jawaban esai' }),
+      esai.length
+        ? el('div', {}, esai.map(function (a, i) {
+          return clayCard([
+            el('p', { class: 't-overline', style: 'margin:0 0 4px 0', text: 'SOAL ' + (i + 1) }),
+            el('p', { class: 't-item-title', style: 'margin:0', text: a || '(tidak dijawab)' })
+          ]);
+        }))
+        : el('p', { class: 't-muted', text: 'Siswa belum mengirim jawaban esai untuk tugas ini.' })
+    ]));
+  }
+
   function renderHasilLatihan() {
     var practice = state.practiceResult || null;
     var res = practice ? PRACTICE_RESULTS[practice.id] : null;
@@ -6145,7 +6369,11 @@
     visiblePractices: visiblePractices,
     results: function () { return RESULTS; },
     announcements: function () { return ANNOUNCEMENTS; },
+    notifications: function () { return NOTIFICATIONS; },
     visibleAnnouncements: visibleAnnouncements,
+    submissionsFor: submissionsFor,
+    seedRoster: buildRoster,
+    openSubmissions: openSubmissions,
     subjectsForClass: subjectsForClass,
     startQuiz: startQuiz,
     startEssayForTask: startEssayForTask,

@@ -1752,6 +1752,9 @@ class AppState extends ChangeNotifier {
     required String title,
     required String kind,
     required String contentId,
+    String? studentName,
+    int? score,
+    int? total,
   }) {
     final rand = Random().nextInt(90000) + 10000;
     return LocalNotification(
@@ -1763,6 +1766,9 @@ class AppState extends ChangeNotifier {
       kind: kind,
       contentId: contentId,
       createdAt: DateTime.now().toUtc().toIso8601String(),
+      studentName: studentName,
+      score: score,
+      total: total,
     );
   }
 
@@ -1796,10 +1802,12 @@ class AppState extends ChangeNotifier {
           target: 'teachers',
           subject: practice.subject,
           className: _data.childClass,
-          title: '${_data.studentName} menyelesaikan latihan '
-              '${practice.title} · $score/${bank.length}',
+          title: '${_data.studentName} mengerjakan latihan ${practice.title}',
           kind: 'practice',
           contentId: practice.id,
+          studentName: _data.studentName,
+          score: score,
+          total: bank.length,
         );
         _quizForPractice = false;
         _screen = 'practiceResult';
@@ -1847,13 +1855,19 @@ class AppState extends ChangeNotifier {
         ),
       };
       final nextReviewed = _data.reviewed.where((id) => id != task.id).toList();
+      // Guru perlu tahu SIAPA yang mengumpulkan dan nilainya, bukan hanya
+      // judul tugas. Kind 'submission' membuat daftar notifikasi guru bisa
+      // menampilkan nama + nilai, dan mengetuknya membuka rekap pengumpulan.
       final notif = _buildNotification(
         target: 'teachers',
         subject: task.subject,
         className: task.className,
-        title: '${_data.studentName} menyelesaikan tugas ${task.title}',
-        kind: 'task',
+        title: '${_data.studentName} mengumpulkan ${task.subject}',
+        kind: 'submission',
         contentId: task.id,
+        studentName: _data.studentName,
+        score: score,
+        total: bank.length,
       );
       _screen = 'result';
       _persistData(
@@ -1913,8 +1927,10 @@ class AppState extends ChangeNotifier {
       subject: task.subject,
       className: task.className,
       title: '${_data.studentName} mengirim jawaban esai ${task.title}',
-      kind: 'task',
+      // Esai tidak dinilai otomatis, jadi skor tidak diisi.
+      kind: 'submission',
       contentId: task.id,
+      studentName: _data.studentName,
     );
     _error = '';
     _notice = 'Jawaban esai tersimpan di perangkat ini. Esai tidak dinilai '
@@ -2489,6 +2505,20 @@ class AppState extends ChangeNotifier {
       }
     }
 
+    // Notifikasi pengumpulan untuk guru membuka rekap "siapa sudah mengerjakan
+    // dan nilainya berapa". Sebelumnya guru diarahkan ke `teacherTask` /
+    // `taskDetail` yang menampilkan tombol pengerjaan - seolah guru yang harus
+    // mengerjakan tugasnya sendiri.
+    if (n.isSubmission && isTeacher) {
+      final matches = _data.tasks.where((t) => t.id == n.contentId).toList();
+      if (matches.isNotEmpty) {
+        _selectedTask = matches.first;
+        _screen = 'submissions';
+        _persistData(_data.copyWith(readNotifications: updatedRead));
+        return;
+      }
+    }
+
     if (n.kind == 'task') {
       final matches = _data.tasks.where((t) => t.id == n.contentId).toList();
       if (matches.isNotEmpty) {
@@ -2535,6 +2565,73 @@ class AppState extends ChangeNotifier {
     _selectedStudentDetail = StudentDetailSelection(title: name, body: body);
     _screen = 'studentDetail';
     notifyListeners();
+  }
+
+  /// Siapa saja yang sudah mengumpulkan tugas ini, beserta nilainya.
+  ///
+  /// Menjawab pertanyaan guru: "siapa yang sudah mengerjakan dan nilainya
+  /// berapa". Daftar mengikuti roster kelas, lalu ditambah siswa di luar
+  /// roster yang hasilnya tersimpan (mis. siswa demo).
+  List<SubmissionRow> submissionsFor(TaskItem? task) {
+    if (task == null) return const <SubmissionRow>[];
+    final result = _data.results[task.id];
+
+    final rows = <SubmissionRow>[
+      for (final student in rosterForClass(task.className))
+        SubmissionRow(
+          id: student.id,
+          name: student.name,
+          className: student.className,
+          // Hasil hanya tercatat untuk satu siswa (perangkat tunggal), jadi
+          // nilainya dipasangkan ke siswa yang namanya cocok.
+          score: (result != null && result.studentName == student.name)
+              ? result.score
+              : null,
+          total: (result != null && result.studentName == student.name)
+              ? result.total
+              : null,
+          essayAnswers: (result != null && result.studentName == student.name)
+              ? result.essayAnswers
+              : const <String>[],
+        ),
+    ];
+
+    // Hasil milik siswa yang tidak ada di roster kelas ini tetap ditampilkan
+    // supaya pengumpulan tidak "hilang".
+    if (result != null && result.score != null) {
+      final known = rows.map((r) => r.name).toList();
+      final owner = result.studentName ?? _data.studentName;
+      if (!known.contains(owner)) {
+        rows.insert(
+          0,
+          SubmissionRow(
+            id: 'saved',
+            name: owner,
+            className: task.className,
+            score: result.score,
+            total: result.total,
+            essayAnswers: result.essayAnswers,
+          ),
+        );
+      }
+    }
+
+    rows.sort((a, b) {
+      final aDone = a.score != null;
+      final bDone = b.score != null;
+      if (aDone != bDone) return aDone ? -1 : 1;
+      if (aDone && bDone) return b.score!.compareTo(a.score!);
+      return a.name.compareTo(b.name);
+    });
+    return rows;
+  }
+
+  /// Rata-rata nilai pilihan ganda tugas ini (null bila belum ada nilai).
+  double? averageSubmissionScore(TaskItem? task) {
+    final done = submissionsFor(task).where((r) => r.score != null).toList();
+    if (done.isEmpty) return null;
+    final sum = done.fold<int>(0, (acc, r) => acc + r.score!);
+    return sum / done.length;
   }
 
   List<RosterMember> gradeRoster(String className, TaskItem? task) {

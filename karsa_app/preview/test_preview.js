@@ -2192,6 +2192,88 @@ if (themeBtn) {
 }
 
 /* ------------------------------------------------------------------ *
+ * 10g. Notifikasi pengumpulan guru: nama + nilai, bukan suruh ngerjain
+ * ------------------------------------------------------------------ */
+preview.state.role = 'guru';
+preview.state.dark = false;
+preview.state.teacherSubject = 'Matematika';
+// Uji operator di atas bisa memangkas roster lewat penyimpanan. Pulihkan dari
+// data bawaan supaya rekap punya siswa untuk diperiksa.
+if (preview.state.roster.filter((r) => r.className === 'Kelas 1').length === 0) {
+  preview.state.roster = preview.seedRoster ? preview.seedRoster() : preview.state.roster;
+}
+preview.go('notifikasi');
+
+const notifCards = viewport.querySelectorAll('.karsa-card');
+const submissionCards = notifCards.filter((c) => /mengumpulkan tugas/.test(c.textContent || ''));
+ok(submissionCards.length > 0, 'guru melihat kartu pengumpulan');
+ok(submissionCards.length >= 3,
+  'ada beberapa siswa yang mengumpulkan, dapat ' + submissionCards.length);
+
+const firstCard = submissionCards[0];
+ok(/Aisyah Putri|Bagas Wicaksono|Dimas Nugroho/.test(firstCard.textContent || ''),
+  'kartu menyebut NAMA siswa, bukan hanya "Tugas dikumpulkan siswa"');
+ok(/Nilai \d+\/\d+/.test(firstCard.textContent || ''),
+  'kartu menampilkan NILAI siswa');
+ok((firstCard.textContent || '').indexOf('Tugas dikumpulkan siswa') < 0,
+  'judul generik tanpa nama sudah tidak dipakai');
+
+// Guru TIDAK boleh diminta mengerjakan: klik membuka rekap pengumpulan.
+const targetCard = submissionCards.filter((c) => /Aisyah/.test(c.textContent || ''))[0]
+  || submissionCards[0];
+targetCard.click();
+const submissionSheet = sheetPanel.textContent || '';
+ok(submissionSheet.indexOf('Sudah kumpul') >= 0,
+  'klik notifikasi membuka rekap "Sudah kumpul ... dari ... siswa"');
+ok(submissionSheet.indexOf('Rata-rata') >= 0, 'rekap menampilkan rata-rata');
+// Tes operator sebelumnya bisa memangkas roster, jadi jangan memaksa ada
+// siswa yang "belum". Yang penting: setiap siswa di roster kelas muncul.
+const rosterKelas1 = preview.state.roster
+  .filter((r) => r.className === 'Kelas 1')
+  .map((r) => r.name);
+ok(rosterKelas1.length > 0, 'roster Kelas 1 tidak kosong');
+ok(rosterKelas1.every((name) => submissionSheet.indexOf(name) >= 0),
+  'semua siswa Kelas 1 muncul di rekap, roster=' + rosterKelas1.join(','));
+const belumCount = rosterKelas1.filter((n) => submissionSheet.indexOf(n) >= 0).length
+  - (submissionSheet.match(/Nilai \d+\/\d+/g) || []).length;
+if (belumCount > 0) {
+  ok(submissionSheet.indexOf('Belum mengumpulkan') >= 0,
+    'siswa yang belum mengumpulkan ditandai "Belum mengumpulkan"');
+}
+ok(/Nilai \d+\/\d+/.test(submissionSheet), 'rekap menampilkan nilai per siswa');
+ok(submissionSheet.indexOf('Pilih metode') < 0,
+  'guru TIDAK disuruh memilih metode pengerjaan');
+ok(submissionSheet.indexOf('Periksa jawaban') < 0,
+  'guru tidak diminta mengerjakan soal');
+preview.closeSheet();
+
+// Siswa menyelesaikan kuis -> notifikasi baru bernama + bernilai untuk guru.
+preview.state.role = 'siswa';
+preview.state.parentClass = 'Kelas 5';
+preview.state.studentName = 'Dimas Nugroho';
+preview.state.studentId = 's1d';
+preview.go('siswa-beranda');
+const taskForSubmission = preview.tasks().filter((t) => t.id === 't1')[0];
+ok(!!taskForSubmission, 'tugas t1 tersedia');
+preview.startQuiz(taskForSubmission);
+const submitBank = preview.state.quiz.bank.length;
+const notifBefore = preview.notifications().length;
+for (let i = 0; i < submitBank; i += 1) {
+  const idx = preview.state.quiz.bank[preview.state.quiz.index].answerIndex;
+  viewport.querySelectorAll('.choice-btn')[idx].click();
+  const btn = () => Array.from(viewport.querySelectorAll('button'))
+    .filter((b) => /Periksa jawaban|Soal berikutnya|Lihat hasil/.test(b.textContent || ''))[0];
+  btn().click();
+  btn().click();
+}
+eq(preview.notifications().length, notifBefore + 1,
+  'menyelesaikan tugas membuat satu notifikasi guru');
+const freshNotif = preview.notifications()[0];
+eq(freshNotif.kind, 'submission', 'notifikasi baru bertipe submission');
+eq(freshNotif.studentName, 'Dimas Nugroho', 'notifikasi membawa nama siswa');
+eq(freshNotif.score, submitBank, 'notifikasi membawa nilai siswa');
+
+/* ------------------------------------------------------------------ *
  * 10f. Pengumuman guru mapel
  * ------------------------------------------------------------------ */
 preview.state.role = 'guru';

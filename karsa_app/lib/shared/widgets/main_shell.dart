@@ -64,6 +64,7 @@ import '../../features/teacher/teacher_task_detail_page.dart';
 import '../../models/user_role.dart';
 import '../../providers/app_state.dart';
 import 'detail_bottom_sheet.dart';
+import '../../features/teacher/task_submissions_page.dart';
 
 class MainShell extends StatelessWidget {
   const MainShell({super.key});
@@ -192,6 +193,9 @@ class MainShell extends StatelessWidget {
         return const PracticeResultPage();
       case 'teacherTask':
         return const TeacherTaskDetailPage();
+      case 'submissions':
+        // Rekap pengumpulan: guru melihat siapa yang sudah mengerjakan.
+        return const TaskSubmissionsPage();
       case 'gradeRecap':
         return state.isGuru ? const GradeRecapPage() : _mainTabBody(state);
       case 'subject':
