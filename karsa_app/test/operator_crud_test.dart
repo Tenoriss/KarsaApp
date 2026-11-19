@@ -465,6 +465,30 @@ void main() {
       state.dispose();
     });
 
+    test('section profil operator menampilkan kelengkapan kolom', () async {
+      final state = await loggedInOperator();
+
+      // Profil bawaan: nama, NIP, jabatan, dan unit terisi; kontak kosong.
+      final profile = state.operatorProfile;
+      expect(profile.filledFields, 4);
+      expect(profile.totalFields, 6);
+      expect(profile.hasContact, isFalse);
+      expect(profile.initials, 'OS');
+
+      // Section profil di beranda memakai getter yang sama dengan form,
+      // jadi angka kelengkapan tidak bisa berbeda dari isi form.
+      state.openSetting('Informasi pribadi');
+      state.setDraftOperatorEmail('operator@sekolah.sch.id');
+      state.setDraftOperatorPhone('081200000000');
+      expect(state.saveOperatorProfileForm(), isTrue);
+
+      final lengkap = state.operatorProfile;
+      expect(lengkap.filledFields, 6);
+      expect(lengkap.hasContact, isTrue);
+
+      state.dispose();
+    });
+
     test('profil operator tersimpan di store setelah dimuat ulang', () async {
       SharedPreferences.setMockInitialValues(<String, Object>{});
       final state = await loggedInOperator();

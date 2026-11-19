@@ -9,9 +9,10 @@ Dokumen ini merangkum audit menyeluruh atas kode sumber asli repositori `Tenoris
 Aplikasi React Native mengelola tampilan melalui state `screen`, `role`, dan `tab` di dalam `App.js`:
 
 ### A. Layar Pra-Autentikasi & Autentikasi
-1. **`splash` (`SplashScreen`)** — Latar biru langit `#A2D7FB`, ilustrasi `assets/splash-art.png` (654×1048) menempel bawah, pil pemuatan `"Menyiapkan pengalaman belajar"` dengan 3 titik `#C8526D`, transisi otomatis 2.300 ms ke `welcome` setelah data lokal termuat.
-2. **`welcome`** — Pemilihan peran dengan brand `✿ KARSA`, tombol tema terang/gelap, kartu `SchoolIdentity` (`SD KARITAS PURWOKERTO · Karitas Sahabat Belajar`), 4 kartu peran (`wali`, `guru`, `orangtua`, `siswa`), kutipan motivasi, dan catatan `PROTOTIPE PEMBELAJARAN · KARSA`.
-3. **`login`** — Halaman masuk spesifik peran (4 varian judul, subjudul, ikon kolom NIP/NISN, tombol mata kata sandi, validasi kredensial demo, tautan `Lupa kata sandi?`, tombol `Masuk →`, dan kotak informasi `Akun demo` sesuai peran).
+1. **`splash` (`SplashScreen`)** — Latar biru langit `#A2D7FB`, ilustrasi `assets/splash-art.png` (654×1048) menempel bawah, pil pemuatan `"Menyiapkan pengalaman belajar"` dengan 3 titik `#C8526D`, transisi otomatis 2.300 ms **langsung ke `login`** setelah data lokal termuat.
+2. **`welcome`** — *(arsip)* Pemilihan peran dengan brand `✿ KARSA`, tombol tema terang/gelap, kartu `SchoolIdentity` (`SD KARITAS PURWOKERTO · Karitas Sahabat Belajar`), 4 kartu peran (`wali`, `guru`, `orangtua`, `siswa`), kutipan motivasi, dan catatan `PROTOTIPE PEMBELAJARAN · KARSA`.
+3. **`login`** — **Satu form untuk kelima peran**: judul `Selamat datang di KARSA`, subjudul `Masuk dengan NIP atau NISN Anda`, label kolom yang menyesuaikan ketikan (NIP untuk staf, NISN untuk siswa/orang tua), badge peran yang muncul begitu identitas dikenali, tombol mata kata sandi, centang **"Ingat saya"** (menyimpan identitas + peran, bukan kata sandi), tautan `Lupa kata sandi?`, tombol `Masuk →`, dan kotak `Akun demo` berisi kelima akun yang bisa diketuk untuk mengisi form.
+   Varian per peran (`login-operator`, `login-wali`, `login-guru`, `login-ortu`, `login-siswa`) tetap tersedia sebagai deep link dan cermin layar lama.
 4. **`forgot`** — Informasi pemulihan simulasi yang menampilkan NIP/NISN dan kata sandi akun demo peran aktif serta tombol `Kembali masuk`.
 
 ### B. Shell Utama (`main`) Berdasarkan Peran & Tab Bawah
@@ -144,5 +145,5 @@ Aplikasi menyimpan satu objek JSON utuh pada kunci **`@karsa-demo-v1`** (di Flut
 1. Kode React Native asli (`App.js`, `curriculum.js`, `gradeReports.js`, `assets/`) tetap dipertahankan utuh di root repositori sebagai rujukan.
 2. Seluruh aplikasi Flutter ditempatkan secara modular di `karsa_app/`.
 3. Aset gambar asli disalin ke `karsa_app/assets/images/` dan font `Ionicons.ttf` diekstrak ke `karsa_app/assets/fonts/Ionicons.ttf`.
-4. Disediakan pratinjau HTML interaktif 38 layar di `karsa_app/preview/` yang mereplikasi token desain, data kurikulum, validasi akun demo, dan interaksi widget Flutter tanpa ketergantungan CDN.
-5. **Di luar cakupan audit 1:1 ini**, peran **Operator Sekolah** ditambahkan sebagai fitur baru (bukan hasil port dari `App.js`): 5 tab Beranda/Siswa/Kelas/Materi/Media, CRUD siswa, kelas dinamis, akun guru/wali, tugas, pengumuman, agenda, materi, nilai, grafis sekolah, dan data pribadi. Implementasi Flutter ada di `karsa_app/lib/features/operator/` dan `lib/providers/app_state.dart`; padanan offline-nya ada di `karsa_app/preview/app.js`. Kode React Native di root tetap tidak diubah.
+4. Disediakan pratinjau HTML interaktif 40 layar di `karsa_app/preview/` yang mereplikasi token desain, data kurikulum, validasi akun demo, dan interaksi widget Flutter tanpa ketergantungan CDN.
+5. **Di luar cakupan audit 1:1 ini**, peran **Operator Sekolah** ditambahkan sebagai fitur baru (bukan hasil port dari `App.js`): 6 tab Beranda/Siswa/Kelas/Materi/Media/Profil, CRUD siswa, kelas dinamis, akun guru/wali, tugas, pengumuman, agenda, materi, nilai, grafis sekolah, dan data pribadi. Implementasi Flutter ada di `karsa_app/lib/features/operator/` dan `lib/providers/app_state.dart`; padanan offline-nya ada di `karsa_app/preview/app.js`. Kode React Native di root tetap tidak diubah.

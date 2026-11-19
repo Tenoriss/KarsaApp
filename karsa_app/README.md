@@ -7,9 +7,14 @@ Kode React Native asli **tetap utuh di root repository** (`App.js`,
 `curriculum.js`, `gradeReports.js`, `assets/`) sebagai rujukan audit.
 Semua kode Flutter berada di folder `karsa_app/` ini.
 
+Setelah splash, aplikasi langsung membuka **satu form login** yang melayani
+kelima peran — peran dideteksi dari NIP/NISN yang diketik, tanpa layar pilih
+peran. Centang **"Ingat saya"** menyimpan identitas + peran (bukan kata sandi)
+supaya pengguna tidak mengetik ulang.
+
 Selain empat peran hasil migrasi (wali kelas, guru, orang tua, siswa), proyek
-ini menambahkan **peran Operator Sekolah** dengan lima tab
-(**Beranda, Siswa, Kelas, Materi, Media**) dan CRUD penuh yang tersimpan
+ini menambahkan **peran Operator Sekolah** dengan enam tab
+(**Beranda, Siswa, Kelas, Materi, Media, Profil**) dan CRUD penuh yang tersimpan
 lokal. Peran yang sama tersedia di pratinjau HTML offline.
 
 > **Status penting.** Proyek ini dibuat dan diverifikasi di lingkungan yang
@@ -66,7 +71,7 @@ python3 serve.py --host 0.0.0.0 --port 8000
 # buka http://127.0.0.1:8000
 ```
 
-Pratinjau berisi **38 layar** interaktif, sepenuhnya offline (tanpa CDN), dan
+Pratinjau berisi **41 layar** interaktif, sepenuhnya offline (tanpa CDN), dan
 memakai aset PNG asli serta font `Ionicons.ttf` yang sama dengan aplikasi.
 Detail: [`preview/README.md`](preview/README.md).
 
@@ -95,7 +100,7 @@ node karsa_app/preview/test_preview.js
 
 | Peran | NIP / NISN | Kata sandi | Lingkup |
 | --- | --- | --- | --- |
-| **Operator Sekolah** | `19870003` | `operator123` | Seluruh kelas; tab Beranda, Siswa, Kelas, Materi, Media; kelola siswa, kelas dinamis, akun guru/wali, tugas, pengumuman, agenda, materi, nilai, grafis sekolah, dan data pribadi |
+| **Operator Sekolah** | `19870003` | `operator123` | Seluruh kelas; tab Beranda, Siswa, Kelas, Materi, Media, Profil; kelola siswa, kelas dinamis, akun guru/wali, tugas, pengumuman, agenda, materi, nilai, grafis sekolah, dan data pribadi |
 | Wali Kelas | `19870001` | `wali123` | Hanya `Kelas 1`; tab Beranda, Anggota, Rekap (Kehadiran/Nilai), Agenda, Profil |
 | Guru Mata Pelajaran | `19870002` | `guru123` | NIP, Ibu Sari, default `Matematika`, Kelas 1–6; tab Beranda, Kelas, Tugas, Kalender, Profil; rekap nilai + ekspor `.xlsx`/`.pdf` |
 | Orang Tua/Wali | `10010001` | `ortu123` | NISN, Dimas Nugroho, Kelas 1–4; tab Beranda, Tugas, Latihan, Profil; Ruang Tumbuh, bintang progres, mood |
@@ -135,7 +140,7 @@ karsa_app/
 │       └── operator/           # 11 layar CRUD operator sekolah
 ├── test/                       # 5 berkas uji Flutter
 ├── tool/                       # generator + check_syntax.py
-├── preview/                    # pratinjau HTML 38 layar
+├── preview/                    # pratinjau HTML 41 layar
 └── docs/                       # 01–03
 ```
 
@@ -214,14 +219,15 @@ Jumlah soal dan kunci jawaban **tidak dikurangi maupun diubah** dari
 
 ## Pratinjau HTML
 
-`karsa_app/preview/` — 38 layar HTML interaktif, **tanpa dependensi CDN**,
+`karsa_app/preview/` — 41 layar HTML interaktif, **tanpa dependensi CDN**,
 mobile-first (`100dvh` di ponsel, kolom `480px` di layar lebar,
-`env(safe-area-inset-*)`), **bukan** mock bingkai ponsel.
+`env(safe-area-inset-*)`), **bukan** mock bingkai ponsel. Aplikasi Flutter
+dikunci ke orientasi potret.
 
 ```bash
 python3 karsa_app/preview/serve.py --host 0.0.0.0 --port 8000
 curl http://127.0.0.1:8000/healthz
-node karsa_app/preview/test_preview.js    # 388 pemeriksaan, mock DOM
+node karsa_app/preview/test_preview.js    # 692 pemeriksaan, mock DOM
 ```
 
 ---
@@ -233,7 +239,7 @@ node karsa_app/preview/test_preview.js    # 388 pemeriksaan, mock DOM
 | [`docs/01_AUDIT_MAPPING.md`](docs/01_AUDIT_MAPPING.md) | Audit RN → pemetaan Flutter: 41 tampilan, widget, data, alur, dependensi |
 | [`docs/02_IMPLEMENTATION_REPORT.md`](docs/02_IMPLEMENTATION_REPORT.md) | Laporan implementasi per tahap + kendala + keputusan teknis |
 | [`docs/03_TESTING_PLAN.md`](docs/03_TESTING_PLAN.md) | Apa yang sudah diverifikasi, rencana uji manual, matriks acceptance |
-| [`preview/README.md`](preview/README.md) | Cara memakai pratinjau, daftar 38 layar, interaksi, cakupan operator |
+| [`preview/README.md`](preview/README.md) | Cara memakai pratinjau, daftar 41 layar, interaksi, cakupan operator |
 
 ---
 
@@ -242,11 +248,13 @@ node karsa_app/preview/test_preview.js    # 388 pemeriksaan, mock DOM
 | Area | Detail |
 | --- | --- |
 | Identitas | Splash (#A2D7FB + ilustrasi asli, 2300 ms), logo & teks SD Karitas Purwokerto, banner siswa & guru |
-| Autentikasi | Pemilihan peran, login 5 peran (NIP/NISN + kata sandi + tombol mata), lupa kata sandi, logout, validasi dengan pesan galat yang sama |
+| Autentikasi | Satu form login untuk 5 peran (peran dideteksi dari NIP/NISN + kata sandi + tombol mata), "Ingat saya" yang menyimpan identitas tanpa kata sandi, lupa kata sandi, logout, validasi dengan pesan galat yang sama |
 | Dashboard | 5 dashboard berbeda sesuai peran (tanpa menyatukan menjadi halaman generik) |
-| **Operator sekolah** | 5 tab (Beranda, Siswa, Kelas, Materi, Media) + halaman tugas, pengumuman, agenda, nilai, dan form siswa/kelas/akun/materi. CRUD siswa, kelas dinamis, akun guru & wali, tugas, pengumuman, agenda, materi, nilai 0–100, logo/banner sekolah, serta data pribadi operator. Semua tersimpan di `@karsa-demo-v1`, dengan validasi terlihat dan perlindungan kelas terakhir |
+| **Operator sekolah** | 6 tab (Beranda, Siswa, Kelas, Materi, Media, Profil) + halaman tugas, pengumuman, agenda, nilai, dan form siswa/kelas/akun/materi. CRUD siswa, kelas dinamis, akun guru & wali, tugas, pengumuman, agenda, materi, nilai 0–100, logo/banner sekolah, serta data pribadi operator. Semua tersimpan di `@karsa-demo-v1`, dengan validasi terlihat dan perlindungan kelas terakhir |
 | Tugas | Daftar, filter kelas/mapel, pencarian, deadline & countdown, status, lampiran, form tambah tugas |
+| **Asisten soal (simulasi)** | Di form tugas, wali/guru/orang tua dapat mengunggah bahan (PDF/gambar/teks) lalu menyusun soal. Karena demo ini **tidak membaca PDF**, asisten bekerja dari teks yang ditempel atau isi file `.txt`: kalimat dipecah, kata kunci jadi jawaban, kata kunci kalimat lain jadi pengecoh. Deterministik, 1 soal per kalimat (maks. 10), tanpa jaringan. Soal disimpan bersama tugas (`questionsSource: 'assistant'`) dan dipakai saat siswa mengerjakan kuis. Label di UI menyebut terang-terangan "simulasi offline, bukan AI sungguhan" |
 | Materi | Daftar, detail, form unggah, filter per kelas/mapel |
+| **Dua metode tugas** | Setiap tugas non-berkas punya **dua metode**: pilihan ganda (10 soal, dinilai otomatis) dan esai (5 soal, jawaban disimpan per tugas, tidak dinilai otomatis). Siswa memilih metode dari detail tugas dan boleh mengerjakan keduanya; hasilnya hidup di satu `TaskResult` (`score` + `essayAnswers`) sehingga satu metode tidak menghapus yang lain. Guru mapel melihat kedua metode pada tugasnya |
 | Kuis & latihan | Bank soal 9 mapel, pilihan ganda, soal esai, navigasi soal, periksa jawaban, skor, riwayat |
 | Kehadiran & nilai | Rekap kehadiran per tanggal (Hadir/Izin/Sakit/Alpa), input nilai 0–100, rata-rata kelas, rekap nilai per kelas |
 | Ekspor | `.xlsx` dan `.pdf` rekap nilai (judul kolom 1:1 dengan `gradeReports.js`) |
@@ -262,12 +270,14 @@ node karsa_app/preview/test_preview.js    # 388 pemeriksaan, mock DOM
 ## Yang belum terverifikasi
 
 * `flutter analyze` dan `flutter test` **belum dijalankan** (SDK tidak ada di
-  lingkungan pembuatan). Lima berkas uji sudah siap di `karsa_app/test/`,
-  termasuk `operator_crud_test.dart`; sebagai gantinya
-  `python3 karsa_app/tool/check_syntax.py` memvalidasi 120 berkas Dart,
+  lingkungan pembuatan). Tujuh berkas uji sudah siap di `karsa_app/test/`,
+  termasuk `operator_crud_test.dart`, `quiz_assistant_test.dart`, dan
+  `task_two_methods_test.dart`;
+  sebagai gantinya `python3 karsa_app/tool/check_syntax.py` memvalidasi
+  125 berkas Dart,
   impor, aset, inisialisasi field `final`, argumen bernama `Image()`, dan
   null-check `.isEmpty` secara statis, sementara
-  `node karsa_app/preview/test_preview.js` menjalankan 388 pemeriksaan alur.
+  `node karsa_app/preview/test_preview.js` menjalankan 692 pemeriksaan alur.
 * Uji visual di perangkat iOS/Android nyata belum dilakukan.
 * Pembukaan berkas ekspor `.xlsx`/`.pdf` di perangkat belum diuji.
 * Perilaku `file_picker` di iOS belum diuji.

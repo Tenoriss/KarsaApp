@@ -17,7 +17,11 @@ class DetailBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = KarsaThemeScope.of(context);
     final c = theme.colors;
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
+    // Saat keyboard terbuka (mis. kotak catatan), sisakan ruangnya supaya
+    // tombol aksi di dalam sheet tidak tertutup.
+    final viewInsets = MediaQuery.viewInsetsOf(context).bottom;
+    final maxHeight =
+        (MediaQuery.sizeOf(context).height - viewInsets) * 0.85;
 
     return Positioned.fill(
       child: Container(
@@ -35,7 +39,11 @@ class DetailBottomSheet extends StatelessWidget {
               constraints: BoxConstraints(maxHeight: maxHeight),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.only(left: 20, right: 20, bottom: 28),
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  bottom: 28 + MediaQuery.paddingOf(context).bottom,
+                ),
                 decoration: ClayStyles.soft(
                   color: c.bg,
                   isDark: c.isDark,

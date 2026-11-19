@@ -8,6 +8,13 @@ class TaskResult {
   final String? studentName;
   final String? className;
 
+  /// Jawaban esai siswa untuk tugas ini, satu entri per soal esai.
+  /// Kosong berarti bagian esai belum dikerjakan.
+  final List<String> essayAnswers;
+
+  /// Waktu esai terakhir dikirim (ISO-8601), dipakai layar hasil.
+  final String? essayAt;
+
   const TaskResult({
     this.score,
     this.total,
@@ -17,7 +24,12 @@ class TaskResult {
     this.religion,
     this.studentName,
     this.className,
+    this.essayAnswers = const <String>[],
+    this.essayAt,
   });
+
+  /// Bagian esai sudah diisi siswa.
+  bool get hasEssay => essayAnswers.any((a) => a.trim().isNotEmpty);
 
   factory TaskResult.fromJson(Map<String, dynamic> json) {
     final rawAnswers = json['answers'];
@@ -33,6 +45,10 @@ class TaskResult {
       religion: json['religion']?.toString(),
       studentName: json['studentName']?.toString(),
       className: json['className']?.toString(),
+      essayAnswers: json['essayAnswers'] is List
+          ? (json['essayAnswers'] as List).map((e) => e.toString()).toList()
+          : const <String>[],
+      essayAt: json['essayAt']?.toString(),
     );
   }
 
@@ -46,6 +62,8 @@ class TaskResult {
     if (religion != null) map['religion'] = religion;
     if (studentName != null) map['studentName'] = studentName;
     if (className != null) map['className'] = className;
+    if (essayAnswers.isNotEmpty) map['essayAnswers'] = essayAnswers;
+    if (essayAt != null) map['essayAt'] = essayAt;
     return map;
   }
 }

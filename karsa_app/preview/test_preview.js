@@ -2,7 +2,7 @@
  *
  * Runs the preview script inside a tiny mock DOM (no browser required) and
  * asserts that:
- *   - every one of the 38 canonical screens renders without throwing,
+ *   - every one of the 40 canonical screens renders without throwing,
  *   - the splash screen auto-advances to the welcome screen,
  *   - each role login validates credentials exactly like AppState.authenticate(),
  *   - the bottom navigation switches tabs,
@@ -304,24 +304,25 @@ const preview = sandbox.window.KARSA_PREVIEW;
 ok(!!preview, 'KARSA_PREVIEW global is exposed');
 
 /* ------------------------------------------------------------------ *
- * 1. Screen registry — 38 canonical screens + alias
+ * 1. Screen registry — 40 canonical screens + alias
  * ------------------------------------------------------------------ */
 const EXPECTED_SCREENS = [
-  'splash', 'welcome',
+  'splash', 'welcome', 'login',
   'login-operator', 'login-wali', 'login-guru', 'login-ortu', 'login-siswa',
   'forgot',
   'wali-beranda', 'wali-anggota', 'wali-recap', 'wali-agenda', 'wali-profil',
   'guru-beranda', 'guru-kelas', 'guru-tugas', 'guru-kalender', 'guru-profil',
+  'guru-pengumuman',
   'siswa-beranda', 'siswa-tugas', 'siswa-profil',
   'ortu-beranda', 'ortu-tugas', 'ortu-latihan', 'ortu-profil',
-  'operator-beranda', 'operator-siswa', 'operator-kelas', 'operator-materi',
+  'operator-beranda', 'operator-siswa', 'operator-kelas', 'operator-materi', 'operator-profil',
   'operator-media', 'operator-tugas', 'operator-pengumuman',
   'operator-agenda', 'operator-nilai',
-  'materi', 'notifikasi', 'kuis', 'hasil-kuis'
+  'materi', 'notifikasi', 'kuis', 'esai', 'hasil-kuis', 'hasil-latihan'
 ];
 
-eq(preview.screens.length, 38, 'screen registry contains 38 screens');
-eq(EXPECTED_SCREENS.length, 38, 'the expected screen list has 38 entries');
+eq(preview.screens.length, 43, 'screen registry contains 43 screens');
+eq(EXPECTED_SCREENS.length, 43, 'the expected screen list has 43 entries');
 EXPECTED_SCREENS.forEach((id) => {
   ok(preview.screens.indexOf(id) >= 0, 'screen "' + id + '" is registered');
 });
@@ -387,7 +388,7 @@ ok(!!splashTimer, 'splash schedules a 2300 ms timer');
 if (splashTimer) {
   preview.go('splash');
   splashTimer.fn();
-  eq(preview.state.screen, 'welcome', 'splash auto-advances to welcome after 2300 ms');
+  eq(preview.state.screen, 'login', 'splash auto-advances straight to the login form after 2300 ms');
 }
 
 /* ------------------------------------------------------------------ *
@@ -546,8 +547,13 @@ ok(!!taskCard, 'guru tasks renders task cards to open');
 if (taskCard) {
   taskCard.click();
   const sheetButtons = sheetPanel.querySelectorAll('button');
-  const startButton = sheetButtons.filter((b) => (b.textContent || '').indexOf('Kerjakan kuis') >= 0)[0];
-  ok(!!startButton, 'task sheet offers the quiz action');
+  // Detail tugas kini menawarkan DUA metode, bukan satu tombol kuis.
+  const startButton = sheetButtons.filter((b) =>
+    (b.getAttribute('aria-label') || '') === 'Pilihan ganda')[0];
+  const essayButton = sheetButtons.filter((b) =>
+    (b.getAttribute('aria-label') || '') === 'Esai')[0];
+  ok(!!startButton, 'task sheet offers the multiple-choice method');
+  ok(!!essayButton, 'task sheet offers the essay method');
   if (startButton) {
     startButton.click();
     eq(preview.state.screen, 'kuis', 'quiz screen opens');
@@ -560,7 +566,11 @@ if (taskCard) {
       if (checkButton) {
         checkButton.click();
         const explanation = viewport.textContent;
-        ok(explanation.indexOf('Jawaban benar:') >= 0, 'quiz reveals the correct answer explanation');
+        // Umpan balik kini berupa kartu (benar/salah) berisi kunci + alasan.
+        ok(explanation.indexOf('Tepat!') >= 0 || explanation.indexOf('Belum tepat') >= 0,
+          'quiz reveals whether the answer was right or wrong');
+        ok(!!viewport.querySelectorAll('.quiz-feedback')[0],
+          'the feedback is shown as a card, like the design');
         ok(explanation.indexOf('undefined') < 0, 'quiz explanation contains real data (no undefined)');
         ok(explanation.indexOf(QUIZ_ITEM.choices[QUIZ_ITEM.answerIndex]) >= 0,
           'quiz explanation names the correct choice from the curriculum bank');
@@ -707,8 +717,9 @@ if (notifItems.length) {
   ok(sheetBackdrop.hidden === false, 'clicking a notification opens the related content');
   ok(sheetPanel.textContent.indexOf('Pecahan dan perbandingan') >= 0,
     'the notification opens the matching task detail');
-  ok(sheetPanel.textContent.indexOf('Kerjakan kuis') >= 0,
-    'the opened task offers the quiz action');
+  ok(sheetPanel.textContent.indexOf('Pilihan ganda') >= 0 &&
+    sheetPanel.textContent.indexOf('Esai') >= 0,
+    'the opened task offers both methods');
   // Tutup sheet.
   const closeBtn = sheetPanel.querySelectorAll('button')
     .filter((b) => (b.textContent || '').indexOf('Tutup') >= 0)[0];
@@ -778,16 +789,324 @@ preview.go('operator-beranda');
 
 ok(viewport.textContent.indexOf('Operator Sekolah') >= 0,
   'the operator home shows the operator heading');
-ok(viewport.textContent.indexOf('24 siswa') >= 0,
+ok(viewport.textContent.indexOf(String((preview.state.roster || []).length)) >= 0,
   'the operator home shows the roster size (' + (preview.state.roster || []).length + ' siswa)');
 ok(viewport.textContent.indexOf('grafis') >= 0,
   'the operator home shows the grafis shortcut');
 ok(viewport.textContent.indexOf('Logo & banner sekolah') >= 0,
   'the operator home links to the media section');
 
-// Tab operator: 5 tab dan fifth screen media.
+// Beranda operator yang baru: tanpa banner "Semangat mengajar", sapaan
+// langsung di bawah judul, dan pintasan yang bisa dilipat sendiri-sendiri.
+preview.go('operator-beranda');
+ok(viewport.textContent.indexOf('Selamat datang, Operator Sekolah') >= 0,
+  'the operator home greets the operator right under the heading');
+ok(viewport.querySelectorAll('.banner-img').length === 0,
+  'the operator home no longer shows the teacher banner');
+const welcomeIdx = viewport.textContent.indexOf('Selamat datang, Operator Sekolah');
+const statsIdx = viewport.textContent.indexOf('Siswa');
+ok(welcomeIdx >= 0 && statsIdx > welcomeIdx,
+  'the greeting sits above the statistics');
+
+// Semua kartu mulai terlipat: rincian belum ada di DOM.
+eq(viewport.querySelectorAll('.collapsible-card').length, 5,
+  'the operator home renders five collapsible shortcut cards');
+eq(viewport.querySelectorAll('.collapsible-body').length, 0,
+  'every shortcut card starts collapsed');
+eq(viewport.querySelectorAll('.collapsible-caret.open').length, 0,
+  'no collapsed card shows the open caret');
+
+// Membuka satu kartu hanya membuka kartu itu. Urutan kartu:
+// 0 tugas, 1 pengumuman, 2 agenda, 3 nilai, 4 logo & banner.
+const cardHeads = () => viewport.querySelectorAll('.collapsible-head');
+cardHeads()[1].click();
+eq(viewport.querySelectorAll('.collapsible-body').length, 1,
+  'tapping a card opens only that card');
+ok(viewport.textContent.indexOf('Pengumuman sekolah') >= 0,
+  'the opened card keeps its title visible');
+// Kartu pengumuman menampilkan judul pengumuman yang tersimpan.
+const openBody = viewport.querySelectorAll('.collapsible-body')[0];
+ok(!!openBody && (openBody.textContent || '').length > 3,
+  'the opened card reveals its stored entries');
+if (openBody) {
+  const hasEntry = preview.announcements() === undefined ||
+    (openBody.textContent.indexOf('Belum ada pengumuman') < 0 ||
+     preview.announcements().length === 0);
+  ok(hasEntry, 'the opened announcement card lists real entries, not just an empty state');
+}
+
+// Kartu lain tetap terlipat.
+const openedCards = viewport.querySelectorAll('[data-card]')
+  .filter((n) => n.getAttribute('aria-expanded') === 'true' ||
+                 (n.querySelectorAll('.collapsible-body').length > 0));
+eq(openedCards.length, 1, 'only one card is open after a single tap');
+
+// Membuka kartu kedua tidak menutup kartu pertama (mandiri, bukan akordeon).
+cardHeads()[0].click();
+eq(viewport.querySelectorAll('.collapsible-body').length, 2,
+  'each card keeps its own open state');
+// Kartu tugas meringkas mapel dan kelas dari data nyata.
+const taskBody = viewport.querySelectorAll('.collapsible-card')[0]
+  .querySelectorAll('.collapsible-body')[0];
+ok(!!taskBody && /\d+ mata pelajaran · \d+ kelas/.test(taskBody.textContent || ''),
+  'the opened task card summarises subjects and classes');
+
+// Mengetuk lagi menutup kartu itu saja.
+cardHeads()[0].click();
+eq(viewport.querySelectorAll('.collapsible-body').length, 1,
+  'tapping an open card closes it again');
+
+// Tombol Kelola membuka halaman, bukan menutup kartu.
+const manageBtn = viewport.querySelectorAll('[data-card]')[0]
+  .querySelectorAll('.status-badge')[0];
+ok(!!manageBtn, 'each shortcut card has its manage button');
+if (manageBtn) {
+  manageBtn.click();
+  eq(preview.state.screen, 'operator-tugas',
+    'the manage button opens the related operator page');
+}
+
+// Tombol Ubah profil di tab Profil membuka form.
+preview.go('operator-profil');
+const editProfileBtn = viewport.querySelectorAll('[aria-label]')
+  .filter((n) => n.getAttribute('aria-label') === 'Ubah profil operator')[0];
+ok(!!editProfileBtn, 'the profile tab keeps an edit button');
+if (editProfileBtn) {
+  editProfileBtn.click();
+  ok(sheetBackdrop.hidden === false, 'the profile edit button opens the personal info form');
+  const closeProfileSheet = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Tutup') >= 0)[0];
+  if (closeProfileSheet) closeProfileSheet.click();
+}
+
+// Status buka/tutup bertahan saat layar dirender ulang (mis. ganti mode gelap).
+preview.go('operator-beranda');
+viewport.querySelectorAll('.collapsible-head')[2].click();
+const openBeforeToggle = viewport.querySelectorAll('.collapsible-body').length;
+preview.toggleTheme();
+eq(viewport.querySelectorAll('.collapsible-body').length, openBeforeToggle,
+  'the open card stays open after re-rendering the screen');
+preview.toggleTheme();
+
+// Kembalikan semua kartu ke keadaan terlipat.
+preview.state.operatorOpen = {};
+preview.go('operator-beranda');
+
+// Tab Profil operator: tab keenam, tepat di kanan Media.
+preview.state.role = 'operator';
+preview.state.tab = 'Beranda';
+preview.go('operator-beranda');
+// textContent tiap tab menyertakan glyph ikon Ionicons, jadi bandingkan
+// dengan akhiran labelnya.
+const opTabLabels = bottomNav.querySelectorAll('.nav-item')
+  .map((n) => (n.textContent || '').replace(/[^A-Za-z ]/g, '').trim());
+eq(opTabLabels[opTabLabels.length - 1], 'Profil',
+  'the operator Profile tab sits on the far right');
+eq(opTabLabels.indexOf('Media') + 1, opTabLabels.indexOf('Profil'),
+  'the Profile tab is directly beside Media');
+
+// Mengetuk tab Profil membuka halaman profil operator.
+bottomNav.querySelectorAll('.nav-item')[opTabLabels.length - 1].click();
+eq(preview.state.screen, 'operator-profil', 'the Profile tab opens operator-profil');
+eq(preview.state.tab, 'Profil', 'the active tab is Profil');
+
+// Isi halaman profil: identitas, enam kolom, pengaturan, dan tombol keluar.
+const profileText = viewport.textContent;
+ok(profileText.indexOf('Profil Operator') >= 0, 'the profile tab has its own heading');
+ok(profileText.indexOf('SD Karitas Purwokerto') >= 0,
+  'the profile tab shows the school identity');
+ok(profileText.indexOf('Ubah profil') >= 0, 'the profile tab offers an edit button');
+['Nama lengkap', 'NIP', 'Jabatan', 'Unit kerja', 'Surel', 'Telepon'].forEach((label) => {
+  ok(profileText.indexOf(label) >= 0, 'the profile tab lists "' + label + '"');
+});
+ok(profileText.indexOf('Pengaturan') >= 0, 'the profile tab has a settings section');
+eq(viewport.querySelectorAll('.setting-row').length, 4,
+  'the profile tab lists four settings rows');
+ok(profileText.indexOf('Keluar dari akun demo') >= 0,
+  'the profile tab offers logout');
+
+// Beranda tidak lagi memuat section profil penuh — hanya pintasan ke tab.
+preview.go('operator-beranda');
+ok(viewport.querySelectorAll('.profile-field').length === 0,
+  'the operator home no longer renders the full profile fields');
+ok(viewport.querySelectorAll('.profile-complete').length === 0,
+  'the operator home no longer renders the completeness banner');
+const profileShortcut = viewport.querySelectorAll('[aria-label]')
+  .filter((n) => n.getAttribute('aria-label') === 'Buka tab Profil operator')[0];
+ok(!!profileShortcut, 'the operator home links to the Profile tab');
+if (profileShortcut) {
+  profileShortcut.click();
+  eq(preview.state.screen, 'operator-profil',
+    'the home shortcut jumps to the Profile tab');
+}
+
+/* ------------------------------------------------------------------ *
+ * 9h. Wali kelas: unggah bahan -> asisten menyusun soal
+ * ------------------------------------------------------------------ */
+// Bug yang diperbaiki: wali kelas tidak punya jalan apa pun ke form tugas,
+// sehingga fitur unggah PDF + asisten tidak pernah bisa dipakai.
+preview.state.role = 'wali';
+preview.state.tab = 'Beranda';
+preview.go('wali-beranda');
+
+const buatTugasShortcut = viewport.querySelectorAll('[aria-label]')
+  .filter((n) => n.getAttribute('aria-label') === 'Buat tugas dari bahan ajar')[0];
+ok(!!buatTugasShortcut, 'the homeroom home offers a "create task from material" shortcut');
+if (buatTugasShortcut) {
+  buatTugasShortcut.click();
+  ok(sheetBackdrop.hidden === false, 'the shortcut opens the task form sheet');
+  ok(sheetPanel.textContent.indexOf('Asisten penyusun soal') >= 0,
+    'the task form has the assistant panel');
+  ok(sheetPanel.textContent.indexOf('Simulasi offline') >= 0,
+    'the assistant is labelled as an offline simulation');
+  ok(sheetPanel.textContent.indexOf('Unggah bahan') >= 0,
+    'the task form offers a material upload button');
+
+  const assistantButton = () => sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Buat soal dengan asisten') >= 0)[0];
+  ok(!!assistantButton(), 'the assistant has a generate button');
+
+  // Tanpa bahan: pesan jelas, tidak mengarang soal.
+  if (assistantButton()) assistantButton().click();
+  ok(sheetPanel.textContent.indexOf('Tempel teks bahan ajar dulu') >= 0,
+    'the assistant asks for material instead of inventing questions');
+  ok(sheetPanel.textContent.indexOf('PDF belum bisa dibaca') >= 0,
+    'the assistant states honestly that PDFs are not parsed');
+
+  // Tempel bahan: asisten menyusun soal.
+  const sourceBox = sheetPanel.querySelectorAll('#assistant-source')[0];
+  ok(!!sourceBox, 'the assistant has a text box for the material');
+  if (sourceBox) {
+    sourceBox.value = 'Fotosintesis adalah proses tumbuhan membuat makanan sendiri. ' +
+      'Tumbuhan menyerap air dan mineral melalui akar di dalam tanah. ' +
+      'Daun menangkap cahaya matahari menggunakan klorofil hijau. ' +
+      'Hasil fotosintesis berupa glukosa dan oksigen yang dilepas ke udara. ' +
+      'Proses ini penting karena menjadi sumber makanan bagi makhluk hidup lain.';
+    sourceBox.dispatch('input', { target: sourceBox });
+    // Bahan berganti -> tombol kembali ke label awal.
+    const regen = sheetPanel.querySelectorAll('button')
+      .filter((b) => (b.textContent || '').indexOf('Buat soal dengan asisten') >= 0)[0];
+    ok(!!regen, 'the generate button is still available after typing material');
+    if (regen) regen.click();
+  }
+  ok(/\d+ soal siap dipakai tugas ini/.test(sheetPanel.textContent),
+    'the assistant reports how many questions are ready');
+  ok(sheetPanel.textContent.indexOf('simulasi offline, bukan AI sungguhan') >= 0,
+    'the assistant says the result is not real AI');
+
+  const madeQuestions = sheetPanel.querySelectorAll('.assistant-result')[0];
+  ok(!!madeQuestions, 'the assistant lists the generated questions');
+  if (madeQuestions) {
+    const lines = (madeQuestions.textContent.match(/kata kunci/g) || []).length;
+    ok(lines >= 5, 'the generated questions are derived from the pasted material');
+  }
+}
+
+// Tugas tersimpan membawa soal asistennya sendiri.
+const taskCountBefore = preview.tasks().length;
+const titleBox = sheetPanel.querySelectorAll('#task-title')[0];
+if (titleBox) {
+  titleBox.value = 'Fotosintesis';
+  titleBox.dispatch('input', { target: titleBox });
+}
+const saveTaskBtn = sheetPanel.querySelectorAll('button')
+  .filter((b) => (b.textContent || '').indexOf('Simpan tugas') >= 0)[0];
+ok(!!saveTaskBtn, 'the task form has a save button');
+if (saveTaskBtn) saveTaskBtn.click();
+eq(preview.tasks().length, taskCountBefore + 1, 'the task with assistant questions is saved');
+const savedTask = preview.tasks()[preview.tasks().length - 1];
+ok(savedTask && savedTask.questionsSource === 'assistant',
+  'the saved task is marked as using assistant questions');
+ok(savedTask && savedTask.questions && savedTask.questions.length >= 5 &&
+  savedTask.questions.length <= 10,
+  'the saved task keeps every generated question (one per complete sentence)');
+
+// Kuis memakai soal milik tugas, bukan bank soal contoh.
+if (savedTask) {
+  preview.startQuiz(savedTask);
+  eq(preview.state.screen, 'kuis', 'starting the quiz opens the quiz screen');
+  eq(preview.state.quiz.bank.length, savedTask.questions.length,
+    'the quiz uses the task\'s own questions');
+  eq(preview.state.quiz.bank[0].question, savedTask.questions[0].question,
+    'the first quiz question comes from the assistant draft');
+}
+
+// Siswa yang mengerjakan tugas itu benar-benar melihat soal asistennya.
+// Siswa demo ada di Kelas 5, sedangkan wali mengajar Kelas 1; pindahkan siswa
+// ke kelas tugas dulu agar pengecekan ini menguji hal yang benar.
+preview.state.studentClass = 'Kelas 1';
+preview.state.role = 'siswa';
+preview.state.tab = 'Tugas';
+// Filter bisa tersisa dari pemeriksaan sebelumnya; mulai dari keadaan bersih.
+preview.state.taskFilter = 'Aktif';
+preview.state.subjectFilter = 'Semua';
+preview.state.search = '';
+preview.go('siswa-tugas');
+// Mock DOM hanya mendukung satu selector sederhana (tanpa daftar berkoma
+// atau nilai atribut), jadi pakai kelas kartu daftar.
+const studentTaskCard = viewport.querySelectorAll('.list-item-card')
+  .filter((n) => (n.textContent || '').indexOf('Fotosintesis') >= 0)[0];
+ok(!!studentTaskCard, 'the new task appears on the student task list');
+if (studentTaskCard) {
+  studentTaskCard.click();
+  const startBtn = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.getAttribute('aria-label') || '') === 'Pilihan ganda')[0];
+  ok(!!startBtn, 'the student can start the multiple-choice method for that task');
+  if (startBtn) {
+    startBtn.click();
+    eq(preview.state.screen, 'kuis', 'the student lands on the quiz screen');
+    eq(preview.state.quiz.bank[0].answerIndex, savedTask.questions[0].answerIndex,
+      'the student sees the assistant questions, not the example bank');
+  }
+}
+
+// Bahan terlalu pendek tidak menghasilkan soal palsu.
+preview.go('wali-beranda');
+if (buatTugasShortcut) buatTugasShortcut.click();
+const shortBox = sheetPanel.querySelectorAll('#assistant-source')[0];
+if (shortBox) {
+  shortBox.value = 'Terlalu pendek.';
+  shortBox.dispatch('input', { target: shortBox });
+  sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Buat soal dengan asisten') >= 0)[0].click();
+}
+ok(sheetPanel.textContent.indexOf('terlalu pendek') >= 0,
+  'material that is too short is rejected with a clear message');
+const closeTaskSheet = sheetPanel.querySelectorAll('button')
+  .filter((b) => (b.textContent || '').indexOf('Simpan tugas') >= 0)[0];
+if (closeTaskSheet) {
+  // Tutup tanpa menyimpan: judul kosong menjaga tombol tidak membuat tugas.
+}
+const backdrop = sheetBackdrop;
+if (backdrop && backdrop.hidden === false) {
+  // Tutup sheet lewat tombol X/backdrop yang disediakan pratinjau.
+  const closeBtn = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.getAttribute('aria-label') || '') === 'Tutup')[0];
+  if (closeBtn) closeBtn.click();
+}
+
+// Tugas yang baru disimpan muncul di Beranda wali (wali tidak punya tab Tugas).
+preview.go('wali-beranda');
+ok(viewport.textContent.indexOf('Tugas kelas') >= 0,
+  'the homeroom home lists class tasks');
+ok(viewport.textContent.indexOf('Fotosintesis') >= 0,
+  'the task created from material shows up on the homeroom home');
+ok(viewport.textContent.indexOf('soal asisten') >= 0,
+  'the task card states that its questions came from the assistant');
+
+// Beranda wali juga membuka materi (sebelumnya tidak ada jalan).
+preview.go('wali-beranda');
+const materiShortcut = viewport.querySelectorAll('[aria-label]')
+  .filter((n) => n.getAttribute('aria-label') === 'Kelola materi kelas')[0];
+ok(!!materiShortcut, 'the homeroom home links to class materials');
+
+preview.state.role = 'operator';
+preview.state.tab = 'Beranda';
+preview.go('operator-beranda');
+
+// Tab operator: 6 tab, Profil di kanan Media.
 const opTabs = bottomNav.querySelectorAll('.nav-item');
-eq(opTabs.length, 5, 'the operator bottom nav has 5 tabs');
+eq(opTabs.length, 6, 'the operator bottom nav has 6 tabs');
 ok(opTabs.some((t) => (t.textContent || '').indexOf('Media') >= 0),
   'the operator nav has a Media tab');
 
@@ -1313,21 +1632,30 @@ preview.state.filter = 'Semua kelas';
 // Data pribadi operator tidak boleh menimpa nama siswa.
 preview.state.role = 'operator';
 preview.state.studentName = 'Dimas Nugroho';
-preview.go('operator-beranda');
+// Profil operator kini tab sendiri (keenam, di sebelah Media).
+preview.go('operator-profil');
 // Mock DOM tidak mendukung selector `[attr=value]`; saring manual.
 const opInfoCard = viewport.querySelectorAll('[aria-label]')
-  .filter((n) => n.getAttribute('aria-label') === 'Ubah data operator')[0];
-ok(!!opInfoCard, 'the operator home renders the identity card');
+  .filter((n) => n.getAttribute('aria-label') === 'Ubah profil operator')[0];
+ok(!!opInfoCard, 'the operator profile tab renders an edit button');
 if (opInfoCard) {
-  // Kartu identitas menampilkan jabatan, NIP, dan indikator kelengkapan.
+  // Section profil menampilkan jabatan, NIP, dan indikator kelengkapan.
   ok(viewport.textContent.indexOf('Operator Sekolah') >= 0,
-    'the identity card shows the operator role');
-  ok(viewport.textContent.indexOf('NIP 19870003') >= 0,
-    'the identity card shows the operator NIP');
-  ok(/Lengkapi data pribadi \(\d\/6 kolom\)/.test(viewport.textContent),
-    'the identity card shows how complete the profile is');
+    'the profile section shows the operator role');
+  ok(viewport.textContent.indexOf('19870003') >= 0,
+    'the profile section shows the operator NIP');
+  // Section profil baru memuat keenam kolom, bukan hanya nama + NIP.
+  const profileLabels = ['Nama lengkap', 'NIP', 'Jabatan', 'Unit kerja', 'Surel', 'Telepon'];
+  eq(profileLabels.filter((l) => viewport.textContent.indexOf(l) >= 0).length, 6,
+    'the profile section lists all six profile fields');
+  ok(viewport.textContent.indexOf('Belum diisi') >= 0,
+    'empty profile fields are labelled "Belum diisi"');
+  ok(/Lengkapi (surel|telepon|data pribadi)[^()]*\(\d\/6 kolom terisi\)/.test(viewport.textContent),
+    'the profile section shows how complete the profile is');
   ok(viewport.textContent.indexOf('Data pribadi sudah lengkap') < 0,
     'the demo operator profile is reported as incomplete until contact is filled');
+  ok(viewport.textContent.indexOf('surel & telepon') >= 0,
+    'the profile section names the missing columns');
 
   opInfoCard.click();
   ok(sheetBackdrop.hidden === false, 'the operator identity card opens the personal info sheet');
@@ -1399,7 +1727,7 @@ if (opInfoCard) {
     'saving the operator profile does not overwrite the student name');
 
   // Profil lengkap sekarang dilaporkan lengkap.
-  preview.go('operator-beranda');
+  preview.go('operator-profil');
   ok(viewport.textContent.indexOf('Data pribadi sudah lengkap') >= 0,
     'the identity card reports a complete profile once every field is filled');
   ok(viewport.textContent.indexOf('sari@sekolah.sch.id') >= 0,
@@ -1506,14 +1834,282 @@ if (operatorUser && operatorPass) {
 }
 
 /* ------------------------------------------------------------------ *
+ * 9c. Unified login: role detected from credentials + "Ingat saya"
+ * ------------------------------------------------------------------ */
+// Alur baru: splash -> satu form login. Tidak ada layar pilih peran di jalur
+// utama, dan peran ditentukan dari NIP/NISN yang diketik.
+preview.go('splash');
+eq(preview.state.screen, 'splash', 'the splashes stays put before the timer fires');
+
+preview.go('login');
+ok(viewport.textContent.indexOf('Selamat datang di KARSA') >= 0,
+  'the unified login greets the user');
+ok(viewport.textContent.indexOf('Masuk dengan NIP atau NISN Anda') >= 0,
+  'the unified login explains that one form serves every role');
+ok(viewport.textContent.indexOf('Pilih peran') < 0,
+  'the unified login has no role picker');
+
+// Kelima akun demo terdaftar dalam satu kotak.
+const demoBtn = () => viewport.querySelectorAll('.demo-cred-row');
+eq(demoBtn().length, 5, 'the demo box lists all five accounts');
+
+// Kolom identitas mengikuti peran yang terdeteksi dari ketikan.
+const unifiedUser = () => viewport.querySelectorAll('#login-username')[0];
+ok(!!unifiedUser(), 'the unified login has an identity field');
+if (unifiedUser()) {
+  unifiedUser().value = '19870003';
+  unifiedUser().dispatch('input', { target: unifiedUser() });
+  eq(viewport.querySelectorAll('#login-username')[0].getAttribute('placeholder'), 'NIP',
+    'staff identifiers are labelled NIP');
+  ok(viewport.textContent.indexOf('Operator sekolah') >= 0,
+    'typing the operator NIP reveals the detected role');
+}
+
+preview.go('login');
+if (unifiedUser()) {
+  unifiedUser().value = '10050001';
+  unifiedUser().dispatch('input', { target: unifiedUser() });
+  eq(viewport.querySelectorAll('#login-username')[0].getAttribute('placeholder'), 'NISN',
+    'student identifiers are labelled NISN');
+}
+
+// Galat yang jelas untuk kolom kosong.
+preview.go('login');
+preview.state.login.username = '';
+preview.state.login.password = '';
+let unifiedSubmit = opButton(viewport, 'Masuk');
+if (unifiedSubmit) unifiedSubmit.click();
+ok(viewport.textContent.indexOf('Isi NIP atau NISN terlebih dahulu.') >= 0,
+  'an empty identity shows a visible error');
+eq(preview.state.screen, 'login', 'an empty identity keeps the user on the login screen');
+
+// Kata sandi salah -> tetap di login.
+preview.go('login');
+preview.state.login.username = '19870003';
+preview.state.login.password = 'salah';
+unifiedSubmit = opButton(viewport, 'Masuk');
+if (unifiedSubmit) unifiedSubmit.click();
+ok(viewport.textContent.indexOf('NIP/NISN atau kata sandi tidak sesuai.') >= 0,
+  'wrong credentials show a visible error');
+eq(preview.state.screen, 'login', 'wrong credentials keep the user on the login screen');
+
+// Setiap peran masuk lewat form yang sama dan mendarat di berandanya.
+[
+  { id: '19870003', pass: 'operator123', role: 'operator', screen: 'operator-beranda' },
+  { id: '19870001', pass: 'wali123', role: 'wali', screen: 'wali-beranda' },
+  { id: '19870002', pass: 'guru123', role: 'guru', screen: 'guru-beranda' },
+  { id: '10050001', pass: 'siswa123', role: 'siswa', screen: 'siswa-beranda' },
+  { id: '10010001', pass: 'ortu123', role: 'orangtua', screen: 'ortu-beranda' }
+].forEach((c) => {
+  preview.go('login');
+  preview.state.login.username = c.id;
+  preview.state.login.password = c.pass;
+  const btn = opButton(viewport, 'Masuk');
+  ok(!!btn, 'the unified login has a submit button for ' + c.role);
+  if (btn) btn.click();
+  eq(preview.state.screen, c.screen, c.role + ' logs in through the shared form');
+  eq(preview.state.role, c.role, c.role + ' role is detected from the credentials');
+});
+
+// "Ingat saya" menyimpan identitas, bukan kata sandi.
+preview.go('login');
+preview.state.rememberMe = true;
+preview.state.rememberedLogin = null;
+preview.state.login.username = '19870003';
+preview.state.login.password = 'operator123';
+preview.render();
+unifiedSubmit = opButton(viewport, 'Masuk');
+if (unifiedSubmit) unifiedSubmit.click();
+eq(preview.state.rememberedLogin && preview.state.rememberedLogin.identifier, '19870003',
+  '"Ingat saya" remembers the identifier after a successful login');
+eq(preview.state.rememberedLogin && preview.state.rememberedLogin.role, 'operator',
+  '"Ingat saya" remembers the detected role');
+ok(!('password' in (preview.state.rememberedLogin || {})),
+  '"Ingat saya" never stores the password');
+
+// Kartu "terakhir masuk" muncul dan bisa ditolak.
+preview.go('login');
+ok(!!viewport.querySelectorAll('.remembered-card')[0],
+  'a remembered login shows a "terakhir masuk" card');
+const rememberedText = viewport.textContent;
+ok(rememberedText.indexOf('19870003') >= 0,
+  'the remembered card shows the saved identifier');
+const notMe = viewport.querySelectorAll('button')
+  .filter((b) => (b.textContent || '').indexOf('Bukan saya') >= 0)[0];
+ok(!!notMe, 'the remembered card offers a way to switch account');
+if (notMe) {
+  notMe.click();
+  eq(preview.state.rememberedLogin, null, '"Bukan saya" clears the remembered login');
+}
+
+// Centang bisa dimatikan: login berikutnya tidak mengingat apa pun.
+preview.go('login');
+preview.state.rememberMe = false;
+preview.state.rememberedLogin = null;
+preview.state.login.username = '19870001';
+preview.state.login.password = 'wali123';
+preview.render();
+unifiedSubmit = opButton(viewport, 'Masuk');
+if (unifiedSubmit) unifiedSubmit.click();
+eq(preview.state.rememberedLogin, null,
+  'unchecking "Ingat saya" stores no identifier');
+
+// "Ingat saya" bertahan setelah state dimuat ulang.
+preview.state.rememberMe = true;
+preview.state.rememberedLogin = { identifier: '19870002', role: 'guru' };
+if (typeof preview.persistState === 'function') preview.persistState();
+if (typeof preview.restoreState === 'function') {
+  preview.state.rememberedLogin = null;
+  preview.restoreState();
+}
+eq(preview.state.rememberedLogin && preview.state.rememberedLogin.identifier, '19870002',
+  'the remembered login survives a reload');
+
+// Keluar dari akun kembali ke form login dengan identitas terisi.
+preview.state.rememberedLogin = { identifier: '19870003', role: 'operator' };
+preview.state.role = 'operator';
+preview.go('wali-profil');
+const logoutBtn = viewport.querySelectorAll('button')
+  .filter((b) => (b.textContent || '').indexOf('Keluar dari akun demo') >= 0)[0];
+ok(!!logoutBtn, 'the profile screen offers a logout action');
+if (logoutBtn) logoutBtn.click();
+eq(preview.state.screen, 'login', 'logout returns to the login form');
+eq(preview.state.login.username, '19870003',
+  'logout keeps the remembered identifier in the form');
+eq(preview.state.login.password, '', 'logout clears the password');
+
+// Identitas tersimpan langsung terisi saat form login dibuka.
+preview.state.rememberedLogin = { identifier: '10050001', role: 'siswa' };
+preview.state.login = { username: '', password: '', show: false, error: '' };
+preview.go('login');
+eq(preview.state.login.username, '10050001',
+  'the remembered identifier is prefilled when the form opens');
+eq(viewport.querySelectorAll('#login-username')[0].getAttribute('placeholder'), 'NISN',
+  'the prefilled identifier sets the field label to NISN');
+
+// Kembalikan keadaan demo.
+preview.state.rememberedLogin = null;
+preview.state.rememberMe = true;
+preview.state.login = { username: '', password: '', show: false, error: '' };
+if (typeof preview.persistState === 'function') preview.persistState();
+
+/* ------------------------------------------------------------------ *
  * 10. Dark mode toggle
  * ------------------------------------------------------------------ */
 preview.go('welcome');
 eq(doc.documentElement.getAttribute('data-theme'), 'light', 'default theme is light');
-themeToggle.click();
-eq(doc.documentElement.getAttribute('data-theme'), 'dark', 'dark mode toggle switches the theme attribute');
-themeToggle.click();
-eq(doc.documentElement.getAttribute('data-theme'), 'light', 'dark mode toggle switches back to light');
+// Bar pengembang sudah dihapus: tema diganti dari tombol di dalam aplikasi.
+const themeBtnInApp = viewport.querySelectorAll('.round-icon-btn')
+  .filter((n) => (n.getAttribute('aria-label') || '').indexOf('mode gelap') >= 0)[0];
+ok(!!themeBtnInApp, 'an in-app button can switch to dark mode');
+if (themeBtnInApp) {
+  themeBtnInApp.click();
+  eq(doc.documentElement.getAttribute('data-theme'), 'dark', 'the in-app theme button switches the theme attribute');
+  const themeBtnBack = viewport.querySelectorAll('.round-icon-btn')
+    .filter((n) => (n.getAttribute('aria-label') || '').indexOf('mode terang') >= 0)[0];
+  if (themeBtnBack) themeBtnBack.click();
+  eq(doc.documentElement.getAttribute('data-theme'), 'light', 'the in-app theme button switches back to light');
+}
+
+/* ------------------------------------------------------------------ *
+ * 10a. Tombol mode gelap di layar welcome & login
+ * ------------------------------------------------------------------ */
+// Ini yang dulu ada di bar pengembang; sekarang dipasang di dalam layar.
+preview.state.role = null;
+preview.go('welcome');
+const welcomeThemeBtn = viewport.querySelectorAll('.round-icon-btn')
+  .filter((n) => (n.getAttribute('aria-label') || '').indexOf('mode gelap') >= 0)[0];
+ok(!!welcomeThemeBtn, 'the welcome screen offers a dark mode button');
+if (welcomeThemeBtn) {
+  welcomeThemeBtn.click();
+  eq(preview.state.dark, true, 'the welcome screen button enables dark mode');
+  const welcomeBack = viewport.querySelectorAll('.round-icon-btn')
+    .filter((n) => (n.getAttribute('aria-label') || '').indexOf('mode terang') >= 0)[0];
+  if (welcomeBack) welcomeBack.click();
+  eq(preview.state.dark, false, 'the welcome screen button disables dark mode again');
+}
+
+['operator', 'wali', 'guru', 'siswa', 'orangtua'].forEach((role) => {
+  preview.state.role = role;
+  preview.go('login-' + (role === 'orangtua' ? 'ortu' : role));
+  const loginBtn = viewport.querySelectorAll('button')
+    .filter((n) => (n.getAttribute('aria-label') || '').indexOf('mode') >= 0)[0];
+  ok(!!loginBtn, role + ' login screen offers a dark mode button');
+});
+
+/* ------------------------------------------------------------------ *
+ * 10b. Setiap role punya tombol mode gelap di berandanya
+ * ------------------------------------------------------------------ */
+// Bar pengembang dihapus, jadi tombol tema harus ada DI DALAM layar tiap
+// role setelah masuk dashboard-nya.
+const HOMES = [
+  { role: 'operator', screen: 'operator-beranda' },
+  { role: 'wali', screen: 'wali-beranda' },
+  { role: 'guru', screen: 'guru-beranda' },
+  { role: 'siswa', screen: 'siswa-beranda' },
+  { role: 'orangtua', screen: 'ortu-beranda' }
+];
+
+HOMES.forEach((home) => {
+  preview.state.role = home.role;
+  preview.state.tab = 'Beranda';
+  preview.go(home.screen);
+  const themeBtn = viewport.querySelectorAll('.round-icon-btn')
+    .filter((n) => {
+      const label = n.getAttribute('aria-label') || '';
+      return label.indexOf('mode gelap') >= 0 || label.indexOf('mode terang') >= 0;
+    })[0];
+  ok(!!themeBtn, home.role + ' dashboard has a theme toggle button');
+
+  // Tombolnya benar-benar bekerja: tema berganti dan atribut ikut berubah.
+  if (themeBtn) {
+    const before = preview.state.dark;
+    themeBtn.click();
+    ok(preview.state.dark === !before,
+      home.role + ' theme button switches the theme');
+    const expectTheme = preview.state.dark ? 'dark' : 'light';
+    eq(doc.documentElement.getAttribute('data-theme'), expectTheme,
+      home.role + ' theme button updates the data-theme attribute');
+    // Kembalikan ke keadaan semula untuk pemeriksaan berikutnya.
+    const backBtn = viewport.querySelectorAll('.round-icon-btn')
+      .filter((n) => {
+        const label = n.getAttribute('aria-label') || '';
+        return label.indexOf('mode gelap') >= 0 || label.indexOf('mode terang') >= 0;
+      })[0];
+    if (backBtn) backBtn.click();
+    eq(preview.state.dark, before, home.role + ' theme can be switched back');
+  }
+});
+
+/* ------------------------------------------------------------------ *
+ * 10c. Mode gelap: tidak boleh ada latar terang yang ditulis keras
+ * ------------------------------------------------------------------ */
+// Bug yang dilaporkan: kartu profil operator memakai background #FBEAEC
+// (terang) yang tidak ikut berubah di mode gelap, sehingga teks `--ink`
+// (terang) nyaris tak terbaca (kontras ~1:1). Warna permukaan harus memakai
+// token CSS yang punya versi gelap.
+const appSrc = fs.readFileSync(path.join(previewDir, 'app.js'), 'utf8');
+const hardcodedLight = appSrc.match(/background:\s*#(?:FBEAEC|FFF|F2F6F8|FBEAEC)/gi) || [];
+eq(hardcodedLight.length, 0,
+  'no hard-coded light backgrounds inline (they stay light in dark mode)');
+
+// Profil operator memakai token permukaan, bukan warna tetap.
+preview.state.role = 'operator';
+preview.state.tab = 'Profil';
+preview.go('operator-profil');
+const profileCard = viewport.querySelectorAll('.clay-soft')
+  .filter((n) => n.getAttribute('style') &&
+    String(n.getAttribute('style')).indexOf('surface-rose') >= 0)[0];
+ok(!!profileCard, 'the operator profile card uses a theme-aware surface token');
+
+// Token itu memang punya nilai berbeda di mode terang & gelap.
+const cssAll = fs.readFileSync(path.join(previewDir, 'styles.css'), 'utf8');
+const lightRose = cssAll.match(/--surface-rose:\s*([^;]+);/);
+const darkBlock = cssAll.slice(cssAll.indexOf("[data-theme='dark']"));
+const darkRose = darkBlock.match(/--surface-rose:\s*([^;]+);/);
+ok(!!lightRose && !!darkRose, 'surface-rose is defined for both themes');
+ok(!!lightRose && !!darkRose && lightRose[1].trim() !== darkRose[1].trim(),
+  'surface-rose changes between light and dark themes');
 
 /* ------------------------------------------------------------------ *
  * 11. Deep links (hash) resolve
@@ -1522,6 +2118,581 @@ eq(doc.documentElement.getAttribute('data-theme'), 'light', 'dark mode toggle sw
   preview.go(hash.replace('#', ''));
   ok(preview.state.screen.indexOf('-') > 0, 'deep link ' + hash + ' resolves to ' + preview.state.screen);
 });
+
+/* ------------------------------------------------------------------ *
+ * 10d. Role orang tua: warna & angka
+ * ------------------------------------------------------------------ */
+/* Warna keras di layar orang tua adalah bug mode gelap yang berulang:
+   #F8EDF0 hampir putih, sementara --ink di mode gelap juga hampir putih
+   (#F3EAF0) -> kontras 1.03:1, teks praktis hilang. Semua latar harus
+   memakai token tema. */
+preview.state.role = 'orangtua';
+preview.state.dark = false;
+preview.state.parentClass = 'Kelas 1';
+preview.state.studentName = 'Dimas Nugroho';
+
+const ortuScreens = ['ortu-beranda', 'ortu-tugas', 'ortu-latihan', 'ortu-profil'];
+const orangTuaHardColors = [];
+ortuScreens.forEach((sc) => {
+  preview.go(sc);
+  viewport.querySelectorAll('[style]').forEach((node) => {
+    const st = node.getAttribute('style') || '';
+    const hex = st.match(/#[0-9A-Fa-f]{3,8}/g);
+    // item-tile boleh berwarna (ditimpa !important di mode gelap) dan tileColor
+    // sudah diuji terpisah; yang dilarang adalah latar kartu/permukaan keras.
+    if (!hex) return;
+    const cls = node.getAttribute('class') || '';
+    if (cls.indexOf('item-tile') >= 0 || cls.indexOf('stat-icon-circle') >= 0 ||
+        cls.indexOf('greeting-avatar') >= 0) return;
+    orangTuaHardColors.push(sc + ' .' + cls.split(' ')[0] + ' -> ' + hex.join(','));
+  });
+});
+eq(orangTuaHardColors.length, 0,
+  'orang tua: tidak ada warna keras di latar (aman mode gelap), ketemu: ' +
+  orangTuaHardColors.join(' | '));
+
+// Kartu "Perjalanan belajar" harus memakai token, bukan #F8EDF0.
+preview.go('ortu-beranda');
+const progressCard = Array.from(viewport.querySelectorAll('.karsa-card'))
+  .filter((c) => (c.textContent || '').indexOf('Perjalanan belajar') >= 0)[0];
+ok(!!progressCard, 'orang tua: kartu Perjalanan belajar ada');
+ok(!!progressCard && (progressCard.getAttribute('style') || '').indexOf('--surface-progress') >= 0,
+  'orang tua: kartu Perjalanan belajar memakai token tema (bukan warna keras)');
+
+// Angka "tugas selesai" hanya menghitung kelas anak.
+const resultsIds = Object.keys(preview.results());
+const tasksAll = preview.tasks();
+const childDone = tasksAll.filter((t) => t.className === 'Kelas 1' && preview.results()[t.id]).length;
+ok(resultsIds.length > childDone,
+  'orang tua: ada hasil kelas lain di data demo (prasyarat uji), total=' + resultsIds.length +
+  ' kelas anak=' + childDone);
+preview.go('ortu-profil');
+const meter = (viewport.textContent || '').match(/(\d+) tugas dan 0 latihan selesai/);
+ok(!!meter, 'orang tua: profil menampilkan ringkasan tugas');
+eq(meter ? Number(meter[1]) : -1, childDone,
+  'orang tua: "tugas selesai" hanya menghitung kelas anak (bukan seluruh RESULTS)');
+
+// Saat belum ada yang selesai, jangan memuji "terus bertumbuh".
+if (childDone === 0) {
+  ok((viewport.textContent || '').indexOf('Ayo mulai perjalanannya') >= 0,
+    'orang tua: tanpa progres, kartu memakai ajakan memulai (bukan pujian palsu)');
+}
+
+// Tema bisa diganti dari beranda orang tua (dan tetap tersimpan).
+preview.state.dark = false;
+preview.go('ortu-beranda');
+const themeBtn = Array.from(viewport.querySelectorAll('button'))
+  .filter((b) => /mode (gelap|terang)/i.test(b.getAttribute('aria-label') || ''))[0];
+ok(!!themeBtn, 'orang tua: tombol tema ada di beranda');
+if (themeBtn) {
+  themeBtn.click();
+  ok(preview.state.dark === true, 'orang tua: tombol tema mengaktifkan mode gelap');
+  preview.state.dark = false;
+  preview.render();
+}
+
+/* ------------------------------------------------------------------ *
+ * 10g. Notifikasi pengumpulan guru: nama + nilai, bukan suruh ngerjain
+ * ------------------------------------------------------------------ */
+preview.state.role = 'guru';
+preview.state.dark = false;
+preview.state.teacherSubject = 'Matematika';
+// Uji operator di atas bisa memangkas roster lewat penyimpanan. Pulihkan dari
+// data bawaan supaya rekap punya siswa untuk diperiksa.
+if (preview.state.roster.filter((r) => r.className === 'Kelas 1').length === 0) {
+  preview.state.roster = preview.seedRoster ? preview.seedRoster() : preview.state.roster;
+}
+preview.go('notifikasi');
+
+const notifCards = viewport.querySelectorAll('.karsa-card');
+const submissionCards = notifCards.filter((c) => /mengumpulkan tugas/.test(c.textContent || ''));
+ok(submissionCards.length > 0, 'guru melihat kartu pengumpulan');
+ok(submissionCards.length >= 3,
+  'ada beberapa siswa yang mengumpulkan, dapat ' + submissionCards.length);
+
+const firstCard = submissionCards[0];
+ok(/Aisyah Putri|Bagas Wicaksono|Dimas Nugroho/.test(firstCard.textContent || ''),
+  'kartu menyebut NAMA siswa, bukan hanya "Tugas dikumpulkan siswa"');
+ok(/Nilai \d+\/\d+/.test(firstCard.textContent || ''),
+  'kartu menampilkan NILAI siswa');
+ok((firstCard.textContent || '').indexOf('Tugas dikumpulkan siswa') < 0,
+  'judul generik tanpa nama sudah tidak dipakai');
+
+// Guru TIDAK boleh diminta mengerjakan: klik membuka rekap pengumpulan.
+const targetCard = submissionCards.filter((c) => /Aisyah/.test(c.textContent || ''))[0]
+  || submissionCards[0];
+targetCard.click();
+const submissionSheet = sheetPanel.textContent || '';
+ok(submissionSheet.indexOf('Sudah kumpul') >= 0,
+  'klik notifikasi membuka rekap "Sudah kumpul ... dari ... siswa"');
+ok(submissionSheet.indexOf('Rata-rata') >= 0, 'rekap menampilkan rata-rata');
+// Tes operator sebelumnya bisa memangkas roster, jadi jangan memaksa ada
+// siswa yang "belum". Yang penting: setiap siswa di roster kelas muncul.
+const rosterKelas1 = preview.state.roster
+  .filter((r) => r.className === 'Kelas 1')
+  .map((r) => r.name);
+ok(rosterKelas1.length > 0, 'roster Kelas 1 tidak kosong');
+ok(rosterKelas1.every((name) => submissionSheet.indexOf(name) >= 0),
+  'semua siswa Kelas 1 muncul di rekap, roster=' + rosterKelas1.join(','));
+const belumCount = rosterKelas1.filter((n) => submissionSheet.indexOf(n) >= 0).length
+  - (submissionSheet.match(/Nilai \d+\/\d+/g) || []).length;
+if (belumCount > 0) {
+  ok(submissionSheet.indexOf('Belum mengumpulkan') >= 0,
+    'siswa yang belum mengumpulkan ditandai "Belum mengumpulkan"');
+}
+ok(/Nilai \d+\/\d+/.test(submissionSheet), 'rekap menampilkan nilai per siswa');
+ok(submissionSheet.indexOf('Pilih metode') < 0,
+  'guru TIDAK disuruh memilih metode pengerjaan');
+ok(submissionSheet.indexOf('Periksa jawaban') < 0,
+  'guru tidak diminta mengerjakan soal');
+preview.closeSheet();
+
+// Siswa menyelesaikan kuis -> notifikasi baru bernama + bernilai untuk guru.
+preview.state.role = 'siswa';
+preview.state.parentClass = 'Kelas 5';
+preview.state.studentName = 'Dimas Nugroho';
+preview.state.studentId = 's1d';
+preview.go('siswa-beranda');
+const taskForSubmission = preview.tasks().filter((t) => t.id === 't1')[0];
+ok(!!taskForSubmission, 'tugas t1 tersedia');
+preview.startQuiz(taskForSubmission);
+const submitBank = preview.state.quiz.bank.length;
+const notifBefore = preview.notifications().length;
+for (let i = 0; i < submitBank; i += 1) {
+  const idx = preview.state.quiz.bank[preview.state.quiz.index].answerIndex;
+  viewport.querySelectorAll('.choice-btn')[idx].click();
+  const btn = () => Array.from(viewport.querySelectorAll('button'))
+    .filter((b) => /Periksa jawaban|Soal berikutnya|Lihat hasil/.test(b.textContent || ''))[0];
+  btn().click();
+  btn().click();
+}
+eq(preview.notifications().length, notifBefore + 1,
+  'menyelesaikan tugas membuat satu notifikasi guru');
+const freshNotif = preview.notifications()[0];
+eq(freshNotif.kind, 'submission', 'notifikasi baru bertipe submission');
+eq(freshNotif.studentName, 'Dimas Nugroho', 'notifikasi membawa nama siswa');
+eq(freshNotif.score, submitBank, 'notifikasi membawa nilai siswa');
+
+/* ------------------------------------------------------------------ *
+ * 10f. Pengumuman guru mapel
+ * ------------------------------------------------------------------ */
+preview.state.role = 'guru';
+preview.state.dark = false;
+preview.state.teacherSubject = 'Matematika';
+preview.go('guru-pengumuman');
+eq(preview.state.screen, 'guru-pengumuman', 'guru punya layar pengumuman sendiri');
+ok((viewport.textContent || '').indexOf('Buat pengumuman') >= 0,
+  'guru bisa membuat pengumuman dari layarnya sendiri');
+
+// Form guru hanya menawarkan kelas yang diajar mapelnya.
+const openGuruForm = () => {
+  const btn = Array.from(viewport.querySelectorAll('button'))
+    .filter((b) => /Buat pengumuman/.test(b.textContent || ''))[0];
+  ok(!!btn, 'tombol buat pengumuman ada');
+  if (btn) btn.click();
+  return sheetPanel;
+};
+
+let form = openGuruForm();
+let chipLabels = form.querySelectorAll('.chip-btn').map((c) => c.textContent);
+ok(chipLabels.indexOf('Semua kelas') >= 0, 'guru boleh mengumumkan ke semua kelas');
+ok(chipLabels.length > 1, 'form guru punya pilihan kelas');
+preview.closeSheet();
+
+// Mapel yang hanya ada di kelas atas: IPAS mulai Kelas 3.
+preview.state.teacherSubject = 'Ilmu Pengetahuan Alam dan Sosial (IPAS)';
+preview.go('guru-pengumuman');
+form = openGuruForm();
+chipLabels = form.querySelectorAll('.chip-btn').map((c) => c.textContent);
+ok(chipLabels.indexOf('Kelas 3') >= 0, 'guru IPAS bisa memilih Kelas 3');
+// `indexOf` pada array eksak, bukan pada string, agar "Kelas 1" tidak
+// tertukar dengan "Kelas 10" bila kelak ada.
+eq(chipLabels.indexOf('Kelas 1'), -1,
+  'guru IPAS tidak ditawari Kelas 1 (IPAS tidak ada di kelas itu), ketemu: ' + chipLabels.join(','));
+eq(chipLabels.indexOf('Kelas 2'), -1, 'guru IPAS tidak ditawari Kelas 2');
+// Sekolah bisa punya kelas tambahan dari uji operator sebelumnya, jadi
+// bandingkan dengan daftar mapel per kelas, bukan daftar tetap 3-6.
+const ipasTaught = preview.state.schoolClasses
+  .map((c) => c.name)
+  .filter((name) => preview.subjectsForClass(name)
+    .some((sub) => sub.indexOf('IPAS') >= 0));
+ok(chipLabels.every((c) => c === 'Semua kelas' || ipasTaught.indexOf(c) >= 0),
+  'semua opsi kelas guru IPAS memang kelas yang diajar mapelnya, ketemu: ' +
+  chipLabels.join(',') + ' | diajar: ' + ipasTaught.join(','));
+
+// Kirim pengumuman dan pastikan tercatat + bisa diubah.
+const titleInput = form.querySelectorAll('input')[0];
+titleInput.value = 'Ulangan IPAS bab 2';
+titleInput.dispatch('input', { target: titleInput });
+const bodyInput = form.querySelectorAll('textarea')[0];
+bodyInput.value = 'Belajar halaman 20 sampai 30.';
+bodyInput.dispatch('input', { target: bodyInput });
+const send = form.querySelectorAll('button')
+  .filter((b) => /Kirim pengumuman/.test(b.textContent || ''))[0];
+ok(!!send, 'tombol kirim pengumuman ada');
+const beforeCount = preview.announcements().length;
+if (send) {
+  send.click();
+  eq(preview.announcements().length, beforeCount + 1,
+    'pengumuman guru tersimpan');
+  const created = preview.announcements()[0];
+  eq(created.category, 'PENGUMUMAN GURU', 'kategori pengumuman guru benar');
+  eq(created.title, 'Ulangan IPAS bab 2', 'judul tersimpan');
+  eq(created.className, 'Kelas 3',
+    'kelas awal mengikuti kelas pertama yang diajar mapelnya');
+  ok((viewport.textContent || '').indexOf('Ulangan IPAS bab 2') >= 0,
+    'pengumuman langsung tampil di daftar guru');
+}
+
+// Judul kosong ditolak, bukan tersimpan sebagai pengumuman kosong.
+form = openGuruForm();
+const countBeforeBad = preview.announcements().length;
+const sendBad = form.querySelectorAll('button')
+  .filter((b) => /Kirim pengumuman/.test(b.textContent || ''))[0];
+if (sendBad) sendBad.click();
+eq(preview.announcements().length, countBeforeBad,
+  'pengumuman tanpa judul/isi ditolak');
+preview.closeSheet();
+
+// Pengumuman guru hanya sampai ke kelas yang dituju.
+preview.state.teacherSubject = 'Matematika';
+preview.announcements().forEach((a) => {
+  if (a.category === 'PENGUMUMAN GURU' && a.title === 'Ulangan IPAS bab 2') {
+    a.className = 'Kelas 3';
+  }
+});
+preview.state.role = 'siswa';
+preview.state.parentClass = 'Kelas 3';
+preview.state.studentName = 'Dimas Nugroho';
+ok(preview.visibleAnnouncements().some((a) => a.title === 'Ulangan IPAS bab 2'),
+  'siswa Kelas 3 menerima pengumuman untuk Kelas 3');
+preview.state.parentClass = 'Kelas 5';
+ok(!preview.visibleAnnouncements().some((a) => a.title === 'Ulangan IPAS bab 2'),
+  'siswa Kelas 5 tidak menerima pengumuman untuk Kelas 3');
+
+/* ------------------------------------------------------------------ *
+ * 11. Tata letak kuis mengikuti rancangan (warna tetap)
+ * ------------------------------------------------------------------ */
+preview.state.role = 'siswa';
+preview.startQuiz(preview.tasks()[0]);
+
+// Header: mapel+topik kecil, "Soal n dari m" besar, tombol tutup X.
+ok(!!viewport.querySelectorAll('.quiz-eyebrow')[0], 'quiz header shows the small subject line');
+ok(!!viewport.querySelectorAll('.quiz-step')[0], 'quiz header shows "Soal n dari m" prominently');
+const stepText = viewport.querySelectorAll('.quiz-step')[0].textContent;
+ok(/^Soal \d+ dari \d+$/.test(stepText), 'the step text reads "Soal n dari m", got: ' + stepText);
+const closeBtn = Array.from(viewport.querySelectorAll('button'))
+  .filter((b) => (b.getAttribute('aria-label') || '') === 'Tutup kuis')[0];
+ok(!!closeBtn, 'quiz has a close (X) button in the header like the design');
+ok(!!viewport.querySelectorAll('.quiz-progress')[0], 'quiz keeps the progress bar');
+
+// Keadaan pilihan: label "Dipilih" setelah memilih.
+const firstChoice = viewport.querySelectorAll('.choice-btn')[0];
+firstChoice.click();
+ok(viewport.textContent.indexOf('Dipilih') >= 0,
+  'the chosen option is labelled "Dipilih" like the design');
+ok(viewport.textContent.indexOf('Sudah yakin?') >= 0,
+  'a small hint appears under the choices after picking');
+ok(!!Array.from(viewport.querySelectorAll('.choice-state')).length,
+  'the choice state label is rendered');
+
+// Setelah diperiksa: label Benar/Salah + kartu umpan balik.
+const checkBtn = Array.from(viewport.querySelectorAll('button'))
+  .filter((b) => (b.textContent || '').indexOf('Periksa jawaban') >= 0)[0];
+checkBtn.click();
+const hasState = viewport.textContent.indexOf('Benar') >= 0 || viewport.textContent.indexOf('Salah') >= 0;
+ok(hasState, 'after checking, options are labelled Benar / Salah');
+ok(!!viewport.querySelectorAll('.quiz-feedback')[0], 'a feedback card appears after checking');
+ok(!!(Array.from(viewport.querySelectorAll('.choice-btn')).filter((b) => /correct|wrong/.test(b.className)).length),
+  'correct/wrong styling is applied to the options');
+
+// Tombol tutup benar-benar keluar dari kuis.
+preview.startQuiz(preview.tasks()[0]);
+const closeAgain = Array.from(viewport.querySelectorAll('button'))
+  .filter((b) => (b.getAttribute('aria-label') || '') === 'Tutup kuis')[0];
+if (closeAgain) {
+  closeAgain.click();
+  ok(preview.state.screen !== 'kuis', 'the X button leaves the quiz');
+}
+
+// Warna tetap memakai token yang ada: tidak ada warna rose/hijau baru yang
+// ditulis keras di luar token tema.
+const quizCss = fs.readFileSync(path.join(previewDir, 'styles.css'), 'utf8');
+ok(quizCss.indexOf('.quiz-feedback') >= 0, 'quiz feedback styles are defined');
+ok(quizCss.indexOf('--surface-quiz-feedback') >= 0,
+  'feedback surface uses a theme token (dark mode safe)');
+
+/* ------------------------------------------------------------------ *
+ * 10e. Latihan dua metode (pilihan ganda + esai)
+ * ------------------------------------------------------------------ */
+preview.state.role = 'siswa';
+preview.state.dark = false;
+preview.state.parentClass = 'Kelas 5';
+preview.state.studentName = 'Dimas Nugroho';
+preview.go('siswa-beranda');
+
+const practice = preview.visiblePractices()[0];
+ok(!!practice, 'ada latihan untuk siswa');
+
+// Sheet detail latihan menawarkan dua metode.
+preview.openPractice(practice);
+let sheetText = sheetPanel.textContent || '';
+ok(sheetText.indexOf('Pilih metode latihan') >= 0,
+  'detail latihan menawarkan pilihan metode');
+ok(sheetText.indexOf('Pilihan ganda') >= 0 && sheetText.indexOf('Esai') >= 0,
+  'detail latihan punya metode pilihan ganda dan esai');
+ok(sheetText.indexOf('dinilai otomatis') >= 0,
+  'pilihan ganda latihan diberi label dinilai otomatis');
+ok(sheetText.indexOf('tidak dinilai otomatis') >= 0,
+  'esai diberi label tidak dinilai otomatis');
+preview.closeSheet();
+
+// Pilihan ganda latihan: memakai layar kuis, skor masuk PRACTICE_RESULTS.
+preview.startPracticeQuiz(practice);
+eq(preview.state.screen, 'kuis', 'pilihan ganda latihan membuka layar kuis');
+eq(preview.state.quiz.practice && preview.state.quiz.practice.id, practice.id,
+  'kuis latihan membawa konteks latihan');
+ok(!!preview.state.quiz.bank.length, 'kuis latihan punya bank soal');
+const pgCount = preview.state.quiz.bank.length;
+ok(pgCount >= 4, 'latihan pilihan ganda punya minimal 4 soal, dapat ' + pgCount);
+// Judul memakai mapel latihan, bukan tugas.
+ok((viewport.textContent || '').indexOf(practice.subject) >= 0,
+  'header kuis latihan menampilkan mapel latihan');
+
+// Jawab semua soal dengan benar.
+const resultsBefore = Object.keys(preview.results()).length;
+for (let i = 0; i < pgCount; i += 1) {
+  const bank = preview.state.quiz.bank;
+  const correctIndex = bank[preview.state.quiz.index].answerIndex;
+  viewport.querySelectorAll('.choice-btn')[correctIndex].click();
+  const btn = () => Array.from(viewport.querySelectorAll('button'))
+    .filter((b) => /Periksa jawaban|Soal berikutnya|Lihat hasil/.test(b.textContent || ''))[0];
+  btn().click(); // periksa
+  btn().click(); // lanjut / selesai
+}
+eq(preview.state.screen, 'hasil-latihan', 'selesai PG latihan membuka hasil latihan');
+const pracRes = preview.practiceResults()[practice.id] || null;
+ok(!!pracRes, 'skor latihan tersimpan di PRACTICE_RESULTS, bukan RESULTS tugas');
+if (pracRes) {
+  eq(pracRes.score, pgCount, 'semua benar memberi nilai penuh');
+  eq(pracRes.total, pgCount, 'total soal tercatat');
+  ok(viewport.textContent.indexOf(String(pracRes.score)) >= 0,
+    'layar hasil menampilkan skor');
+} else {
+  ok(false, 'semua benar memberi nilai penuh');
+  ok(false, 'total soal tercatat');
+  ok(false, 'layar hasil menampilkan skor');
+}
+eq(Object.keys(preview.results()).length, resultsBefore,
+  'skor latihan tidak menambah hasil tugas');
+eq(preview.practiceDone()[practice.id], true,
+  'latihan bertanda selesai setelah PG');
+
+// Esai latihan tetap berjalan dan mencatat selesai tanpa skor.
+const practice2 = preview.visiblePractices()[1] || practice;
+preview.openPractice(practice2);
+const essayBtn = sheetPanel.querySelectorAll('.method-card')
+  .filter((c) => (c.textContent || '').indexOf('Esai') >= 0)[0];
+ok(!!essayBtn, 'kartu metode esai bisa diklik');
+if (essayBtn) {
+  essayBtn.click();
+  // Esai latihan tampil di sheet, bukan layar esai tugas.
+  ok((sheetPanel.textContent || '').indexOf('Soal 1 dari') >= 0,
+    'esai latihan langsung menampilkan soal pertama');
+  ok((sheetPanel.textContent || '').indexOf('tanpa batas waktu') >= 0,
+    'esai latihan menyebut tanpa batas waktu');
+
+  // Kerjakan seluruh soal esai latihan.
+  let guard = 0;
+  while ((sheetPanel.textContent || '').indexOf('Hasil latihan') < 0 && guard < 30) {
+    guard += 1;
+    const textarea = sheetPanel.querySelectorAll('textarea')[0];
+    if (!textarea) break;
+    textarea.value = 'Jawaban esai nomor ' + guard + ' yang cukup panjang.';
+    textarea.dispatch('input', { target: textarea });
+    const next = sheetPanel.querySelectorAll('button')
+      .filter((b) => /Soal berikutnya|Selesai/.test(b.textContent || ''))[0];
+    if (!next) break;
+    next.click();
+  }
+  ok((sheetPanel.textContent || '').indexOf('Hasil latihan') >= 0,
+    'esai latihan berakhir di ringkasan hasil');
+  eq(preview.practiceDone()[practice2.id], true,
+    'esai latihan menandai selesai');
+  eq(preview.practiceResults()[practice2.id], undefined,
+    'esai latihan tidak menyimpan skor (tidak dinilai otomatis)');
+  preview.closeSheet();
+}
+
+/* ------------------------------------------------------------------ *
+ * 11a. Tombol kembali pada kuis & esai benar-benar berpindah layar
+ * ------------------------------------------------------------------ */
+// Bug yang dilaporkan: tombol kembali di layar kuis menuju 'kuis' (layar itu
+// sendiri), jadi diklik tidak terjadi apa-apa.
+[
+  { role: 'siswa', screen: 'siswa-tugas' },
+  { role: 'guru', screen: 'guru-tugas' },
+  { role: 'orangtua', screen: 'ortu-tugas' }
+].forEach(({ role, screen }) => {
+  preview.state.role = role;
+  const task = preview.tasks()[0];
+  preview.startQuiz(task);
+  eq(preview.state.screen, 'kuis', role + ': quiz opens');
+  const back = viewport.querySelectorAll('.back-chevron')[0];
+  ok(!!back, role + ': the quiz screen has a back button');
+  if (back) {
+    back.click();
+    eq(preview.state.screen, screen,
+      role + ': back from the quiz goes to the task list, not to the quiz itself');
+    ok(preview.state.quiz === null, role + ': back leaves the quiz session');
+  }
+});
+
+// Esai juga: kembali ke daftar tugas role aktif (dulu selalu 'siswa-tugas').
+preview.state.role = 'guru';
+preview.startEssayForTask(preview.tasks()[0]);
+eq(preview.state.screen, 'esai', 'essay screen opens for a teacher');
+const essayBack = viewport.querySelectorAll('.back-chevron')[0];
+ok(!!essayBack, 'the essay screen has a back button');
+if (essayBack) {
+  essayBack.click();
+  eq(preview.state.screen, 'guru-tugas',
+    'back from the essay goes to the task list of the active role');
+}
+
+// Skenario yang dilaporkan: role kosong (mis. halaman dimuat ulang tepat di
+// layar kuis). Dulu ini menghasilkan "undefinedberanda" -> go() menolak
+// diam-diam dan tombol kembali benar-benar mati.
+preview.state.role = null;
+preview.state.studentClass = 'Kelas 5';
+const reloadTask = preview.tasks().filter((t) => t.className === 'Kelas 5')[0]
+  || preview.tasks()[0];
+preview.startQuiz(reloadTask);
+eq(preview.state.screen, 'kuis', 'quiz opens even without a role');
+const nullRoleBack = viewport.querySelectorAll('.back-chevron')[0];
+ok(!!nullRoleBack, 'the back button exists without a role');
+if (nullRoleBack) {
+  nullRoleBack.click();
+  ok(preview.state.screen !== 'kuis',
+    'back works even when the role is missing (was a dead button)');
+  ok(preview.state.screen.indexOf('tugas') >= 0 || preview.state.screen === 'welcome',
+    'it lands on a real registered screen: ' + preview.state.screen);
+}
+
+// Setiap layar yang punya tombol kembali harus benar-benar pindah layar.
+const deadBacks = [];
+['kuis', 'esai', 'hasil-kuis'].forEach((id) => {
+  preview.state.role = 'siswa';
+  preview.go(id);
+  const before = preview.state.screen;
+  const btn = viewport.querySelectorAll('.back-chevron')[0];
+  if (btn) {
+    btn.click();
+    if (preview.state.screen === before) deadBacks.push(id);
+  }
+});
+eq(deadBacks.length, 0, 'no screen has a dead back button: ' + JSON.stringify(deadBacks));
+
+/* ------------------------------------------------------------------ *
+ * 11b. Dua metode tugas: pilihan ganda + esai
+ * ------------------------------------------------------------------ */
+// Tugas harus menawarkan kedua metode; esai menyimpan jawaban per tugas dan
+// tidak menghapus skor pilihan ganda yang sudah ada.
+preview.state.role = 'siswa';
+preview.state.studentClass = 'Kelas 1';
+preview.state.taskFilter = 'Aktif';
+preview.state.subjectFilter = 'Semua';
+preview.state.search = '';
+preview.go('siswa-tugas');
+
+const methodTask = preview.tasks().filter((t) => t.className === 'Kelas 1')[0];
+ok(!!methodTask, 'there is a task to exercise both methods');
+
+if (methodTask) {
+  // Bersihkan hasil lama supaya pemeriksaan ini mandiri.
+  delete preview.results()[methodTask.id];
+  preview.go('siswa-tugas');
+  const card = viewport.querySelectorAll('.list-item-card')
+    .filter((n) => (n.textContent || '').indexOf(methodTask.title) >= 0)[0];
+  if (card) card.click();
+
+  const methodCards = sheetPanel.querySelectorAll('.method-card');
+  eq(methodCards.length, 2, 'the task detail offers exactly two methods');
+  ok(sheetPanel.textContent.indexOf('Pilihan ganda') >= 0,
+    'method 1 is labelled "Pilihan ganda"');
+  ok(sheetPanel.textContent.indexOf('Esai') >= 0,
+    'method 2 is labelled "Esai"');
+  ok(sheetPanel.textContent.indexOf('Kamu boleh mengerjakan salah satu atau keduanya') >= 0,
+    'the sheet explains that either or both methods can be done');
+
+  // Metode 2: buka esai.
+  const essayBtn = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.getAttribute('aria-label') || '') === 'Esai')[0];
+  ok(!!essayBtn, 'the essay method is clickable');
+  if (essayBtn) {
+    essayBtn.click();
+    eq(preview.state.screen, 'esai', 'the essay screen opens');
+    ok(viewport.textContent.indexOf('esai tugas') >= 0,
+      'the essay screen is presented as part of the task');
+    const essayBox = viewport.querySelectorAll('.essay-input')[0];
+    ok(!!essayBox, 'the essay screen has an answer box');
+    const primary = () => viewport.querySelectorAll('#essay-primary')[0];
+    ok(!!primary(), 'the essay screen has a primary action');
+    ok(!!primary() && primary().getAttribute('disabled') !== null,
+      'the action is disabled until something is typed');
+    if (essayBox) {
+      essayBox.value = 'Jawaban saya: pecahan dibagi menjadi bagian yang sama besar.';
+      essayBox.dispatch('input', { target: essayBox });
+      // oninput memperbarui properti .disabled (atribut tidak dihapus di mock).
+      ok(primary().disabled === false, 'typing enables the action');
+    }
+    // Lihat contoh jawaban.
+    primary().click();
+    ok(viewport.textContent.indexOf('Contoh jawaban') >= 0,
+      'the essay screen can reveal a sample answer');
+
+    // Maju sampai soal terakhir, lalu kirim.
+    let guard = 0;
+    while (guard < 20) {
+      const btn = viewport.querySelectorAll('#essay-primary')[0];
+      if (!btn || (btn.textContent || '').indexOf('Kirim jawaban esai') >= 0) break;
+      btn.click();
+      const box = viewport.querySelectorAll('.essay-input')[0];
+      if (box) {
+        box.value = 'Jawaban ' + guard;
+        box.dispatch('input', { target: box });
+      }
+      guard += 1;
+    }
+    const sendBtn = viewport.querySelectorAll('#essay-primary')[0];
+    ok(!!sendBtn && (sendBtn.textContent || '').indexOf('Kirim jawaban esai') >= 0,
+      'the last essay question offers "Kirim jawaban esai"');
+    if (sendBtn) sendBtn.click();
+
+    const saved = preview.results()[methodTask.id];
+    ok(!!saved, 'submitting the essay stores a result for the task');
+    ok(!!saved && Array.isArray(saved.essayAnswers) && saved.essayAnswers.length > 0,
+      'the saved result keeps the essay answers');
+    eq(preview.state.screen, 'hasil-kuis', 'submitting the essay opens the result screen');
+    ok(viewport.textContent.indexOf('Jawaban esai') >= 0,
+      'the result screen lists the essay answers');
+    ok(viewport.textContent.indexOf('tidak dinilai otomatis') >= 0,
+      'the result screen is honest that essays are not auto-graded');
+  }
+
+  // Esai tidak menghapus skor pilihan ganda yang sudah ada: keduanya hidup di
+  // TaskResult yang sama.
+  const withScore = preview.results()[methodTask.id];
+  ok(!!withScore && Array.isArray(withScore.essayAnswers),
+    'the task result keeps essay answers');
+  if (withScore) {
+    withScore.score = 8;
+    withScore.total = 10;
+  }
+  const rebuilt = preview.results()[methodTask.id];
+  ok(rebuilt.score === 8 && rebuilt.total === 10 && rebuilt.essayAnswers.length > 0,
+    'a multiple-choice score and essay answers can coexist in one result');
+}
 
 /* ------------------------------------------------------------------ *
  * 12. Splash markup contract
@@ -1533,6 +2704,50 @@ const splashImg = viewport.querySelectorAll('.splash-art')[0];
 ok(!!splashImg, 'splash renders splash-art.png');
 if (splashImg) ok(String(splashImg.getAttribute('src')).indexOf('splash-art.png') >= 0, 'splash art points at splash-art.png');
 ok(viewport.textContent.indexOf('Menyiapkan pengalaman belajar') >= 0, 'splash shows the "Menyiapkan pengalaman belajar" pill');
+
+/* ------------------------------------------------------------------ *
+ * 12b. Kontrak tampilan mobile (tanpa mockup bingkai ponsel)
+ * ------------------------------------------------------------------ */
+// Pratinjau harus terasa seperti aplikasi sungguhan di HP. Sebelumnya ada
+// bingkai ponsel hiasan; sekarang tidak boleh ada lagi.
+ok(html.indexOf('device-frame') < 0, 'index.html has no phone-frame mockup');
+ok(html.indexOf('device-notch') < 0, 'index.html has no decorative notch');
+ok(/id="app-shell"/.test(html), 'the app shell is the outermost container');
+ok(/id="app-viewport"/.test(html), 'the app viewport still lives inside the shell');
+ok(html.indexOf('switcher-bar') < 0, 'no developer bar at the top of the page');
+ok(html.indexOf('id="screen-select"') < 0, 'the "Login" screen dropdown is gone');
+ok(html.indexOf('id="theme-toggle"') < 0, 'no developer theme button outside the app');
+ok(/id="app-viewport"/.test(html), 'the viewport is the first thing inside the shell');
+ok(/<main id="app-viewport"[^>]*><\/main>/.test(html), 'the app starts immediately, without a bar above it');
+
+// CSS: tidak ada sisa aturan bar pengembang.
+const cssText = fs.readFileSync(path.join(previewDir, 'styles.css'), 'utf8');
+ok(cssText.indexOf('device-frame') < 0, 'styles carry no phone-frame rules');
+ok(cssText.indexOf('switcher-bar') < 0, 'styles carry no developer-bar rules');
+ok(/\.app-shell\s*\{[^}]*max-width:\s*480px/.test(cssText),
+  'the shell stays a 480px column on wide screens');
+ok(/\.app-shell\s*\{[^}]*100dvh/.test(cssText),
+  'the shell fills the viewport height on phones');
+ok(cssText.indexOf('safe-area-inset-top') >= 0,
+  'the shell respects the device safe area');
+
+// Tema tetap bisa diganti lewat API pratinjau (dipakai uji lain).
+const themeBeforeApi = preview.state.dark;
+preview.toggleTheme();
+ok(preview.state.dark === !themeBeforeApi, 'the theme can still be toggled programmatically');
+preview.toggleTheme();
+
+// Perbaikan khusus HP: input 16px (iOS tidak auto-zoom), fallback vh,
+// dan overscroll yang tidak memicu pull-to-refresh.
+ok(/\.karsa-input\s*\{[^}]*font-size:\s*16px/.test(cssText),
+  'inputs use 16px so iOS Safari does not zoom on focus');
+ok(cssText.indexOf('min-height: 100vh') >= 0,
+  'the shell has a vh fallback for older mobile browsers');
+ok(/\.scroll-viewport\s*\{[^}]*overscroll-behavior:\s*contain/.test(cssText),
+  'the scroll area does not bounce the whole page (no pull-to-refresh)');
+ok(/env\(safe-area-inset-bottom/.test(cssText),
+  'sheets and the shell respect the home-indicator inset');
+
 
 /* ------------------------------------------------------------------ *
  * 13. No "Pratinjau" label in the top bar

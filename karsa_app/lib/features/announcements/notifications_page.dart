@@ -28,14 +28,21 @@ class NotificationsPage extends StatelessWidget {
         ),
         if (state.notice.isNotEmpty) NoticeCard(body: state.notice),
         for (final n in list)
+          // Notifikasi pengumpulan menampilkan nama siswa + nilainya, bukan
+          // sekadar judul tugas. Guru tidak diminta mengerjakan apa pun.
           ListItemCard(
             iconEmoji: n.target == 'teachers'
                 ? '✅'
                 : (n.kind == 'material' ? '📚' : '📝'),
             tileColor: const Color(0xFFF8EBEC),
-            title: n.title,
-            meta:
-                '${n.subject} · ${n.className} · ${KarsaDateUtils.formatCreatedAtId(n.createdAt)}',
+            title: n.isSubmission && n.studentName != null
+                ? '${n.studentName} mengumpulkan tugas'
+                : n.title,
+            meta: n.isSubmission && n.studentName != null
+                ? '${n.subject} · ${n.className} · Nilai ${n.scoreLabel} · '
+                    '${KarsaDateUtils.formatCreatedAtId(n.createdAt)}'
+                : '${n.subject} · ${n.className} · '
+                    '${KarsaDateUtils.formatCreatedAtId(n.createdAt)}',
             status: state.isNotificationRead(n.id) ? 'Dibaca' : 'Baru',
             onTap: () => state.markNotification(n),
           ),

@@ -414,6 +414,11 @@ def check_field_initialization(dart_files: list[Path], errors: list[str]) -> Non
                     continue
                 if "late " in line or "static " in line:
                     continue
+                # `final x = <nilai>;` sudah terinisialisasi di tempatnya dan
+                # tidak perlu (bahkan tidak boleh) diisi lewat konstruktor.
+                decl_part = line.split("=", 1)[0]
+                if "=" in line and decl_part.count("(") == decl_part.count(")"):
+                    continue
                 decl = line.split("=", 1)[0].strip().rstrip(";").strip()
                 name = decl.split()[-1] if decl.split() else ""
                 if not name or not re.match(r"^\w+$", name):

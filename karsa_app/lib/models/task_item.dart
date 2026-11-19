@@ -1,4 +1,5 @@
 import 'attachment_file.dart';
+import 'quiz_question.dart';
 
 class TaskItem {
   final String id;
@@ -13,6 +14,16 @@ class TaskItem {
   final bool demo;
   final bool demoHistory;
 
+  /// Soal yang dihasilkan asisten untuk tugas ini.
+  ///
+  /// Kosong berarti tugas memakai bank soal contoh sesuai mata pelajaran
+  /// (`CurriculumData.questionsFor`). Diisi hanya kalau guru/wali memakai
+  /// simulasi asisten pada form tambah tugas.
+  final List<QuizQuestion> questions;
+
+  /// Asal soal: `'example'` (bank soal contoh) atau `'assistant'`.
+  final String? questionsSource;
+
   const TaskItem({
     required this.id,
     required this.subject,
@@ -25,9 +36,17 @@ class TaskItem {
     this.dueAt,
     this.demo = false,
     this.demoHistory = false,
+    this.questions = const <QuizQuestion>[],
+    this.questionsSource,
   });
 
   bool get isFileTask => kind == 'file';
+
+  /// Tugas punya soal sendiri dari simulasi asisten.
+  bool get hasOwnQuestions => questions.isNotEmpty;
+
+  /// Apakah soal berasal dari simulasi asisten (bukan bank soal contoh).
+  bool get questionsFromAssistant => questionsSource == 'assistant';
 
   TaskItem copyWith({
     String? id,
@@ -41,6 +60,8 @@ class TaskItem {
     String? dueAt,
     bool? demo,
     bool? demoHistory,
+    List<QuizQuestion>? questions,
+    String? questionsSource,
   }) {
     return TaskItem(
       id: id ?? this.id,
@@ -54,6 +75,8 @@ class TaskItem {
       dueAt: dueAt ?? this.dueAt,
       demo: demo ?? this.demo,
       demoHistory: demoHistory ?? this.demoHistory,
+      questions: questions ?? this.questions,
+      questionsSource: questionsSource ?? this.questionsSource,
     );
   }
 
@@ -74,6 +97,16 @@ class TaskItem {
       dueAt: json['dueAt']?.toString(),
       demo: json['demo'] == true,
       demoHistory: json['demoHistory'] == true,
+      questions: json['questions'] is List
+          ? <QuizQuestion>[
+              for (final q in json['questions'] as List)
+                if (q is Map)
+                  QuizQuestion.fromJson(
+                    q.map((k, v) => MapEntry(k.toString(), v)),
+                  ),
+            ]
+          : const <QuizQuestion>[],
+      questionsSource: json['questionsSource']?.toString(),
     );
   }
 
@@ -91,6 +124,12 @@ class TaskItem {
     if (dueAt != null) map['dueAt'] = dueAt;
     if (demo) map['demo'] = true;
     if (demoHistory) map['demoHistory'] = true;
+    if (questions.isNotEmpty) {
+      map['questions'] = <Map<String, dynamic>>[
+        for (final q in questions) q.toJson(),
+      ];
+    }
+    if (questionsSource != null) map['questionsSource'] = questionsSource;
     return map;
   }
 }

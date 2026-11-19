@@ -15,6 +15,7 @@ class PracticeResultPage extends StatelessWidget {
     final theme = KarsaThemeScope.of(context);
     final c = theme.colors;
     final practice = state.selectedPractice;
+    final result = state.selectedPracticeResult;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -37,6 +38,24 @@ class PracticeResultPage extends StatelessWidget {
               const SizedBox(height: 12),
               Text('Hebat, kamu sudah berlatih!', style: theme.text.section),
               const SizedBox(height: 8),
+              // Skor pilihan ganda tampil bila latihan dikerjakan lewat metode
+              // itu. Esai tidak dinilai otomatis, jadi tanpa skor.
+              if (result?.score != null) ...<Widget>[
+                Text(
+                  '${result!.score} / ${result.total}',
+                  style: TextStyle(
+                    color: c.rose,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Nilai pilihan ganda',
+                  style: theme.text.smallMuted,
+                ),
+                const SizedBox(height: 8),
+              ],
               Text(
                 'Terus belajar sedikit demi sedikit, ya.',
                 style: theme.text.muted,

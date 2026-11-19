@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../core/constants/app_constants.dart';
 import '../core/utils/date_utils.dart';
+import '../core/services/quiz_draft_service.dart';
 import '../core/utils/offline_summarizer.dart';
 import '../data/curriculum_data.dart';
 import '../data/seed_data.dart';
@@ -18,6 +19,7 @@ import '../models/local_notification.dart';
 import '../models/material_item.dart';
 import '../models/practice_item.dart';
 import '../models/operator_profile.dart';
+import '../models/remembered_login.dart';
 import '../models/quiz_question.dart';
 import '../models/school_class.dart';
 import '../models/staff_account.dart';
@@ -68,6 +70,18 @@ class AppState extends ChangeNotifier {
   bool _checked = false;
   List<int> _answers = <int>[];
   String _essay = '';
+
+  /// `true` bila halaman esai sedang mengejar bagian esai sebuah **tugas**
+  /// (bukan latihan mandiri). Menentukan asal bank soal dan ke mana hasilnya
+  /// disimpan.
+  bool _essayForTask = false;
+
+  /// Kuis pilihan ganda sedang dijalankan untuk sebuah **latihan**, bukan
+  /// tugas. Skornya disimpan di `practiceResults`, bukan `results`.
+  bool _quizForPractice = false;
+
+  /// Jawaban esai yang sedang diketik, satu entri per soal.
+  List<String> _essayDrafts = <String>[];
   bool _showExample = false;
 
   int _month1Based = DateTime.now().month;
@@ -77,6 +91,9 @@ class AppState extends ChangeNotifier {
   String _username = '';
   String _password = '';
   bool _showPassword = false;
+
+  /// Apakah pengguna mencentang "Ingat saya" pada form login.
+  bool _rememberMe = true;
 
   String _draftTitle = '';
   String _draftBody = '';
@@ -94,6 +111,15 @@ class AppState extends ChangeNotifier {
   AttachmentFile? _attachment;
   String _sourceText = '';
   String _summaryText = '';
+
+  /// Teks bahan yang ditempel guru/wali untuk simulasi asisten.
+  String _assistantSource = '';
+
+  /// Soal hasil simulasi asisten untuk draft tugas yang sedang dibuat.
+  List<QuizQuestion> _assistantQuestions = <QuizQuestion>[];
+
+  /// `true` saat draft memakai soal dari asisten.
+  bool _assistantUsed = false;
 
   String _recapTab = 'Kehadiran';
   String _recapDate = KarsaDateUtils.formatDateKey(DateTime.now());
@@ -196,6 +222,29 @@ class AppState extends ChangeNotifier {
   bool get checked => _checked;
   List<int> get answers => _answers;
   String get essay => _essay;
+
+  bool get essayForTask => _essayForTask;
+
+  /// True saat layar kuis menampilkan soal milik latihan.
+  bool get quizForPractice => _quizForPractice;
+
+  /// Skor pilihan ganda latihan yang sedang dibuka (null bila belum dikerjakan).
+  TaskResult? get selectedPracticeResult {
+    final practice = _selectedPractice;
+    if (practice == null) return null;
+    return _data.practiceResults[practice.id];
+  }
+
+  /// Jawaban esai tersimpan untuk tugas yang sedang dibuka.
+  List<String> get savedEssayAnswers {
+    final task = _selectedTask;
+    if (task == null) return const <String>[];
+    return _data.results[task.id]?.essayAnswers ?? const <String>[];
+  }
+
+  /// Bagian esai tugas ini sudah dikerjakan siswa.
+  bool get taskEssayDone => savedEssayAnswers.any((a) => a.trim().isNotEmpty);
+
   bool get showExample => _showExample;
 
   int get month1Based => _month1Based;
@@ -223,6 +272,18 @@ class AppState extends ChangeNotifier {
   String get sourceText => _sourceText;
   String get summaryText => _summaryText;
 
+  /// Teks bahan untuk simulasi asisten penyusun soal.
+  String get assistantSource => _assistantSource;
+
+  /// Soal yang sudah dihasilkan asisten untuk draft ini.
+  List<QuizQuestion> get assistantQuestions => _assistantQuestions;
+
+  /// Apakah draft tugas ini memakai soal dari asisten.
+  bool get assistantUsed => _assistantUsed;
+
+  /// Asisten sudah membuat soal dan soal itu siap dipakai.
+  bool get assistantReady => _assistantUsed && _assistantQuestions.isNotEmpty;
+
   String get recapTab => _recapTab;
   String get recapDate => _recapDate;
   String? get memberId => _memberId;
@@ -239,6 +300,18 @@ class AppState extends ChangeNotifier {
 
   bool get isDark => _data.darkMode;
   bool get isTeacher => _role?.isTeacher ?? false;
+
+  /// Kelas yang diajar guru untuk mapelnya sendiri.
+  ///
+  /// Guru mapel hanya mengajar satu mata pelajaran, jadi daftar kelasnya
+  /// diturunkan dari `subjectsForClass` (mis. IPAS baru ada mulai Kelas 3).
+  /// Dipakai form pengumuman agar guru tidak mengirim pengumuman ke kelas
+  /// yang tidak diajarnya.
+  List<String> get teacherClasses => AppConstants.classes
+      .where(
+        (c) => CurriculumData.subjectsForClass(c).contains(_data.teacherSubject),
+      )
+      .toList();
   bool get isWali => _role?.isWali ?? false;
   bool get isGuru => _role?.isGuru ?? false;
   bool get isStudent => _role?.isStudent ?? false;
@@ -827,6 +900,14 @@ class AppState extends ChangeNotifier {
 
     final isEdit = _draftTaskId.isNotEmpty;
     final id = isEdit ? _draftTaskId : 't${DateTime.now().millisecondsSinceEpoch}';
+    // Saat operator mengedit tugas yang sudah punya soal hasil asisten, soalnya
+    // tidak boleh ikut terhapus hanya karena form ini tidak mengelola soal.
+    final previous = isEdit
+        ? _data.tasks.where((t) => t.id == id).toList()
+        : const <TaskItem>[];
+    final keptQuestions = previous.isEmpty
+        ? const <QuizQuestion>[]
+        : previous.first.questions;
     final task = TaskItem(
       id: id,
       subject: _draftSubject,
@@ -836,6 +917,10 @@ class AppState extends ChangeNotifier {
       kind: 'quiz',
       teacher: _data.teacherName,
       dueAt: due.toUtc().toIso8601String(),
+      questions: keptQuestions,
+      questionsSource: previous.isEmpty
+          ? 'example'
+          : previous.first.questionsSource,
     );
     final tasks = isEdit
         ? _data.tasks.map((t) => t.id == id ? task : t).toList()
@@ -1307,12 +1392,67 @@ class AppState extends ChangeNotifier {
   // Navigation & Auth
   void finishSplash() {
     if (_screen == 'splash') {
-      _screen = 'welcome';
+      _screen = 'login';
+      _prefillRememberedLogin();
       notifyListeners();
     }
   }
 
+  /// Login yang tersimpan lewat "Ingat saya", null bila tidak ada.
+  RememberedLogin? get rememberedLogin => _data.rememberedLogin;
+
+  /// Apakah form login sudah terisi otomatis dari "Ingat saya".
+  bool get hasRememberedLogin => _data.rememberedLogin != null;
+
+  bool get rememberMe => _rememberMe;
+
+  void setRememberMe(bool value) {
+    _rememberMe = value;
+    notifyListeners();
+  }
+
+  /// Mengisi kolom login dari identitas tersimpan tanpa menimpa ketikan
+  /// pengguna yang sedang berlangsung.
+  void _prefillRememberedLogin() {
+    final saved = _data.rememberedLogin;
+    if (saved == null) return;
+    if (_username.isEmpty) _username = saved.identifier;
+    final restored = UserRole.fromName(saved.roleName);
+    if (restored != null) _role = restored;
+    _password = '';
+  }
+
+  /// Menghapus identitas tersimpan (tombol "Bukan saya?" dan saat keluar).
+  void forgetRememberedLogin() {
+    if (_data.rememberedLogin == null) return;
+    _username = '';
+    _password = '';
+    _role = null;
+    _error = '';
+    _persistData(_data.copyWith(clearRememberedLogin: true));
+  }
+
+  /// Menjalankan aksi "masuk sebagai" dari kartu login tersimpan.
+  ///
+  /// Hanya mengisi form dengan identitas tersimpan; kata sandi tetap harus
+  /// diketik karena tidak pernah disimpan.
+  void useRememberedLogin() {
+    final saved = _data.rememberedLogin;
+    if (saved == null) return;
+    _username = saved.identifier;
+    _password = '';
+    _role = UserRole.fromName(saved.roleName);
+    _error = '';
+    _screen = 'login';
+    notifyListeners();
+  }
+
   void setScreen(String nextScreen) {
+    // Meninggalkan layar kuis membatalkan konteks latihan. Tanpa ini, kuis
+    // tugas berikutnya bisa memakai bank soal latihan yang ditinggalkan.
+    if (nextScreen != 'quiz' && nextScreen != 'practiceResult') {
+      _quizForPractice = false;
+    }
     _screen = nextScreen;
     notifyListeners();
   }
@@ -1344,35 +1484,95 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Mencari peran yang cocok dengan identitas dan kata sandi.
+  ///
+  /// Form login sekarang satu untuk semua peran: pengguna tidak memilih peran
+  /// lebih dulu, melainkan cukup mengetik NIP/NISN. Peran ditentukan dari akun
+  /// demo yang identitasnya cocok, dan baru setelah itu kata sandinya diperiksa
+  /// supaya pesan galat tidak membocorkan akun mana yang ada.
+  UserRole? roleForCredentials(String identifier, String password) {
+    final userIn = identifier.trim();
+    for (final role in UserRole.values) {
+      final account = DemoAccount.forRole(role);
+      if (account.id == userIn && account.password == password) {
+        return role;
+      }
+    }
+    return null;
+  }
+
+  /// Apakah suatu identitas dikenal (tanpa memeriksa kata sandi).
+  ///
+  /// Dipakai untuk menampilkan label kolom (NIP/NISN) dan saran peran saat
+  /// pengguna mulai mengetik, bukan untuk menyatakan login berhasil.
+  UserRole? roleForIdentifier(String identifier) {
+    final userIn = identifier.trim();
+    if (userIn.isEmpty) return null;
+    for (final role in UserRole.values) {
+      if (DemoAccount.forRole(role).id == userIn) return role;
+    }
+    return null;
+  }
+
+  /// Peran yang sedang diisyaratkan form login.
+  ///
+  /// Hasil ketikan identitas yang dikenal menang; kalau belum dikenal, pakai
+  /// peran tersimpan atau operator sebagai tampilan awal label.
+  UserRole get loginHintRole =>
+      roleForIdentifier(_username) ??
+      UserRole.fromName(_data.rememberedLogin?.roleName ?? '') ??
+      UserRole.operator;
+
   bool authenticate([String? customUsername, String? customPassword]) {
-    if (_role == null) return false;
-    final account = DemoAccount.forRole(_role!);
     final userIn = (customUsername ?? _username).trim();
     final passIn = customPassword ?? _password;
 
-    if (userIn != account.id || passIn != account.password) {
-      _error = 'NIP/NISN atau kata sandi tidak sesuai.';
+    if (userIn.isEmpty) {
+      _error = 'Isi NIP atau NISN terlebih dahulu.';
+      notifyListeners();
+      return false;
+    }
+    if (passIn.isEmpty) {
+      _error = 'Isi kata sandi terlebih dahulu.';
       notifyListeners();
       return false;
     }
 
+    final resolved = roleForCredentials(userIn, passIn);
+    if (resolved == null) {
+      _error = 'NIP/NISN atau kata sandi tidak sesuai.';
+      notifyListeners();
+      return false;
+    }
+    _role = resolved;
+
     var nextData = _data;
-    if (_role == UserRole.siswa) {
+    if (resolved == UserRole.siswa) {
       final targetClass = AppConstants.studentClasses.contains(_data.studentClass)
           ? _data.studentClass
           : 'Kelas 5';
       nextData = nextData.copyWith(childClass: targetClass);
-    } else if (_role == UserRole.orangtua) {
+    } else if (resolved == UserRole.orangtua) {
       final targetClass = AppConstants.parentClasses.contains(_data.parentClass)
           ? _data.parentClass
           : 'Kelas 1';
       nextData = nextData.copyWith(childClass: targetClass);
     }
 
+    // "Ingat saya": simpan identitas + peran saja, kata sandi tidak pernah.
+    nextData = _rememberMe
+        ? nextData.copyWith(
+            rememberedLogin: RememberedLogin(
+              identifier: userIn,
+              roleName: resolved.name,
+            ),
+          )
+        : nextData.copyWith(clearRememberedLogin: true);
+
     _error = '';
-    _filter = _role == UserRole.wali ? AppConstants.waliClass : 'Semua kelas';
+    _filter = resolved == UserRole.wali ? AppConstants.waliClass : 'Semua kelas';
     _tab = 'Beranda';
-    _taskFilter = _role!.isTeacher ? 'Semua' : 'Aktif';
+    _taskFilter = resolved.isTeacher ? 'Semua' : 'Aktif';
     _screen = 'main';
     _persistData(nextData);
     return true;
@@ -1380,8 +1580,10 @@ class AppState extends ChangeNotifier {
 
   void logout() {
     _role = null;
-    _screen = 'welcome';
-    _username = '';
+    _screen = 'login';
+    // Identitas tersimpan tetap dipakai supaya pengguna tidak mengetik ulang.
+    final saved = _data.rememberedLogin;
+    _username = saved?.identifier ?? '';
     _password = '';
     _error = '';
     notifyListeners();
@@ -1398,6 +1600,9 @@ class AppState extends ChangeNotifier {
   void setNotificationsEnabled(bool value) {
     _persistData(_data.copyWith(notifications: value));
   }
+
+  /// Hanya guru (termasuk wali kelas) yang punya tab daftar tugas.
+  bool get hasTasksTab => isGuru;
 
   void changeTab(String nextTab) {
     _tab = nextTab;
@@ -1461,6 +1666,7 @@ class AppState extends ChangeNotifier {
   void openTask(TaskItem task) {
     _selectedTask = task;
     _error = '';
+    _essayForTask = false;
     _screen = isTeacher ? 'teacherTask' : 'taskDetail';
     notifyListeners();
   }
@@ -1474,20 +1680,57 @@ class AppState extends ChangeNotifier {
   }
 
   List<QuizQuestion> get currentQuizBank {
-    final subj = _selectedTask?.subject ?? _draftSubject;
-    final savedReligion = _screen == 'result' && _selectedTask != null
-        ? _data.results[_selectedTask!.id]?.religion
+    // Latihan memakai bank soal mapelnya sendiri. Tanpa cabang ini, kuis
+    // latihan akan meminjam soal tugas terakhir yang dibuka.
+    if (_quizForPractice) {
+      final subject = _selectedPractice?.subject ?? _draftSubject;
+      return CurriculumData.questionsFor(subject, _data.religion);
+    }
+
+    // Tugas yang soalnya dibuat asisten memakai soalnya sendiri; tanpa ini
+    // soal hasil asisten tidak pernah tampil saat siswa mengerjakan kuis.
+    final task = _selectedTask;
+    if (task != null && task.hasOwnQuestions) return task.questions;
+
+    final subj = task?.subject ?? _draftSubject;
+    final savedReligion = _screen == 'result' && task != null
+        ? _data.results[task.id]?.religion
         : null;
     final effectiveReligion = savedReligion ?? _data.religion;
     return CurriculumData.questionsFor(subj, effectiveReligion);
   }
 
   List<EssayPrompt> get currentEssayBank {
+    // Dalam konteks tugas, esai memakai mapel tugas itu supaya siswa tidak
+    // mendapat soal esai dari mata pelajaran lain.
+    if (_essayForTask && _selectedTask != null) {
+      return CurriculumData.exercisesFor(
+        _selectedTask!.subject,
+        _data.religion,
+      );
+    }
     final subj = _selectedPractice?.subject ?? _draftSubject;
     return CurriculumData.exercisesFor(subj, _data.religion);
   }
 
   void startQuiz() {
+    // Mulai pilihan ganda untuk sebuah tugas.
+    _essayForTask = false;
+    _quizForPractice = false;
+    _questionIndex = 0;
+    _choiceIndex = null;
+    _checked = false;
+    _answers = <int>[];
+    _screen = 'quiz';
+    notifyListeners();
+  }
+
+  /// Memulai **pilihan ganda** dari sebuah latihan. Skornya disimpan terpisah
+  /// dari tugas supaya nilai tugas tidak tercampur nilai latihan.
+  void startPracticeQuiz() {
+    if (_selectedPractice == null) return;
+    _essayForTask = false;
+    _quizForPractice = true;
     _questionIndex = 0;
     _choiceIndex = null;
     _checked = false;
@@ -1509,6 +1752,9 @@ class AppState extends ChangeNotifier {
     required String title,
     required String kind,
     required String contentId,
+    String? studentName,
+    int? score,
+    int? total,
   }) {
     final rand = Random().nextInt(90000) + 10000;
     return LocalNotification(
@@ -1520,11 +1766,19 @@ class AppState extends ChangeNotifier {
       kind: kind,
       contentId: contentId,
       createdAt: DateTime.now().toUtc().toIso8601String(),
+      studentName: studentName,
+      score: score,
+      total: total,
     );
   }
 
   void checkOrAdvanceQuiz() {
-    if (_choiceIndex == null || _selectedTask == null) return;
+    // Latihan tidak punya `_selectedTask`, jadi syaratnya harus mengikuti
+    // konteks: latihan butuh `_selectedPractice`, tugas butuh `_selectedTask`.
+    if (_choiceIndex == null) return;
+    if (_quizForPractice ? _selectedPractice == null : _selectedTask == null) {
+      return;
+    }
     if (!_checked) {
       _checked = true;
       notifyListeners();
@@ -1540,7 +1794,53 @@ class AppState extends ChangeNotifier {
       for (int i = 0; i < bank.length && i < nextAnswers.length; i++) {
         if (nextAnswers[i] == bank[i].answerIndex) score++;
       }
+
+      // === Kuis latihan: simpan skor terpisah, jangan sentuh nilai tugas ===
+      if (_quizForPractice) {
+        final practice = _selectedPractice!;
+        final notif = _buildNotification(
+          target: 'teachers',
+          subject: practice.subject,
+          className: _data.childClass,
+          title: '${_data.studentName} mengerjakan latihan ${practice.title}',
+          kind: 'practice',
+          contentId: practice.id,
+          studentName: _data.studentName,
+          score: score,
+          total: bank.length,
+        );
+        _quizForPractice = false;
+        _screen = 'practiceResult';
+        _persistData(
+          _data.copyWith(
+            practiceDone: <String, bool>{
+              ..._data.practiceDone,
+              practice.id: true,
+            },
+            practiceResults: <String, TaskResult>{
+              ..._data.practiceResults,
+              practice.id: TaskResult(
+                score: score,
+                total: bank.length,
+                answers: nextAnswers,
+                religion: _data.religion,
+                studentName: _data.studentName,
+                className: _data.childClass,
+              ),
+            },
+            localNotifications: <LocalNotification>[
+              notif,
+              ..._data.localNotifications,
+            ],
+          ),
+        );
+        return;
+      }
+
       final task = _selectedTask!;
+      // Pertahankan jawaban esai yang mungkin sudah dikirim siswa lebih dulu;
+      // mengerjakan pilihan ganda tidak boleh menghapus bagian esai.
+      final previousResult = _data.results[task.id];
       final nextResults = <String, TaskResult>{
         ..._data.results,
         task.id: TaskResult(
@@ -1550,16 +1850,24 @@ class AppState extends ChangeNotifier {
           religion: _data.religion,
           studentName: _data.studentName,
           className: task.className,
+          essayAnswers: previousResult?.essayAnswers ?? const <String>[],
+          essayAt: previousResult?.essayAt,
         ),
       };
       final nextReviewed = _data.reviewed.where((id) => id != task.id).toList();
+      // Guru perlu tahu SIAPA yang mengumpulkan dan nilainya, bukan hanya
+      // judul tugas. Kind 'submission' membuat daftar notifikasi guru bisa
+      // menampilkan nama + nilai, dan mengetuknya membuka rekap pengumpulan.
       final notif = _buildNotification(
         target: 'teachers',
         subject: task.subject,
         className: task.className,
-        title: '${_data.studentName} menyelesaikan tugas ${task.title}',
-        kind: 'task',
+        title: '${_data.studentName} mengumpulkan ${task.subject}',
+        kind: 'submission',
         contentId: task.id,
+        studentName: _data.studentName,
+        score: score,
+        total: bank.length,
       );
       _screen = 'result';
       _persistData(
@@ -1577,10 +1885,87 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void startPractice() {
-    if (!isTeacher) _returnScreen = 'main';
+  /// Memulai **bagian esai** dari sebuah tugas. Berbeda dari latihan mandiri:
+  /// bank soal mengikuti mapel tugas dan jawaban disimpan ke `TaskResult`.
+  void startTaskEssay() {
+    final task = _selectedTask;
+    if (task == null) return;
+    _essayForTask = true;
     _questionIndex = 0;
     _essay = '';
+    _showExample = false;
+    _returnScreen = 'taskDetail';
+    // Lanjutkan jawaban yang sudah tersimpan bila siswa kembali lagi.
+    final saved = _data.results[task.id]?.essayAnswers ?? const <String>[];
+    _essayDrafts = List<String>.from(saved);
+    while (_essayDrafts.length < currentEssayBank.length) {
+      _essayDrafts.add('');
+    }
+    _error = '';
+    _screen = 'essay';
+    notifyListeners();
+  }
+
+  /// Menyimpan seluruh jawaban esai tugas lalu membuka layar hasil.
+  void submitTaskEssay() {
+    final task = _selectedTask;
+    if (task == null) return;
+    final bank = currentEssayBank;
+    final answers = <String>[
+      for (var i = 0; i < bank.length; i++)
+        i < _essayDrafts.length ? _essayDrafts[i].trim() : '',
+    ];
+    if (answers.every((a) => a.isEmpty)) {
+      _error = 'Tulis minimal satu jawaban esai sebelum mengirim.';
+      notifyListeners();
+      return;
+    }
+
+    final previous = _data.results[task.id];
+    final notif = _buildNotification(
+      target: 'teachers',
+      subject: task.subject,
+      className: task.className,
+      title: '${_data.studentName} mengirim jawaban esai ${task.title}',
+      // Esai tidak dinilai otomatis, jadi skor tidak diisi.
+      kind: 'submission',
+      contentId: task.id,
+      studentName: _data.studentName,
+    );
+    _error = '';
+    _notice = 'Jawaban esai tersimpan di perangkat ini. Esai tidak dinilai '
+        'otomatis; guru dapat melihat jawabanmu.';
+    _essayForTask = false;
+    _screen = 'result';
+    _persistData(
+      _data.copyWith(
+        results: <String, TaskResult>{
+          ..._data.results,
+          task.id: TaskResult(
+            // Pertahankan skor pilihan ganda yang sudah ada, bila ada.
+            score: previous?.score,
+            total: previous?.total,
+            answers: previous?.answers ?? const <int>[],
+            demo: previous?.demo ?? false,
+            submittedOnly: previous?.submittedOnly ?? false,
+            religion: previous?.religion,
+            studentName: _data.studentName,
+            className: task.className,
+            essayAnswers: answers,
+            essayAt: DateTime.now().toUtc().toIso8601String(),
+          ),
+        },
+        localNotifications: <LocalNotification>[notif, ..._data.localNotifications],
+      ),
+    );
+  }
+
+  void startPractice() {
+    if (!isTeacher) _returnScreen = 'main';
+    _essayForTask = false;
+    _questionIndex = 0;
+    _essay = '';
+    _essayDrafts = <String>[];
     _showExample = false;
     _screen = 'essay';
     notifyListeners();
@@ -1588,6 +1973,13 @@ class AppState extends ChangeNotifier {
 
   void updateEssay(String val) {
     _essay = val;
+    // Simpan per nomor soal, baik untuk esai tugas maupun latihan. Sebelumnya
+    // hanya esai tugas yang menyimpan draft; pada latihan jawaban soal
+    // sebelumnya ikut hilang begitu siswa pindah soal.
+    while (_essayDrafts.length <= _questionIndex) {
+      _essayDrafts.add('');
+    }
+    _essayDrafts[_questionIndex] = val;
     notifyListeners();
   }
 
@@ -1601,6 +1993,11 @@ class AppState extends ChangeNotifier {
 
     final bank = currentEssayBank;
     if (_questionIndex >= bank.length - 1) {
+      // Esai bagian tugas: kirim ke penyimpanan tugas, bukan status latihan.
+      if (_essayForTask) {
+        submitTaskEssay();
+        return;
+      }
       final practice = _selectedPractice!;
       if (!isTeacher) {
         final nextDone = <String, bool>{
@@ -1629,6 +2026,9 @@ class AppState extends ChangeNotifier {
     } else {
       _questionIndex++;
       _essay = '';
+      // Setiap soal punya contoh jawabannya sendiri. Sebelumnya `_showExample`
+      // tidak pernah kembali false, jadi "Lihat contoh jawaban" hanya muncul di
+      // soal pertama dan soal-soal berikutnya bisa terlewat tanpa contoh.
       _showExample = false;
       notifyListeners();
     }
@@ -1672,6 +2072,32 @@ class AppState extends ChangeNotifier {
     final subj = overrideSubject ?? (isGuru ? _data.teacherSubject : 'Matematika');
     _draftSubject = subj;
 
+    // Pengumuman guru tidak terikat satu kelas: pilihannya "Semua kelas" atau
+    // salah satu kelas yang diajar mapelnya. Sebelumnya kelas awal diambil
+    // dari `_filter` (filter daftar tugas), sehingga guru Matematika bisa
+    // membuka form dengan "Kelas 1" yang tidak ada hubungannya.
+    if (kind == 'announcementForm' && isGuru) {
+      final taught = teacherClasses;
+      _draftClass = taught.isEmpty
+          ? 'Semua kelas'
+          : (taught.contains(_filter) ? _filter : taught.first);
+      _draftMinutes = '30';
+      _draftDue = KarsaDateUtils.formatDateKey(
+        DateTime.now().add(const Duration(days: 7)),
+      );
+      _error = '';
+      _notice = '';
+      _attachment = null;
+      _sourceText = '';
+      _summaryText = '';
+      _assistantSource = '';
+      _assistantQuestions = <QuizQuestion>[];
+      _assistantUsed = false;
+      _screen = kind;
+      notifyListeners();
+      return;
+    }
+
     String resolvedClass;
     if (overrideClass != null) {
       resolvedClass = (subj == 'Ilmu Pengetahuan Alam dan Sosial (IPAS)' &&
@@ -1697,6 +2123,9 @@ class AppState extends ChangeNotifier {
     _attachment = null;
     _sourceText = '';
     _summaryText = '';
+    _assistantSource = '';
+    _assistantQuestions = <QuizQuestion>[];
+    _assistantUsed = false;
     _screen = kind;
     notifyListeners();
   }
@@ -1745,9 +2174,82 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Menulis teks bahan untuk simulasi asisten penyusun soal.
+  void setAssistantSource(String val) {
+    _assistantSource = val;
+    if (_error.isNotEmpty) _error = '';
+    notifyListeners();
+  }
+
+  /// Menjalankan simulasi asisten: ubah bahan menjadi soal.
+  ///
+  /// Sumber teks diambil dari tempelan guru/wali; kalau kosong, dipakai isi
+  /// file `.txt` yang sudah dilampirkan. PDF **tidak** dibaca — itu batasan
+  /// jujur demo offline, dan alasannya ditampilkan ke pengguna.
+  void generateQuestionsFromMaterial() {
+    final attachmentText = _sourceText.trim();
+    final text = _assistantSource.trim().isNotEmpty
+        ? _assistantSource.trim()
+        : attachmentText;
+
+    if (text.isEmpty) {
+      _error = 'Tempel teks bahan ajar dulu (atau unggah file .txt). '
+          'PDF belum bisa dibaca otomatis di demo ini.';
+      _assistantQuestions = <QuizQuestion>[];
+      _assistantUsed = false;
+      notifyListeners();
+      return;
+    }
+
+    final draft = const QuizDraftService().draftQuestions(
+      text,
+      count: QuizDraftService.questionsPerTask,
+    );
+
+    if (draft.isEmpty) {
+      // Bahan terlalu pendek: jangan mengarang soal, pakai bank contoh saja.
+      _assistantQuestions = <QuizQuestion>[];
+      _assistantUsed = false;
+      _error = 'Bahan terlalu pendek untuk dijadikan soal (minimal dua '
+          'kalimat lengkap). Tambah teks atau pakai kuis contoh.';
+      notifyListeners();
+      return;
+    }
+
+    _assistantQuestions = draft;
+    _assistantUsed = true;
+    _error = '';
+    if (_draftTitle.trim().isEmpty) {
+      _draftTitle = 'Tugas $_draftSubject';
+    }
+    _notice = '${draft.length} soal dibuat dari bahan yang ditempel '
+        '(simulasi offline, bukan AI sungguhan).';
+    notifyListeners();
+  }
+
+  /// Membuang soal hasil asisten dan kembali ke bank soal contoh.
+  void clearAssistantQuestions() {
+    _assistantQuestions = <QuizQuestion>[];
+    _assistantUsed = false;
+    _notice = '';
+    _error = '';
+    notifyListeners();
+  }
+
+  /// Soal yang dipakai untuk [task].
+  ///
+  /// Tugas hasil asisten memakai soalnya sendiri; tugas lain memakai bank soal
+  /// contoh sesuai mata pelajaran dan agama siswa.
+  List<QuizQuestion> questionsForTask(TaskItem task) {
+    if (task.hasOwnQuestions) return task.questions;
+    return CurriculumData.questionsFor(task.subject, _data.religion);
+  }
+
   void useExampleQuizForTask() {
     _attachment = null;
     _draftBody = 'quiz';
+    _assistantQuestions = <QuizQuestion>[];
+    _assistantUsed = false;
     if (_draftTitle.trim().isEmpty) {
       _draftTitle = 'Kuis $_draftSubject';
     }
@@ -1773,6 +2275,9 @@ class AppState extends ChangeNotifier {
     if (outcome.extractedText != null) {
       _sourceText = outcome.extractedText!;
     }
+    // Bahan berganti -> soal dari asisten yang lama tidak relevan lagi.
+    _assistantQuestions = <QuizQuestion>[];
+    _assistantUsed = false;
     _notice = outcome.notice ?? '';
     notifyListeners();
   }
@@ -1854,8 +2359,8 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    if (_attachment == null && _draftBody.isEmpty) {
-      _error = 'Lampirkan file tugas atau pilih buat kuis contoh.';
+    if (_attachment == null && _draftBody.isEmpty && !_assistantUsed) {
+      _error = 'Lampirkan file tugas, jalankan asisten, atau pilih buat kuis contoh.';
       notifyListeners();
       return;
     }
@@ -1882,6 +2387,10 @@ class AppState extends ChangeNotifier {
       file: _attachment,
       teacher: _data.teacherName,
       dueAt: due.toUtc().toIso8601String(),
+      questions: _assistantUsed
+          ? List<QuizQuestion>.unmodifiable(_assistantQuestions)
+          : const <QuizQuestion>[],
+      questionsSource: _assistantUsed ? 'assistant' : 'example',
     );
     final notif = _buildNotification(
       target: 'learners',
@@ -1899,7 +2408,9 @@ class AppState extends ChangeNotifier {
         localNotifications: <LocalNotification>[notif, ..._data.localNotifications],
       ),
     );
-    changeTab('Tugas');
+    // Wali & operator tidak punya tab 'Tugas'; mereka kembali ke Beranda
+    // supaya layar tidak kosong setelah tugas disimpan.
+    changeTab(hasTasksTab ? 'Tugas' : 'Beranda');
   }
 
   void savePractice() {
@@ -1943,6 +2454,15 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    // Guru mapel hanya boleh mengumumkan ke kelas yang diajar atau ke semua
+    // kelas. Ini penjaga terakhir kalau kelas dipilih lewat jalur lain.
+    if (isGuru &&
+        _draftClass != 'Semua kelas' &&
+        !teacherClasses.contains(_draftClass)) {
+      _error = '$_draftClass bukan kelas yang kamu ajar.';
+      notifyListeners();
+      return;
+    }
     final created = AnnouncementItem(
       id: 'a${DateTime.now().millisecondsSinceEpoch}',
       title: _draftTitle.trim(),
@@ -1980,6 +2500,20 @@ class AppState extends ChangeNotifier {
       if (matches.isNotEmpty) {
         _selectedEvent = matches.first;
         _screen = 'agendaDetail';
+        _persistData(_data.copyWith(readNotifications: updatedRead));
+        return;
+      }
+    }
+
+    // Notifikasi pengumpulan untuk guru membuka rekap "siapa sudah mengerjakan
+    // dan nilainya berapa". Sebelumnya guru diarahkan ke `teacherTask` /
+    // `taskDetail` yang menampilkan tombol pengerjaan - seolah guru yang harus
+    // mengerjakan tugasnya sendiri.
+    if (n.isSubmission && isTeacher) {
+      final matches = _data.tasks.where((t) => t.id == n.contentId).toList();
+      if (matches.isNotEmpty) {
+        _selectedTask = matches.first;
+        _screen = 'submissions';
         _persistData(_data.copyWith(readNotifications: updatedRead));
         return;
       }
@@ -2031,6 +2565,73 @@ class AppState extends ChangeNotifier {
     _selectedStudentDetail = StudentDetailSelection(title: name, body: body);
     _screen = 'studentDetail';
     notifyListeners();
+  }
+
+  /// Siapa saja yang sudah mengumpulkan tugas ini, beserta nilainya.
+  ///
+  /// Menjawab pertanyaan guru: "siapa yang sudah mengerjakan dan nilainya
+  /// berapa". Daftar mengikuti roster kelas, lalu ditambah siswa di luar
+  /// roster yang hasilnya tersimpan (mis. siswa demo).
+  List<SubmissionRow> submissionsFor(TaskItem? task) {
+    if (task == null) return const <SubmissionRow>[];
+    final result = _data.results[task.id];
+
+    final rows = <SubmissionRow>[
+      for (final student in rosterForClass(task.className))
+        SubmissionRow(
+          id: student.id,
+          name: student.name,
+          className: student.className,
+          // Hasil hanya tercatat untuk satu siswa (perangkat tunggal), jadi
+          // nilainya dipasangkan ke siswa yang namanya cocok.
+          score: (result != null && result.studentName == student.name)
+              ? result.score
+              : null,
+          total: (result != null && result.studentName == student.name)
+              ? result.total
+              : null,
+          essayAnswers: (result != null && result.studentName == student.name)
+              ? result.essayAnswers
+              : const <String>[],
+        ),
+    ];
+
+    // Hasil milik siswa yang tidak ada di roster kelas ini tetap ditampilkan
+    // supaya pengumpulan tidak "hilang".
+    if (result != null && result.score != null) {
+      final known = rows.map((r) => r.name).toList();
+      final owner = result.studentName ?? _data.studentName;
+      if (!known.contains(owner)) {
+        rows.insert(
+          0,
+          SubmissionRow(
+            id: 'saved',
+            name: owner,
+            className: task.className,
+            score: result.score,
+            total: result.total,
+            essayAnswers: result.essayAnswers,
+          ),
+        );
+      }
+    }
+
+    rows.sort((a, b) {
+      final aDone = a.score != null;
+      final bDone = b.score != null;
+      if (aDone != bDone) return aDone ? -1 : 1;
+      if (aDone && bDone) return b.score!.compareTo(a.score!);
+      return a.name.compareTo(b.name);
+    });
+    return rows;
+  }
+
+  /// Rata-rata nilai pilihan ganda tugas ini (null bila belum ada nilai).
+  double? averageSubmissionScore(TaskItem? task) {
+    final done = submissionsFor(task).where((r) => r.score != null).toList();
+    if (done.isEmpty) return null;
+    final sum = done.fold<int>(0, (acc, r) => acc + r.score!);
+    return sum / done.length;
   }
 
   List<RosterMember> gradeRoster(String className, TaskItem? task) {

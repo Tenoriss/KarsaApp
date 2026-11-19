@@ -33,6 +33,9 @@ class KarsaIcons {
   static const IconData barChart = IconData(0xf16f, fontFamily: fontFamily);
   static const IconData calendar = IconData(0xf1cf, fontFamily: fontFamily);
   static const IconData person = IconData(0xf4a5, fontFamily: fontFamily);
+  static const IconData close = IconData(0xf24a, fontFamily: fontFamily);
+  static const IconData closeCircle = IconData(0xf24b, fontFamily: fontFamily);
+  static const IconData bulbOutline = IconData(0xf1c1, fontFamily: fontFamily);
 
   static const Map<String, IconData> byName = <String, IconData>{
     'chevron-back': chevronBack,
@@ -62,6 +65,9 @@ class KarsaIcons {
     'bar-chart': barChart,
     'calendar': calendar,
     'person': person,
+    'close': close,
+    'close-circle': closeCircle,
+    'bulb-outline': bulbOutline,
   };
 
   static IconData resolve(String name) {

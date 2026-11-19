@@ -8,11 +8,16 @@ class PageHeader extends StatelessWidget {
   final String? sub;
   final VoidCallback? onBack;
 
+  /// Aksi tambahan di kanan judul (mis. tombol mode gelap di beranda operator
+  /// yang tidak memakai GreetingHeader).
+  final Widget? trailing;
+
   const PageHeader({
     super.key,
     required this.title,
     this.sub,
     this.onBack,
+    this.trailing,
   });
 
   @override
@@ -25,16 +30,22 @@ class PageHeader extends StatelessWidget {
         children: <Widget>[
           if (onBack != null)
             Padding(
-              padding: const EdgeInsets.only(right: 10),
+              padding: const EdgeInsets.only(right: 6),
               child: MotionPressable(
                 semanticsLabel: 'Kembali',
                 onTap: onBack,
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(
-                    KarsaIcons.chevronBack,
-                    size: 20,
-                    color: theme.colors.ink,
+                // Area sentuh 44x44 (panduan aksesibilitas Apple/Material).
+                // Sebelumnya padding 4px + ikon 20px = 28px, terlalu kecil
+                // untuk jari sehingga tombol ini terasa "tidak bisa diklik".
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Center(
+                    child: Icon(
+                      KarsaIcons.chevronBack,
+                      size: 20,
+                      color: theme.colors.ink,
+                    ),
                   ),
                 ),
               ),
@@ -51,6 +62,7 @@ class PageHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (trailing != null) trailing!,
         ],
       ),
     );

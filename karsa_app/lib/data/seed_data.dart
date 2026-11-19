@@ -180,6 +180,9 @@ class SeedData {
       required String kind,
       required String contentId,
       required int hoursAgo,
+      String? studentName,
+      int? score,
+      int? total,
     }) {
       return LocalNotification(
         id: id,
@@ -189,6 +192,9 @@ class SeedData {
         title: title,
         kind: kind,
         contentId: contentId,
+        studentName: studentName,
+        score: score,
+        total: total,
         createdAt:
             DateTime(now.year, now.month, now.day, 7, 30).subtract(Duration(hours: hoursAgo))
                 .toUtc()
@@ -217,15 +223,19 @@ class SeedData {
         contentId: 'm1',
         hoursAgo: 2,
       ),
+      // Guru perlu tahu SIAPA yang mengumpulkan dan nilainya.
       make(
         id: 'n3',
         target: 'teachers',
         subject: 'Matematika',
         className: 'Kelas 1',
-        title: 'Tugas dikumpulkan siswa',
-        kind: 'task',
+        title: 'Aisyah Putri mengumpulkan Matematika',
+        kind: 'submission',
         contentId: 't1',
         hoursAgo: 3,
+        studentName: 'Aisyah Putri',
+        score: 9,
+        total: 10,
       ),
       make(
         id: 'n4',

@@ -6,7 +6,10 @@ import '../../core/theme/karsa_theme.dart';
 import '../../core/widgets/karsa_button.dart';
 import '../../core/widgets/motion_pressable.dart';
 import '../../core/widgets/notice_card.dart';
+import '../../core/widgets/karsa_icons.dart';
+import '../../core/widgets/motion_pressable.dart';
 import '../../core/widgets/page_header.dart';
+import '../../core/widgets/round_icon_button.dart';
 import '../../providers/app_state.dart';
 
 class QuizPage extends StatelessWidget {
@@ -40,10 +43,58 @@ class QuizPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        PageHeader(
-          title: '${task.subject} · ${task.title}',
-          sub: 'Soal ${qIdx + 1} dari ${bank.length}',
-          onBack: () => state.setScreen('taskDetail'),
+        // Header ringkas seperti rancangan: mapel + topik kecil di atas,
+        // "Soal n dari m" besar di bawahnya, panah kembali di kiri dan tombol
+        // tutup (X) di kanan. Warna tetap memakai token yang sama.
+        Padding(
+          padding: const EdgeInsets.only(top: 14, bottom: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              MotionPressable(
+                semanticsLabel: 'Kembali',
+                onTap: () => state.setScreen(_backTarget(state)),
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Center(
+                    child: Icon(
+                      KarsaIcons.chevronBack,
+                      size: 20,
+                      color: c.ink,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      '${task.subject} · ${task.title}',
+                      style: theme.text.smallMuted,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Soal ${qIdx + 1} dari ${bank.length}',
+                      style: TextStyle(
+                        color: c.ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              RoundIconButton(
+                icon: KarsaIcons.close,
+                semanticsLabel: 'Tutup kuis',
+                onTap: () => state.setScreen(_backTarget(state)),
+              ),
+            ],
+          ),
         ),
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
@@ -188,3 +239,9 @@ class QuizPage extends StatelessWidget {
     );
   }
 }
+
+/// Kembali dari kuis ke layar asalnya: detail latihan bila kuis ini milik
+/// latihan, atau detail tugas bila milik tugas. Sebelumnya selalu
+/// 'taskDetail', sehingga kuis latihan melempar siswa ke tugas.
+String _backTarget(AppState state) =>
+    state.quizForPractice ? 'practiceDetail' : 'taskDetail';

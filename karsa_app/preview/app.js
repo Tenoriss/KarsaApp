@@ -12,11 +12,11 @@
   var ICONS = CURR.icons || {};
 
   var ACCOUNTS = {
-    operator: { id: '19870003', password: 'operator123', label: 'Operator sekolah' },
-    wali: { id: '19870001', password: 'wali123', label: 'Wali kelas' },
-    guru: { id: '19870002', password: 'guru123', label: 'Guru mata pelajaran' },
-    siswa: { id: '10050001', password: 'siswa123', label: 'Siswa kelas 5–6' },
-    orangtua: { id: '10010001', password: 'ortu123', label: 'Orang tua / wali' }
+    operator: { id: '19870003', password: 'operator123', label: 'Operator sekolah', emoji: '🗂️' },
+    wali: { id: '19870001', password: 'wali123', label: 'Wali kelas', emoji: '👩🏻‍🏫' },
+    guru: { id: '19870002', password: 'guru123', label: 'Guru mata pelajaran', emoji: '📚' },
+    siswa: { id: '10050001', password: 'siswa123', label: 'Siswa kelas 5–6', emoji: '🎒' },
+    orangtua: { id: '10010001', password: 'ortu123', label: 'Orang tua / wali', emoji: '👩🏻' }
   };
 
   var SCHOOL_NAME = 'SD KARITAS PURWOKERTO';
@@ -202,6 +202,17 @@
     return d.getDate() + ' ' + MONTH_NAMES[d.getMonth()] + ' ' + d.getFullYear();
   }
 
+  /* "2026-11-07" -> "7 November 2026". Dipakai rincian agenda di beranda operator. */
+  function fullDateFromKey(key) {
+    var parts = String(key || '').split('-');
+    if (parts.length !== 3) return String(key || '');
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    var d = parseInt(parts[2], 10);
+    if (!y || !m || !d || m < 1 || m > 12) return String(key || '');
+    return d + ' ' + MONTH_NAMES[m - 1] + ' ' + y;
+  }
+
   function dayMonthYearId(d) {
     return d.getDate() + ' ' + SHORT_MONTHS[d.getMonth()] + ' ' + d.getFullYear();
   }
@@ -251,6 +262,40 @@
     return SUBJECTS.filter(function (s) {
       return s !== 'Ilmu Pengetahuan Alam dan Sosial (IPAS)' || grade >= 3;
     });
+  }
+
+  function essayBankFor(subject) {
+    if (typeof CURR.exercisesFor === 'function') {
+      return CURR.exercisesFor(normalizeSubject(subject), state.religion || '');
+    }
+    return [];
+  }
+
+  /// Layar daftar tugas yang sesuai dengan role yang sedang aktif.
+  ///
+  /// Harus selalu mengembalikan layar yang benar-benar terdaftar: bila role
+  /// kosong (mis. halaman dimuat ulang tepat di layar kuis), versi lama
+  /// menghasilkan "undefinedberanda" sehingga `go()` menolak diam-diam dan
+  /// tombol kembali tampak mati.
+  function tasksScreenForRole() {
+    // Bila role hilang (reload di layar kuis), tebak dari tugas yang terbuka:
+    // ini tugas yang tampil di kelas siswa/orang tua, atau tugas guru sendiri.
+    var role = state.role;
+    if (!role) {
+      var task = state.quiz && state.quiz.task;
+      if (task) {
+        if (task.className === state.studentClass) role = 'siswa';
+        else if (task.className === state.parentClass) role = 'orangtua';
+        else role = 'guru';
+      }
+    }
+    if (role === 'guru') return 'guru-tugas';
+    if (role === 'siswa') return 'siswa-tugas';
+    if (role === 'orangtua') return 'ortu-tugas';
+    if (role === 'wali') return 'wali-beranda';
+    if (role === 'operator') return 'operator-beranda';
+    // Role tidak diketahui: kembali ke pemilihan peran, bukan menebak.
+    return 'welcome';
   }
 
   function quizBankFor(subject) {
@@ -304,6 +349,17 @@
     RESULTS[t.id] = { score: 7, total: 10, answers: [], demo: true };
   });
 
+  // Skor pilihan ganda latihan, dipisah dari nilai tugas supaya tidak
+  // tercampur (cermin KarsaStoreData.practiceResults).
+  var PRACTICE_RESULTS = {};
+
+  // Latihan yang sudah dikerjakan (esai maupun pilihan ganda).
+  var PRACTICE_DONE = {};
+
+
+  // SUBMISSIONS[taskId][studentId] di atas dipakai guru untuk melihat siapa
+  // saja yang sudah mengerjakan dan nilainya.
+
   var PRACTICES = SUBJECTS.map(function (subject, i) {
     var id = subject === 'Matematika' ? 'p1'
       : subject === 'Bahasa Indonesia' ? 'p2'
@@ -345,9 +401,28 @@
       createdAt: new Date(NOW.getTime() - 7200000).toISOString()
     },
     {
+      // Notifikasi guru harus menyebut SIAPA yang mengumpulkan dan nilainya.
+      // Sebelumnya hanya "Tugas dikumpulkan siswa" tanpa nama, dan tombolnya
+      // membuka tugas untuk dikerjakan guru sendiri.
       id: 'n3', target: 'teachers', subject: 'Matematika', className: 'Kelas 1',
-      title: 'Tugas dikumpulkan siswa', kind: 'task', contentId: 't1',
+      title: 'Aisyah Putri mengumpulkan Matematika', kind: 'submission',
+      contentId: 't1', studentName: 'Aisyah Putri', studentId: 's1a',
+      score: 9, total: 10,
       createdAt: new Date(NOW.getTime() - 10800000).toISOString()
+    },
+    {
+      id: 'n3b', target: 'teachers', subject: 'Matematika', className: 'Kelas 1',
+      title: 'Bagas Wicaksono mengumpulkan Matematika', kind: 'submission',
+      contentId: 't1', studentName: 'Bagas Wicaksono', studentId: 's1b',
+      score: 7, total: 10,
+      createdAt: new Date(NOW.getTime() - 9000000).toISOString()
+    },
+    {
+      id: 'n3c', target: 'teachers', subject: 'Matematika', className: 'Kelas 1',
+      title: 'Dimas Nugroho mengumpulkan Matematika', kind: 'submission',
+      contentId: 't1', studentName: 'Dimas Nugroho', studentId: 's1d',
+      score: 10, total: 10,
+      createdAt: new Date(NOW.getTime() - 8400000).toISOString()
     },
     // Notifikasi untuk kelas siswa (Kelas 5). Nuris ini memakai kelas belajar
     // masing-masing, jadi siswa harus melihat notifikasi kelasnya sendiri.
@@ -362,6 +437,16 @@
       createdAt: new Date(NOW.getTime() - 9000000).toISOString()
     }
   ];
+
+  // Pengumpulan yang sudah ada di data demo (cermin TaskResult siswa pada
+  // seed): tiga siswa Kelas 1 sudah mengumpulkan Matematika t1.
+  var SUBMISSIONS = {
+    t1: {
+      s1a: { score: 9, total: 10, at: new Date(NOW.getTime() - 10800000).toISOString(), name: 'Aisyah Putri', className: 'Kelas 1' },
+      s1b: { score: 7, total: 10, at: new Date(NOW.getTime() - 9000000).toISOString(), name: 'Bagas Wicaksono', className: 'Kelas 1' },
+      s1d: { score: 10, total: 10, at: new Date(NOW.getTime() - 8400000).toISOString(), name: 'Dimas Nugroho', className: 'Kelas 1' }
+    }
+  };
 
   var MATERIALS = [
     {
@@ -426,11 +511,16 @@
     mood: null,
     studentClass: 'Kelas 5',
     parentClass: 'Kelas 1',
+    // NISN/roster id siswa yang sedang login, dipakai mencatat pengumpulan.
+    studentId: null,
     teacherSubject: 'Matematika',
     religion: '',
     studentName: 'Dimas Nugroho',
     teacherName: 'Ibu Sari',
     waliName: 'Ibu Sari',
+    operatorOpen: {},
+    rememberMe: true,
+    rememberedLogin: null,
     operatorName: 'Operator Sekolah',
     // Cermin OperatorProfile di Flutter: identitas kerja operator.
     operatorProfile: {
@@ -455,7 +545,7 @@
   };
 
   var ROLE_TABS = {
-    operator: ['Beranda', 'Siswa', 'Kelas', 'Materi', 'Media'],
+    operator: ['Beranda', 'Siswa', 'Kelas', 'Materi', 'Media', 'Profil'],
     wali: ['Beranda', 'Anggota', 'Rekap', 'Agenda', 'Profil'],
     guru: ['Beranda', 'Kelas', 'Tugas', 'Kalender', 'Profil'],
     siswa: ['Beranda', 'Tugas', 'Profil'],
@@ -537,7 +627,7 @@
     return el('div', { class: 'greeting-row' }, children);
   }
 
-  function pageHeader(title, sub, onBack) {
+  function pageHeader(title, sub, onBack, trailing) {
     var children = [];
     if (onBack) {
       children.push(el('button', {
@@ -549,6 +639,7 @@
       el('h1', { class: 't-page-title', text: title }),
       sub ? el('p', { class: 't-muted', style: 'margin-top:4px', text: sub }) : null
     ]));
+    if (trailing) children.push(trailing);
     return el('div', { class: 'page-header' }, children);
   }
 
@@ -921,6 +1012,42 @@
     });
   }
 
+  /* Menyimpan satu pengumpulan siswa + membuat notifikasi untuk guru. */
+  function recordSubmission(task, payload) {
+    if (!task) return;
+    var sid = state.studentId || 'self';
+    if (!SUBMISSIONS[task.id]) SUBMISSIONS[task.id] = {};
+    SUBMISSIONS[task.id][sid] = {
+      score: payload.score,
+      total: payload.total,
+      at: new Date().toISOString(),
+      name: payload.name || state.studentName,
+      className: payload.className || task.className
+    };
+    var notif = {
+      id: 'n' + Date.now() + '-' + Math.floor(Math.random() * 9000 + 1000),
+      target: 'teachers',
+      subject: task.subject,
+      className: task.className,
+      title: (payload.name || state.studentName) + ' mengumpulkan ' + task.subject,
+      kind: 'submission',
+      contentId: task.id,
+      studentName: payload.name || state.studentName,
+      studentId: sid,
+      score: payload.score,
+      total: payload.total,
+      createdAt: new Date().toISOString()
+    };
+    NOTIFICATIONS = [notif].concat(NOTIFICATIONS);
+    persistState();
+  }
+
+  /* "9/10" atau "Belum dinilai" untuk satu notifikasi pengumpulan. */
+  function scoreLabel(n) {
+    if (n.score === null || n.score === undefined) return 'Belum dinilai';
+    return 'Nilai ' + n.score + '/' + (n.total || 10);
+  }
+
   function unreadAnnouncementsCount() {
     return visibleAnnouncements().length; // demo: seeded announcements start unread
   }
@@ -972,6 +1099,7 @@
         teacherName: state.teacherName,
         waliName: state.waliName,
         operatorName: state.operatorName,
+        rememberedLogin: state.rememberedLogin,
         operatorProfile: state.operatorProfile,
         studentClass: state.studentClass,
         parentClass: state.parentClass,
@@ -1005,6 +1133,14 @@
         .forEach(function (key) {
           if (typeof saved[key] === 'string' && saved[key]) state[key] = saved[key];
         });
+      if (saved.rememberedLogin && typeof saved.rememberedLogin === 'object' &&
+          typeof saved.rememberedLogin.identifier === 'string' &&
+          typeof saved.rememberedLogin.role === 'string') {
+        state.rememberedLogin = {
+          identifier: saved.rememberedLogin.identifier,
+          role: saved.rememberedLogin.role
+        };
+      }
       if (saved.operatorProfile && typeof saved.operatorProfile === 'object') {
         var savedProfile = saved.operatorProfile;
         ['name', 'nip', 'role', 'email', 'phone', 'unit'].forEach(function (key) {
@@ -1265,6 +1401,261 @@
     ]);
   }
 
+  // Cermin AppState.logout(): kembali ke form login, bukan ke pemilih peran.
+  // Identitas tersimpan dibiarkan supaya pengguna tidak mengetik ulang.
+  function logoutDemo() {
+    state.role = null;
+    state.login = {
+      username: state.rememberedLogin ? state.rememberedLogin.identifier : '',
+      password: '',
+      show: false,
+      error: ''
+    };
+    state.tab = 'Beranda';
+    go('login');
+  }
+
+  /* Form login tunggal untuk kelima peran.
+     Peran dideteksi dari NIP/NISN, jadi tidak ada lagi layar pilih peran.
+     Cermin LoginPage (Flutter) setelah penyatuan form. */
+  function renderUnifiedLogin() {
+    var remembered = state.rememberedLogin;
+    // "Ingat saya": isi kolom identitas otomatis, kata sandi tetap kosong.
+    if (remembered && !state.login.username) {
+      state.login.username = remembered.identifier;
+    }
+
+    function detectRole(identifier) {
+      var id = (identifier || '').trim();
+      if (!id) return null;
+      var keys = Object.keys(ACCOUNTS);
+      for (var i = 0; i < keys.length; i += 1) {
+        if (ACCOUNTS[keys[i]].id === id) return keys[i];
+      }
+      return null;
+    }
+
+    var detected = detectRole(state.login.username);
+    var hintRole = detected || (remembered && remembered.role) || 'operator';
+    var isStaff = hintRole === 'wali' || hintRole === 'guru' || hintRole === 'operator';
+
+    var usernameInput = el('input', {
+      type: 'text',
+      id: 'login-username',
+      inputmode: 'numeric',
+      autocomplete: 'username',
+      autocapitalize: 'off',
+      spellcheck: 'false',
+      placeholder: idFieldLabel(hintRole),
+      'aria-label': idFieldLabel(hintRole),
+      value: state.login.username,
+      oninput: function (e) {
+        state.login.username = e.target.value;
+        state.login.error = '';
+        refreshFields();
+      }
+    });
+
+    var passwordInput = el('input', {
+      type: state.login.show ? 'text' : 'password',
+      id: 'login-password',
+      autocomplete: 'current-password',
+      placeholder: 'Kata sandi',
+      'aria-label': 'Kata sandi',
+      value: state.login.password,
+      oninput: function (e) {
+        state.login.password = e.target.value;
+        state.login.error = '';
+      }
+    });
+
+    var hintBadge = el('div', { class: 'login-role-hint', hidden: !detected });
+    var errorSlot = el('div', {});
+
+    function refreshFields() {
+      var nowDetected = detectRole(state.login.username);
+      usernameInput.setAttribute('placeholder', idFieldLabel(nowDetected || hintRole));
+      usernameInput.setAttribute('aria-label', idFieldLabel(nowDetected || hintRole));
+      hintBadge.hidden = !nowDetected;
+      clear(hintBadge);
+      if (nowDetected) {
+        hintBadge.appendChild(el('span', { text: ACCOUNTS[nowDetected].emoji || '' }));
+        hintBadge.appendChild(el('span', { text: ACCOUNTS[nowDetected].label }));
+      }
+    }
+
+    function showError(message) {
+      clear(errorSlot);
+      errorSlot.appendChild(el('p', {
+        class: 'notice-title', style: 'margin:4px 0 0 0', text: message
+      }));
+    }
+
+    function submit() {
+      var id = (state.login.username || '').trim();
+      var pass = state.login.password || '';
+      if (!id) { showError('Isi NIP atau NISN terlebih dahulu.'); return; }
+      if (!pass) { showError('Isi kata sandi terlebih dahulu.'); return; }
+
+      var role = null;
+      var keys = Object.keys(ACCOUNTS);
+      for (var i = 0; i < keys.length; i += 1) {
+        var acc = ACCOUNTS[keys[i]];
+        if (acc.id === id && acc.password === pass) { role = keys[i]; break; }
+      }
+      if (!role) {
+        showError('NIP/NISN atau kata sandi tidak sesuai.');
+        return;
+      }
+
+      state.login.error = '';
+      // "Ingat saya": simpan identitas + peran saja, kata sandi tidak pernah.
+      if (state.rememberMe) {
+        state.rememberedLogin = { identifier: id, role: role };
+      } else {
+        state.rememberedLogin = null;
+      }
+      persistState();
+
+      if (role === 'siswa') state.studentClass = 'Kelas 5';
+      if (role === 'orangtua') state.parentClass = 'Kelas 1';
+      state.filter = role === 'wali' ? WALI_CLASS : 'Semua kelas';
+      state.tab = 'Beranda';
+      state.role = role;
+      go(ROLE_SCREEN_PREFIX[role] + 'beranda');
+    }
+
+    passwordInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    });
+    usernameInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); passwordInput.focus(); }
+    });
+
+    // Kotak centang "Ingat saya".
+    var checkBox = el('span', {
+      class: 'remember-box' + (state.rememberMe ? ' checked' : ''),
+      'aria-hidden': 'true'
+    }, state.rememberMe ? [icon('checkmark', 13)] : []);
+    var rememberRow = el('button', {
+      class: 'remember-row pressable', type: 'button', id: 'remember-toggle',
+      'aria-pressed': state.rememberMe ? 'true' : 'false',
+      'aria-label': 'Ingat saya. Saat dicentang, NIP atau NISN disimpan di perangkat ini ' +
+        'supaya tidak perlu diketik ulang.',
+      onclick: function () {
+        state.rememberMe = !state.rememberMe;
+        checkBox.className = 'remember-box' + (state.rememberMe ? ' checked' : '');
+        clear(checkBox);
+        if (state.rememberMe) checkBox.appendChild(icon('checkmark', 13));
+        rememberRow.setAttribute('aria-pressed', state.rememberMe ? 'true' : 'false');
+      }
+    }, [
+      checkBox,
+      el('span', { class: 'remember-label', text: 'Ingat saya' })
+    ]);
+
+    // Daftar akun demo: ketuk untuk mengisi form.
+    var demoRows = Object.keys(ACCOUNTS).map(function (key) {
+      var acc = ACCOUNTS[key];
+      return el('button', {
+        class: 'demo-cred-row pressable', type: 'button',
+        onclick: function () {
+          state.login.username = acc.id;
+          state.login.password = acc.password;
+          state.login.error = '';
+          var next = renderUnifiedLogin();
+          var vp = document.getElementById('app-viewport');
+          if (vp) { clear(vp); vp.appendChild(next); }
+        }
+      }, [
+        el('span', { class: 'demo-cred-role', text: acc.label }),
+        el('span', { class: 'demo-cred-id', text: acc.id + ' / ' + acc.password })
+      ]);
+    });
+
+    // Kartu "lanjutkan sebagai" bila ada identitas tersimpan.
+    var rememberedCard = remembered ? el('div', { class: 'remembered-card' }, [
+      el('div', { style: 'flex:1;min-width:0' }, [
+        el('p', { class: 't-small', style: 'margin:0', text: 'Terakhir masuk sebagai' }),
+        el('p', { class: 't-item-title', style: 'margin:2px 0 0 0',
+          text: (ACCOUNTS[remembered.role] ? ACCOUNTS[remembered.role].label : 'Pengguna') +
+                ' · ' + remembered.identifier })
+      ]),
+      el('button', {
+        class: 't-link pressable', type: 'button',
+        onclick: function () {
+          state.rememberedLogin = null;
+          state.login.username = '';
+          state.login.password = '';
+          persistState();
+          render();
+        }
+      }, ['Bukan saya'])
+    ]) : null;
+
+    refreshFields();
+
+    return el('div', { class: 'login-page' }, [
+      el('div', { class: 'login-hero' }, [
+        el('div', { class: 'login-circle-pink' }),
+        el('div', { class: 'login-circle-blue' }),
+        el('img', { class: 'login-logo', src: ASSETS.loginLogo, alt: 'Logo KARSA' })
+      ]),
+      el('div', { class: 'login-body' }, [
+        schoolIdentity(true),
+        el('div', { style: 'display:flex;justify-content:flex-end' }, [
+          el('button', {
+            class: 'pressable', type: 'button', style: 'padding:8px;background:none;border:none',
+            'aria-label': 'Ubah mode terang atau gelap',
+            onclick: function () { toggleTheme(); }
+          }, [icon(state.dark ? 'sunny-outline' : 'moon-outline', 20)])
+        ]),
+        el('h1', { class: 'login-title', text: 'Selamat datang di KARSA' }),
+        el('p', { class: 'login-subtitle', text: 'Masuk dengan NIP atau NISN Anda' }),
+        rememberedCard,
+        el('div', { class: 'login-field' }, [
+          icon(isStaff ? 'card-outline' : 'person-outline', 22),
+          usernameInput
+        ]),
+        hintBadge,
+        el('div', { class: 'login-field' }, [
+          icon('lock-closed-outline', 22),
+          passwordInput,
+          el('button', {
+            class: 'pressable', type: 'button', style: 'padding:4px;background:none;border:none',
+            'aria-label': state.login.show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi',
+            onclick: function () {
+              state.login.show = !state.login.show;
+              var next = renderUnifiedLogin();
+              var vp = document.getElementById('app-viewport');
+              if (vp) { clear(vp); vp.appendChild(next); }
+              var pw = document.getElementById('login-password');
+              if (pw) pw.focus();
+            }
+          }, [icon(state.login.show ? 'eye-off-outline' : 'eye-outline', 22)])
+        ]),
+        errorSlot,
+        el('div', { class: 'login-helper-row' }, [
+          rememberRow,
+          el('button', {
+            class: 't-link pressable', type: 'button',
+            onclick: function () { go('forgot'); }
+          }, ['Lupa kata sandi?'])
+        ]),
+        el('button', {
+          class: 'login-submit-btn pressable', type: 'button', onclick: submit
+        }, ['Masuk →']),
+        el('div', { class: 'demo-account-box' }, [
+          el('p', { class: 't-item-title', text: 'Akun demo' })
+        ].concat(demoRows).concat([
+          el('p', { class: 't-small', text: 'Ketuk salah satu akun untuk mengisi form. Peran dideteksi otomatis dari NIP/NISN. Akun contoh, bukan autentikasi aman.' })
+        ]))
+      ]),
+      el('div', { class: 'login-wave-pink' }),
+      el('div', { class: 'login-wave-blue' })
+    ]);
+  }
+
   function renderForgot() {
     var role = state.loginRole || state.role;
     var account = ACCOUNTS[role];
@@ -1295,6 +1686,7 @@
     var notRecorded = members.length - recorded;
     var scored = members.filter(function (m) { return state.classScores[m.id] !== undefined; });
     var avg = scoreAverage();
+    var waliTasks = TASKS.filter(function (t) { return t.className === WALI_CLASS; });
 
     return el('div', {}, [
       schoolIdentity(true),
@@ -1361,6 +1753,75 @@
           text: 'Belum ada nilai. Isi rekap nilai untuk melihat grafik.'
         })
       ]),
+      el('p', { class: 't-section', style: 'margin:8px 0 10px 0', text: 'Tugas kelas' }),
+      el('div', {
+        class: 'clay-soft pressable',
+        style: 'padding:16px;display:flex;align-items:center;gap:12px',
+        role: 'button', tabindex: '0',
+        'aria-label': 'Buat tugas dari bahan ajar',
+        onclick: function () { openTaskForm(); }
+      }, [
+        el('div', {
+          style: 'width:44px;height:44px;border-radius:22px;background:var(--blue);color:#fff;' +
+                 'display:flex;align-items:center;justify-content:center'
+        }, [icon('albums', 20)]),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 't-item-title', style: 'margin:0', text: 'Buat tugas dari bahan' }),
+          el('p', { class: 't-small', style: 'margin:0',
+            text: 'Unggah PDF/gambar/teks, lalu susun soal dengan asisten' })
+        ]),
+        el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('chevron-forward', 18)])
+      ]),
+      el('div', {
+        class: 'clay-soft pressable',
+        style: 'margin-top:10px;padding:16px;display:flex;align-items:center;gap:12px',
+        role: 'button', tabindex: '0',
+        'aria-label': 'Kelola materi kelas',
+        onclick: function () { go('materi'); }
+      }, [
+        el('div', {
+          style: 'width:44px;height:44px;border-radius:22px;background:var(--rose);color:#fff;' +
+                 'display:flex;align-items:center;justify-content:center'
+        }, [icon('book-outline', 20)]),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 't-item-title', style: 'margin:0', text: 'Materi kelas' }),
+          el('p', { class: 't-small', style: 'margin:0',
+            text: 'Unggah bahan bacaan dan ringkasan untuk kelas ' + WALI_CLASS })
+        ]),
+        el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('chevron-forward', 18)])
+      ]),
+      // Daftar tugas kelas: wali tidak punya tab 'Tugas' di pratinjau.
+      el('div', {
+        style: 'display:flex;justify-content:space-between;align-items:center;' +
+               'margin:16px 0 8px 0'
+      }, [
+        el('p', { class: 't-section', style: 'margin:0', text: 'Tugas kelas' }),
+        el('p', {
+          class: 't-small', style: 'margin:0',
+          text: waliTasks.length + ' tugas'
+        })
+      ]),
+      waliTasks.length
+        ? el('div', {}, waliTasks.map(function (t) {
+            return listItemCard({
+              iconEmoji: metaFor(t.subject).icon,
+              tileColor: metaFor(t.subject).color,
+              title: t.title,
+              meta: t.subject + ' · ' + t.minutes + ' menit' +
+                (t.questionsSource === 'assistant'
+                  ? ' · ' + t.questions.length + ' soal asisten'
+                  : '') +
+                ' · ' + deadlineCountdown(t.dueAt, NOW),
+              status: RESULTS[t.id] ? 'Selesai'
+                : (t.questionsSource === 'assistant' ? 'Soal asisten' : 'Aktif'),
+              onTap: function () { openTaskDetail(t); }
+            });
+          }))
+        : el('p', {
+            class: 't-small', style: 'margin:0 0 4px 0',
+            text: 'Belum ada tugas untuk ' + WALI_CLASS +
+              '. Buat satu dari bahan ajar di atas.'
+          }),
       el('div', {
         class: 'clay-soft pressable',
         style: 'margin-top:5px;padding:16px;border-radius:20px;display:flex;justify-content:space-between;align-items:center',
@@ -1649,7 +2110,7 @@
       el('div', { style: 'text-align:center' }, [
         el('button', {
           class: 't-link pressable', type: 'button', style: 'padding:20px',
-          onclick: function () { go('welcome'); }
+          onclick: logoutDemo
         }, ['Keluar dari akun demo'])
       ])
     ]);
@@ -1791,7 +2252,7 @@
       return el('div', { class: 'clay-soft', style: 'padding:16px;margin-bottom:16px' }, [
         el('div', { style: 'display:flex;align-items:center;gap:12px' }, [
           el('div', {
-            style: 'width:56px;height:56px;border-radius:28px;background:#fff;display:flex;' +
+            style: 'width:56px;height:56px;border-radius:28px;background:var(--surface-input);display:flex;' +
                    'align-items:center;justify-content:center;font-weight:800;font-size:19px;color:var(--rose)'
           }, [initials]),
           el('div', { style: 'flex:1;min-width:0' }, [
@@ -2046,7 +2507,9 @@
       }),
       wideStatCard({
         icon: 'megaphone', label: 'Pengumuman', value: String(unreadAnnouncementsCount()),
-        desc: 'Belum dibaca', color: PURPLE_STAT, onTap: function () { go('notifikasi'); }
+        // Guru punya layar pengumuman sendiri (buat + ubah), bukan hanya
+        // membaca daftar notifikasi.
+        desc: 'Buat dan kelola', color: PURPLE_STAT, onTap: function () { go('guru-pengumuman'); }
       }),
       wideStatCard({
         icon: 'book', label: 'Materi', value: String(MATERIALS.length),
@@ -2266,37 +2729,283 @@
     return el('div', {}, children);
   }
 
+  /* ---------------- Simulasi asisten penyusun soal ----------------
+     Cermin QuizDraftService (Flutter): bukan AI sungguhan, offline, dan
+     tidak membaca PDF. Kalimat bahan dipecah, kata kunci diambil sebagai
+     jawaban, kata kunci kalimat lain jadi pengecoh. Hasil deterministik. */
+  var ASSISTANT_STOP_WORDS = [
+    'yang', 'dengan', 'untuk', 'dari', 'dalam', 'pada', 'adalah', 'akan',
+    'dapat', 'juga', 'kita', 'mereka', 'siswa', 'kelas', 'materi', 'belajar',
+    'tugas', 'soal', 'ini', 'itu', 'dan', 'atau', 'agar', 'karena', 'saat',
+    'setelah', 'sebelum', 'lebih', 'sangat', 'contoh', 'mengenai', 'tentang'
+  ];
+
+  function assistantSentences(text) {
+    var cleaned = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!cleaned) return [];
+    return cleaned.split(/(?<=[.!?])\s+/)
+      .map(function (x) { return x.trim(); })
+      .filter(function (x) { return x.length >= 24; });
+  }
+
+  function assistantKeywords(sentence, limit) {
+    var words = String(sentence || '').toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(function (w) {
+        return w.length >= 4 && ASSISTANT_STOP_WORDS.indexOf(w) < 0;
+      });
+    var unique = [];
+    words.forEach(function (w) {
+      if (unique.indexOf(w) < 0) unique.push(w);
+    });
+    return unique.slice(0, limit || 6);
+  }
+
+  function assistantQuestions(text, count) {
+    var limit = count || 10;
+    var lines = assistantSentences(text);
+    if (lines.length < 2) return [];
+    var questions = [];
+    for (var i = 0; i < lines.length && questions.length < limit; i++) {
+      var keys = assistantKeywords(lines[i]);
+      if (!keys.length) continue;
+      var answer = keys[0];
+      var distractors = [];
+      for (var off = 1; off < lines.length + 1 && distractors.length < 3; off++) {
+        var other = lines[(i + off) % lines.length];
+        assistantKeywords(other).forEach(function (k) {
+          if (k !== answer && distractors.indexOf(k) < 0 && distractors.length < 3) {
+            distractors.push(k);
+          }
+        });
+      }
+      if (distractors.length < 3) continue;
+      var answerIndex = questions.length % 4;
+      var choices = distractors.slice(0, 3);
+      choices.splice(answerIndex, 0, answer);
+      var shown = lines[i].length > 110
+        ? lines[i].slice(0, 110).trim() + '…'
+        : lines[i];
+      questions.push({
+        question: 'Berdasarkan bahan bacaan, kata kunci pada kalimat "' + shown + '" adalah ...',
+        choices: choices,
+        answerIndex: answerIndex,
+        explanation: 'Kata kunci kalimat itu adalah "' + answer + '".'
+      });
+    }
+    return questions;
+  }
+
   function openTaskForm() {
-    var titleInput = el('input', { class: 'karsa-input', id: 'task-title', placeholder: 'Judul tugas' });
-    var subjectSelect = el('select', { class: 'karsa-input', id: 'task-subject' },
-      SUBJECTS.map(function (s) { return el('option', { value: s, text: s }); }));
-    var classSelect = el('select', { class: 'karsa-input', id: 'task-class' },
-      CLASSES.map(function (c) { return el('option', { value: c, text: c }); }));
-    openSheet(el('div', {}, [
-      el('div', { class: 'sheet-handle' }),
-      el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0', text: '+ Tambah tugas' }),
-      el('p', { class: 't-muted', style: 'margin-bottom:14px', text: 'Tugas baru tersimpan lokal di perangkat ini.' }),
-      titleInput, subjectSelect, classSelect,
-      el('button', {
-        class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
-        onclick: function () {
-          var title = (document.getElementById('task-title').value || '').trim();
-          if (title) {
+    // Mapel default harus tersedia di kelas yang dipilih: IPAS baru ada mulai
+    // kelas 3, jadi Kelas 1 tidak boleh memakai SUBJECTS[0] (IPAS) — kalau
+    // tidak, tugas tersimpan tapi tidak pernah muncul di daftar siswa.
+    // Mapel default mencerminkan AppState.openForm: mapel guru untuk guru,
+    // Matematika untuk peran lain — lalu dijaga agar tersedia di kelasnya
+    // (IPAS baru ada mulai kelas 3), supaya tugas tidak "hilang" dari daftar.
+    var startClass = state.role === 'wali' ? WALI_CLASS : CLASSES[0];
+    var startSubjects = subjectsForClass(startClass);
+    var wanted = state.role === 'guru' ? state.teacherSubject : 'Matematika';
+    var startSubject = startSubjects.indexOf(wanted) >= 0
+      ? wanted
+      : startSubjects[0];
+    var draft = {
+      title: '',
+      subject: startSubject,
+      className: startClass,
+      attachmentName: '',
+      attachmentText: '',
+      source: '',
+      questions: [],
+      used: false,
+      error: '',
+      notice: ''
+    };
+
+    function refresh() {
+      var questionList = draft.questions.length
+        ? el('div', {}, draft.questions.map(function (q, i) {
+            return el('p', {
+              class: 't-small',
+              style: 'margin:7px 0 0 0;color:var(--ink)',
+              text: (i + 1) + '. ' + q.question
+            });
+          }))
+        : null;
+
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', {
+          class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
+          text: '+ Tambah tugas'
+        }),
+        el('p', {
+          class: 't-muted', style: 'margin-bottom:14px',
+          text: 'Tugas baru tersimpan lokal di perangkat ini.'
+        }),
+        el('input', {
+          class: 'karsa-input', id: 'task-title', type: 'text',
+          value: draft.title, placeholder: 'Judul tugas',
+          'aria-label': 'Judul tugas',
+          oninput: function (e) { draft.title = e.target.value; draft.error = ''; }
+        }),
+        el('select', {
+          class: 'karsa-input', id: 'task-subject', 'aria-label': 'Mata pelajaran',
+          onchange: function (e) { draft.subject = e.target.value; }
+        }, subjectsForClass(draft.className).map(function (sub) {
+          return el('option', {
+            value: sub, text: sub,
+            selected: sub === draft.subject ? 'selected' : null
+          });
+        })),
+        el('select', {
+          class: 'karsa-input', id: 'task-class', 'aria-label': 'Kelas',
+          onchange: function (e) {
+            draft.className = e.target.value;
+            // Mapel yang tidak ada di kelas baru (mis. IPAS di Kelas 1) diganti.
+            if (subjectsForClass(draft.className).indexOf(draft.subject) < 0) {
+              draft.subject = subjectsForClass(draft.className)[0];
+            }
+            refresh();
+          }
+        }, CLASSES.map(function (cl) {
+          return el('option', {
+            value: cl, text: cl,
+            selected: cl === draft.className ? 'selected' : null
+          });
+        })),
+
+        // Unggah bahan. Berkas tidak benar-benar dibaca; teks .txt bisa
+        // ditempel, PDF diarahkan ke tempel manual (batasan jujur).
+        el('button', {
+          class: 'karsa-btn clay-raised pressable', type: 'button',
+          style: 'border:none;cursor:pointer;margin-top:4px',
+          onclick: function () {
+            draft.attachmentName = draft.attachmentName ? '' : 'bahan-ajar.pdf';
+            draft.questions = [];
+            draft.used = false;
+            refresh();
+          }
+        }, [draft.attachmentName ? 'Ganti bahan' : 'Unggah bahan (PDF/gambar/teks)']),
+        draft.attachmentName ? el('p', {
+          class: 't-small', style: 'margin:6px 0 0 0',
+          text: '📎 ' + draft.attachmentName +
+            ' — bukan .txt, teksnya tidak terbaca otomatis. Tempel teksnya di bawah.'
+        }) : null,
+
+        el('div', { class: 'assistant-panel' }, [
+          el('div', { style: 'display:flex;align-items:center;gap:10px' }, [
+            el('span', { class: 'assistant-badge' }, [icon('albums', 17)]),
+            el('div', { style: 'flex:1;min-width:0' }, [
+              el('p', { class: 't-item-title', style: 'margin:0', text: 'Asisten penyusun soal' }),
+              el('p', { class: 't-small', style: 'margin:0', text: 'Simulasi offline' })
+            ])
+          ]),
+          el('p', {
+            class: 't-small', style: 'margin:10px 0 0 0',
+            text: 'Unggah bahan lalu tempel isinya di bawah, atau unggah file .txt '
+              + 'yang teksnya terbaca otomatis. Asisten menyusun soal pilihan ganda '
+              + 'dari bahan itu: satu soal per kalimat lengkap, maksimal 10 soal.'
+          }),
+          el('textarea', {
+            class: 'karsa-input', id: 'assistant-source', rows: '4',
+            placeholder: 'Tempel teks bahan ajar di sini (minimal dua kalimat)...',
+            'aria-label': 'Teks bahan ajar',
+            oninput: function (e) { draft.source = e.target.value; draft.error = ''; }
+          }, draft.source ? [draft.source] : []),
+          el('button', {
+            class: 'karsa-btn clay-raised pressable', type: 'button',
+            style: 'border:none;cursor:pointer;margin-top:10px',
+            onclick: function () {
+              var text = (draft.source || '').trim() || (draft.attachmentText || '').trim();
+              if (!text) {
+                draft.error = 'Tempel teks bahan ajar dulu (atau unggah file .txt). ' +
+                  'PDF belum bisa dibaca otomatis di demo ini.';
+                draft.questions = [];
+                draft.used = false;
+                refresh();
+                return;
+              }
+              var made = assistantQuestions(text, 10);
+              if (!made.length) {
+                draft.questions = [];
+                draft.used = false;
+                draft.error = 'Bahan terlalu pendek untuk dijadikan soal (minimal dua ' +
+                  'kalimat lengkap). Tambah teks atau pakai kuis contoh.';
+                refresh();
+                return;
+              }
+              draft.questions = made;
+              draft.used = true;
+              draft.error = '';
+              draft.notice = made.length + ' soal dibuat dari bahan yang ditempel ' +
+                '(simulasi offline, bukan AI sungguhan).';
+              if (!draft.title.trim()) draft.title = 'Tugas ' + draft.subject;
+              refresh();
+            }
+          }, [draft.used ? 'Buat ulang soal dari bahan' : 'Buat soal dengan asisten'])
+        ]),
+        draft.questions.length ? el('div', { class: 'assistant-result' }, [
+          el('div', { style: 'display:flex;align-items:center;gap:6px' }, [
+            el('span', { style: 'display:inline-flex;color:var(--blue)' }, [icon('checkmark-circle', 16)]),
+            el('span', {
+              class: 't-small',
+              style: 'flex:1;font-weight:700;color:var(--ink)',
+              text: draft.questions.length + ' soal siap dipakai tugas ini'
+            }),
+            el('button', {
+              class: 't-link pressable', type: 'button',
+              onclick: function () {
+                draft.questions = [];
+                draft.used = false;
+                draft.notice = '';
+                refresh();
+              }
+            }, ['Buang'])
+          ]),
+          questionList
+        ]) : null,
+        draft.error ? el('p', {
+          class: 'notice-title', style: 'margin:10px 0 0 0', text: draft.error
+        }) : null,
+        draft.notice ? el('p', {
+          class: 't-small', style: 'margin:10px 0 0 0', text: draft.notice
+        }) : null,
+        el('button', {
+          class: 'karsa-btn clay-raised pressable', type: 'button',
+          style: 'border:none;cursor:pointer;margin-top:12px',
+          onclick: function () {
+            var title = (draft.title || '').trim();
+            if (!title) {
+              draft.error = 'Isi judul tugas terlebih dahulu.';
+              refresh();
+              return;
+            }
+            // Tugas sah bila punya lampiran atau soal dari asisten; kalau
+            // tidak keduanya, jatuh ke bank soal contoh seperti sebelumnya.
             TASKS.push({
               id: 'local-' + (TASKS.length + 1),
-              subject: document.getElementById('task-subject').value,
+              subject: draft.subject,
               title: title,
-              className: document.getElementById('task-class').value,
+              className: draft.className,
               minutes: '30',
               dueAt: new Date(NOW.getTime() + 3 * 86400000).toISOString(),
+              kind: draft.used ? 'quiz' : (draft.attachmentName ? 'file' : 'quiz'),
+              file: draft.attachmentName || null,
+              teacher: state.role === 'wali' ? state.waliName : state.teacherName,
+              questions: draft.used ? draft.questions : [],
+              questionsSource: draft.used ? 'assistant' : 'example',
               demo: false
             });
+            closeSheet();
+            render();
           }
-          closeSheet();
-          render();
-        }
-      }, ['Simpan tugas'])
-    ]));
+        }, ['Simpan tugas'])
+      ]));
+    }
+
+    refresh();
   }
 
   function openGradeRecap() {
@@ -2391,7 +3100,7 @@
         }),
       el('div', { style: 'text-align:center' }, [
         el('button', {
-          class: 't-link pressable', type: 'button', style: 'padding:20px', onclick: function () { go('welcome'); }
+          class: 't-link pressable', type: 'button', style: 'padding:20px', onclick: logoutDemo
         }, ['Keluar dari akun demo'])
       ])
     ]);
@@ -2613,13 +3322,22 @@
       }),
       el('div', { style: 'text-align:center' }, [
         el('button', {
-          class: 't-link pressable', type: 'button', style: 'padding:20px', onclick: function () { go('welcome'); }
+          class: 't-link pressable', type: 'button', style: 'padding:20px', onclick: logoutDemo
         }, ['Keluar dari akun demo'])
       ])
     ]);
   }
 
   /* ---------------- Orang tua ---------------- */
+  /* Hasil tugas yang benar-benar milik kelas anak. RESULTS menyimpan hasil
+     semua kelas (termasuk demo kelas lain), jadi tidak boleh dipakai apa adanya
+     di layar orang tua. */
+  function completedTasksForChild() {
+    return TASKS.filter(function (t) {
+      return t.className === state.parentClass && !!RESULTS[t.id];
+    }).length;
+  }
+
   function renderOrtuBeranda() {
     var active = activeTasks();
     var remaining = visiblePractices().length;
@@ -2660,7 +3378,7 @@
         ]),
         el('span', { style: 'font-size:30px', text: '🌟' }),
         el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('chevron-forward', 20)])
-      ], { backgroundColor: '#F8EDF0', onTap: function () { openProgress(); } }),
+      ], { backgroundColor: 'var(--surface-progress)', onTap: function () { openProgress(); } }),
       wideStatCard({
         icon: 'book', label: 'Materi', value: String(classMaterials),
         desc: 'Lihat materi untuk kelasmu', color: 'var(--blue)', onTap: function () { go('materi'); }
@@ -2783,7 +3501,48 @@
     ]);
   }
 
+  /* Sheet detail latihan: dua metode seperti tugas. */
   function openPractice(practice) {
+    state.practiceResult = practice;
+    var res = PRACTICE_RESULTS[practice.id];
+    var esaiBank = typeof CURR.exercisesFor === 'function'
+      ? CURR.exercisesFor(normalizeSubject(practice.subject), state.religion || '')
+      : (CURR.practiceBank[normalizeSubject(practice.subject)] || []);
+    var pgBank = questionsForPractice(practice.subject);
+
+    openSheet(el('div', {}, [
+      el('div', { class: 'sheet-handle' }),
+      el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 2px 0', text: practice.title }),
+      el('p', { class: 't-muted', style: 'margin-bottom:14px', text: practice.subject + ' · ' + (practice.className || 'Latihan') }),
+      el('p', { class: 't-section', style: 'margin:4px 0 10px 0', text: 'Pilih metode latihan' }),
+      el('div', { class: 'method-card pressable', role: 'button', tabindex: '0',
+        onclick: function () { closeSheet(); startPracticeQuiz(practice); }
+      }, [
+        el('div', { class: 'method-icon', text: '🔠' }),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 't-item-title', style: 'margin:0', text: 'Pilihan ganda' }),
+          el('p', { class: 't-small', style: 'margin:0', text: pgBank.length + ' soal · dinilai otomatis' })
+        ]),
+        el('span', { class: 't-link', text: res && res.score != null ? 'Nilai ' + res.score + '/' + res.total : 'Mulai' })
+      ]),
+      el('div', { class: 'method-card pressable', role: 'button', tabindex: '0',
+        onclick: function () { closeSheet(); startEssayForPractice(practice); }
+      }, [
+        el('div', { class: 'method-icon', text: '✍️' }),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 't-item-title', style: 'margin:0', text: 'Esai' }),
+          el('p', { class: 't-small', style: 'margin:0', text: esaiBank.length + ' soal · tidak dinilai otomatis' })
+        ]),
+        el('span', { class: 't-link', text: PRACTICE_DONE[practice.id] ? 'Selesai' : 'Mulai' })
+      ]),
+      el('p', {
+        class: 't-small', style: 'margin-top:12px',
+        text: 'Kamu boleh mengerjakan salah satu atau keduanya. Esai tidak dinilai otomatis.'
+      })
+    ]));
+  }
+
+  function startEssayForPractice(practice) {
     var bank = typeof CURR.exercisesFor === 'function'
       ? CURR.exercisesFor(normalizeSubject(practice.subject), state.religion || '')
       : (CURR.practiceBank[normalizeSubject(practice.subject)] || []);
@@ -2792,14 +3551,15 @@
 
     function body() {
       if (index >= bank.length) {
+        PRACTICE_DONE[practice.id] = true;
         return el('div', {}, [
           el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0', text: 'Hasil latihan' }),
           el('p', { class: 't-muted', style: 'margin-bottom:14px', text: practice.title + ' · ' + bank.length + ' soal esai selesai' }),
           el('p', { class: 't-result-number', text: answers.filter(function (a) { return a.trim().length > 0; }).length + ' / ' + bank.length }),
           el('button', {
             class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
-            onclick: function () { closeSheet(); render(); }
-          }, ['Tutup'])
+            onclick: function () { closeSheet(); go('hasil-latihan'); }
+          }, ['Lihat hasil'])
         ]);
       }
       var q = bank[index];
@@ -2842,10 +3602,17 @@
       personalInfoCard(false),
       el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Perjalanan Belajarku' }),
       clayCard([
-        el('p', { class: 't-item-title', style: 'margin:0', text: 'Terus bertumbuh! 🌱' }),
+        el('p', {
+          class: 't-item-title', style: 'margin:0',
+          // Jangan memuji "terus bertumbuh" saat belum ada yang selesai.
+          text: completedTasksForChild() ? 'Terus bertumbuh! 🌱' : 'Ayo mulai perjalanannya! 🚀'
+        }),
         el('p', {
           class: 't-muted', style: 'margin:4px 0 0 0',
-          text: Object.keys(RESULTS).length + ' tugas dan 0 latihan selesai.'
+          // Hitung hanya tugas kelas anak. Sebelumnya memakai seluruh RESULTS,
+          // sehingga hasil milik kelas lain ikut terhitung (mis. 18 tugas
+          // padahal anak di Kelas 1 belum menyelesaikan satu pun).
+          text: completedTasksForChild() + ' tugas dan 0 latihan selesai.'
         })
       ]),
       el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Nilai kelas' }),
@@ -2862,7 +3629,7 @@
       }),
       el('div', { style: 'text-align:center' }, [
         el('button', {
-          class: 't-link pressable', type: 'button', style: 'padding:20px', onclick: function () { go('welcome'); }
+          class: 't-link pressable', type: 'button', style: 'padding:20px', onclick: logoutDemo
         }, ['Keluar dari akun demo'])
       ])
     ]);
@@ -2877,107 +3644,344 @@
     return statCard(opts);
   }
 
+  /* Beranda operator: cermin OperatorHomeTab yang baru.
+     Tidak ada banner "Semangat mengajar" (banner itu milik guru/siswa);
+     sapaan singkat langsung di bawah judul, lima pintasan yang bisa dilipat
+     sendiri-sendiri, lalu section profil operator lengkap. */
+  function operatorWelcomeLine(name) {
+    return el('div', { style: 'margin-bottom:16px' }, [
+      el('p', {
+        style: 'margin:0;font-size:20px;line-height:1.3;font-weight:800;color:var(--ink)',
+        text: 'Selamat datang, ' + (name || 'Operator Sekolah')
+      }),
+      el('p', {
+        class: 't-muted', style: 'margin:4px 0 0 0',
+        text: 'Semua data siswa, kelas, materi, dan aset sekolah bisa diubah dari sini.'
+      })
+    ]);
+  }
+
+  /* Kartu pintasan yang bisa dilipat sendiri-sendiri (cermin
+     OperatorCollapsibleCard). Kunci buka/tutupnya hidup di state supaya
+     pilihan operator tidak hilang saat layar dirender ulang. */
+  function operatorCollapsibleCard(opts) {
+    var open = !!(state.operatorOpen && state.operatorOpen[opts.key]);
+    return el('div', {
+      class: 'clay-soft collapsible-card',
+      'data-card': opts.key
+    }, [
+      el('div', {
+        class: 'collapsible-head pressable',
+        role: 'button', tabindex: '0',
+        'aria-expanded': open ? 'true' : 'false',
+        'aria-label': (open ? 'Tutup rincian ' : 'Buka rincian ') + opts.title,
+        onclick: function () { toggleOperatorCard(opts.key); },
+        onkeydown: function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleOperatorCard(opts.key);
+          }
+        }
+      }, [
+        el('div', {
+          class: 'item-tile', style: 'background-color:' + (opts.tileColor || '#F8EBEC')
+        }, [el('span', { text: opts.iconEmoji })]),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 't-item-title', text: opts.title }),
+          el('p', { class: 't-small', text: opts.meta })
+        ]),
+        el('button', {
+          class: 'status-badge pressable', type: 'button',
+          'aria-label': opts.status + ' ' + opts.title,
+          onclick: function (e) {
+            if (e && e.stopPropagation) e.stopPropagation();
+            opts.onManage();
+          }
+        }, [opts.status]),
+        el('span', { class: 'collapsible-caret' + (open ? ' open' : ''), 'aria-hidden': 'true' },
+          [icon('chevron-forward', 17)])
+      ]),
+      open && opts.details && opts.details.length
+        ? el('div', { class: 'collapsible-body' }, opts.details.map(function (line) {
+            return el('div', { class: 'collapsible-line' }, [
+              el('span', { class: 'collapsible-dot', 'aria-hidden': 'true' }),
+              el('span', { text: line })
+            ]);
+          }))
+        : null
+    ]);
+  }
+
+  /* Pindah ke tab Profil operator (tab keenam) dari beranda. */
+  function openOperatorProfilTab() {
+    state.tab = 'Profil';
+    go('operator-profil');
+  }
+
+  function toggleOperatorCard(key) {
+    if (!state.operatorOpen) state.operatorOpen = {};
+    state.operatorOpen[key] = !state.operatorOpen[key];
+    render();
+  }
+
   function renderOperatorBeranda() {
     var custom = Object.keys(state.mediaAssets).length;
     var active = state.roster.filter(function (s) { return s.active; }).length;
+    var op = state.operatorProfile || {};
+
+    var subjects = [];
+    TASKS.forEach(function (t) {
+      if (subjects.indexOf(t.subject) < 0) subjects.push(t.subject);
+    });
+    var taskClasses = [];
+    TASKS.forEach(function (t) {
+      if (taskClasses.indexOf(t.className) < 0) taskClasses.push(t.className);
+    });
+
+    var announcementDetails = ANNOUNCEMENTS.length
+      ? ANNOUNCEMENTS.slice(0, 3).map(function (a) { return a.title || a.body; })
+      : ['Belum ada pengumuman tersimpan.'];
+
+    var eventDetails = CLASS_EVENTS.length
+      ? CLASS_EVENTS.slice().sort(function (a, b) {
+          return String(a.date).localeCompare(String(b.date));
+        }).slice(0, 3).map(function (e) {
+          return e.title + ' · ' + fullDateFromKey(e.date);
+        })
+      : ['Belum ada agenda tersimpan.'];
+
     return el('div', {}, [
-      pageHeader('Operator Sekolah', 'Kelola seluruh isi KARSA'),
-      el('img', { class: 'banner-img', src: state.mediaAssets['banner-guru'] || ASSETS.teacherBanner, alt: 'Banner guru' }),
-      noticeCard('Selamat datang, Operator',
-        'Anda mengelola data siswa, kelas, materi, dan aset sekolah. Semua perubahan tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'),
+      pageHeader('Operator Sekolah', 'Kelola seluruh isi KARSA', null, el('button', {
+        class: 'round-icon-btn pressable', type: 'button',
+        'aria-label': state.dark ? 'Aktifkan mode terang' : 'Aktifkan mode gelap',
+        onclick: function () { toggleTheme(); }
+      }, [icon(state.dark ? 'sunny-outline' : 'moon-outline', 20)])),
+      operatorWelcomeLine(op.name),
       el('div', { class: 'stats-grid' }, [
         operatorStatCard({
           icon: 'person', label: 'Siswa', value: String(state.roster.length),
-          desc: active + ' aktif · ' + state.roster.length + ' siswa',
-          color: 'var(--rose)', onTap: function () { go('operator-siswa'); }
+          desc: active + ' aktif', color: 'var(--rose)',
+          onTap: function () { go('operator-siswa'); }
         }),
         operatorStatCard({
           icon: 'people', label: 'Kelas', value: String(state.schoolClasses.length),
-          desc: 'kelas aktif', color: 'var(--blue)', onTap: function () { go('operator-kelas'); }
+          desc: 'kelas aktif', color: 'var(--blue)',
+          onTap: function () { go('operator-kelas'); }
         })
       ]),
       el('div', { class: 'stats-grid' }, [
         operatorStatCard({
           icon: 'book-outline', label: 'Materi', value: String(MATERIALS.length),
-          desc: 'semua guru', color: 'var(--blue)', onTap: function () { go('operator-materi'); }
+          desc: 'semua guru', color: 'var(--blue)',
+          onTap: function () { go('operator-materi'); }
         }),
         operatorStatCard({
           icon: 'albums', label: 'Aset', value: custom + '/3',
-          desc: 'grafis aktif', color: 'var(--rose)', onTap: function () { go('operator-media'); }
+          desc: 'grafis aktif', color: 'var(--rose)',
+          onTap: function () { go('operator-media'); }
         })
       ]),
-      listItemCard({
-        iconEmoji: '📝', tileColor: '#F8EBEC', title: 'Tugas sekolah',
-        meta: TASKS.length + ' tugas aktif lintas kelas',
-        status: 'Kelola', onTap: function () { go('operator-tugas'); }
+      el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Kelola sekolah' }),
+      operatorCollapsibleCard({
+        key: 'tasks', iconEmoji: '📝', title: 'Tugas sekolah',
+        meta: TASKS.length + ' tugas aktif lintas kelas', status: 'Kelola',
+        details: [
+          subjects.length + ' mata pelajaran · ' + taskClasses.length + ' kelas',
+          subjects.slice(0, 4).join(', ')
+        ].filter(function (v) { return v; }),
+        onManage: function () { go('operator-tugas'); }
       }),
-      listItemCard({
-        iconEmoji: '📣', tileColor: '#F8EBEC', title: 'Pengumuman sekolah',
-        meta: ANNOUNCEMENTS.length + ' pengumuman aktif',
-        status: 'Kelola', onTap: function () { go('operator-pengumuman'); }
+      operatorCollapsibleCard({
+        key: 'announcements', iconEmoji: '📣', title: 'Pengumuman sekolah',
+        meta: ANNOUNCEMENTS.length + ' pengumuman aktif', status: 'Kelola',
+        details: announcementDetails,
+        onManage: function () { go('operator-pengumuman'); }
       }),
-      listItemCard({
-        iconEmoji: '📅', tileColor: '#F8EBEC', title: 'Agenda sekolah',
-        meta: CLASS_EVENTS.length + ' agenda tersimpan',
-        status: 'Kelola', onTap: function () { go('operator-agenda'); }
+      operatorCollapsibleCard({
+        key: 'agenda', iconEmoji: '📅', title: 'Agenda sekolah',
+        meta: CLASS_EVENTS.length + ' agenda tersimpan', status: 'Kelola',
+        details: eventDetails,
+        onManage: function () { go('operator-agenda'); }
       }),
-      listItemCard({
-        iconEmoji: '📊', tileColor: '#F8EBEC', title: 'Nilai kelas',
-        meta: 'Isi, ubah, dan hapus nilai ringkas siswa',
-        status: 'Kelola', onTap: function () { go('operator-nilai'); }
+      operatorCollapsibleCard({
+        key: 'grades', iconEmoji: '📊', title: 'Nilai kelas',
+        meta: 'Isi, ubah, dan hapus nilai ringkas siswa', status: 'Kelola',
+        details: [
+          'Nilai ringkas per kelas dipakai untuk rekap di beranda wali kelas.',
+          'Nilai di luar 0–100 ditolak.'
+        ],
+        onManage: function () { go('operator-nilai'); }
       }),
-      listItemCard({
-        iconEmoji: '🗂️', tileColor: '#F8EBEC', title: 'Logo & banner sekolah',
+      operatorCollapsibleCard({
+        key: 'media', iconEmoji: '🗂️', title: 'Logo & banner sekolah',
         meta: custom === 0 ? 'Masih memakai aset bawaan aplikasi'
           : custom + ' grafis memakai gambar pilihan operator',
-        status: 'Ubah', onTap: function () { go('operator-media'); }
+        status: 'Ubah',
+        details: [
+          ['school-logo', 'Logo sekolah', 'logo-sd-karitas.png'],
+          ['banner-siswa', 'Banner siswa', 'student-banner.png'],
+          ['banner-guru', 'Banner guru', 'teacher-banner.png']
+        ].map(function (slot) {
+          return slot[1] + ' — ' + (state.mediaAssets[slot[0]] ? 'gambar pilihan operator' : 'aset bawaan');
+        }),
+        onManage: function () { go('operator-media'); }
       }),
-      operatorIdentityCard()
+      // Profil operator kini tab sendiri (keenam, di sebelah Media); beranda
+      // hanya menyisakan pintasan ringkas supaya tidak menumpuk.
+      el('div', { style: 'height:8px' }),
+      el('div', {
+        class: 'clay-soft pressable',
+        style: 'padding:15px;background:var(--surface-rose);cursor:pointer',
+        role: 'button', tabindex: '0',
+        'aria-label': 'Buka tab Profil operator',
+        onclick: function () { openOperatorProfilTab(); },
+        onkeydown: function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openOperatorProfilTab();
+          }
+        }
+      }, [
+        el('div', { style: 'display:flex;align-items:center;gap:12px' }, [
+          el('div', {
+            style: 'width:42px;height:42px;border-radius:21px;background:var(--surface-input);display:flex;' +
+                   'align-items:center;justify-content:center;font-weight:800;font-size:15px;color:var(--rose)'
+          }, [profileInitials(op)]),
+          el('div', { style: 'flex:1;min-width:0' }, [
+            el('p', { class: 't-item-title', style: 'margin:0',
+              text: (op.name || '').trim() || 'Operator Sekolah' }),
+            el('p', { class: 't-small', style: 'margin:2px 0 0 0',
+              text: 'Identitas kerja dan pengaturan ada di tab Profil' })
+          ]),
+          el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('chevron-forward', 18)])
+        ])
+      ])
     ]);
   }
 
-  /* Kartu identitas operator: cermin _OperatorIdentityCard di Flutter. */
-  function operatorIdentityCard() {
-    var op = state.operatorProfile || {};
-    var parts = (op.name || '').trim().split(/\s+/).filter(function (w) { return w; });
-    var initials = parts.length
-      ? (parts.length === 1
-          ? parts[0].charAt(0)
-          : parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
-      : '?';
-    var filled = ['name', 'nip', 'role', 'email', 'phone', 'unit']
-      .filter(function (k) { return (op[k] || '').trim(); }).length;
-    var contact = [op.email, op.phone].filter(function (v) { return v; }).join(' · ');
+  /* Inisial dua huruf untuk avatar operator, mis. "Operator Sekolah" -> "OS". */
+  function profileInitials(op) {
+    var parts = ((op && op.name) || '').trim().split(/\s+/).filter(function (w) { return w; });
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  }
 
-    var card = el('div', {
-      class: 'clay-soft pressable',
-      style: 'padding:16px;margin-top:4px;cursor:pointer',
-      onclick: function () { openSetting('Informasi pribadi'); },
-      role: 'button', tabindex: '0',
-      'aria-label': 'Ubah data operator',
-      onkeydown: function (e) {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSetting('Informasi pribadi'); }
-      }
-    }, [
-      el('div', { style: 'display:flex;align-items:center;gap:12px' }, [
-        el('div', {
-          style: 'width:48px;height:48px;border-radius:24px;background:#fff;display:flex;' +
-                 'align-items:center;justify-content:center;font-weight:800;font-size:16px;color:var(--rose)'
-        }, [initials]),
-        el('div', { style: 'flex:1;min-width:0' }, [
-          el('p', { class: 't-item-title', style: 'margin:0', text: op.name || 'Operator Sekolah' }),
-          el('p', { class: 't-small', style: 'margin:2px 0 0 0',
-            text: [op.role, op.nip ? 'NIP ' + op.nip : ''].filter(function (v) { return v; }).join(' · ') })
-        ]),
-        el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('chevron-forward', 18)])
-      ]),
-      contact ? el('p', { class: 't-small', style: 'margin:10px 0 0 0', text: contact }) : null,
-      el('p', { class: 't-small', style: 'margin:10px 0 0 0;color:var(--rose);font-weight:700',
-        text: filled < 6
-          ? 'Lengkapi data pribadi (' + filled + '/6 kolom)'
-          : 'Data pribadi sudah lengkap' })
+  /* Enam kolom profil read-only + indikator kelengkapan.
+     Dipakai tab Profil operator (cermin _ProfileFields di Flutter). */
+  function operatorProfileFields(op) {
+    var fields = [
+      ['Nama lengkap', op.name],
+      ['NIP', op.nip],
+      ['Jabatan', op.role],
+      ['Unit kerja', op.unit],
+      ['Surel', op.email],
+      ['Telepon', op.phone]
+    ];
+    var filled = fields.filter(function (f) { return (f[1] || '').trim(); }).length;
+    var missing = [];
+    if (!(op.email || '').trim()) missing.push('surel');
+    if (!(op.phone || '').trim()) missing.push('telepon');
+
+    return el('div', { class: 'clay-soft', style: 'padding:4px 16px 12px 16px' }, [
+      el('div', {}, fields.map(function (f, i) {
+        var value = (f[1] || '').trim();
+        return el('div', {
+          class: 'profile-field' + (i === fields.length - 1 ? ' last' : '')
+        }, [
+          el('span', { class: 'profile-field-label', text: f[0] }),
+          el('span', {
+            class: 'profile-field-value' + (value ? '' : ' empty'),
+            text: value || 'Belum diisi'
+          })
+        ]);
+      })),
+      el('div', { class: 'profile-complete' }, [
+        icon(filled < 6 ? 'help-circle-outline' : 'checkmark-circle', 17),
+        el('span', {
+          text: filled < 6
+            ? 'Lengkapi ' + (missing.length ? missing.join(' & ') : 'data pribadi') +
+              ' (' + filled + '/6 kolom terisi)'
+            : 'Data pribadi sudah lengkap'
+        })
+      ])
     ]);
-    return card;
+  }
+
+  /* Tab Profil operator: cermin OperatorProfileTab (tab keenam, di sebelah
+     Media). Identitas kerja read-only + pengaturan akun. */
+  function renderOperatorProfil() {
+    var op = state.operatorProfile || {};
+    var settings = [
+      ['Tampilan', 'sunny-outline'],
+      ['Notifikasi', 'notifications-outline'],
+      ['Privasi dan keamanan', 'shield-checkmark-outline'],
+      ['Pusat bantuan', 'help-circle-outline']
+    ];
+
+    return el('div', {}, [
+      pageHeader('Profil Operator', 'Identitas kerja dan pengaturan akun'),
+      schoolIdentity(false),
+      el('div', { class: 'clay-soft', style: 'padding:18px;margin-bottom:20px;background:var(--surface-rose)' }, [
+        el('div', { style: 'display:flex;align-items:center;gap:14px' }, [
+          el('div', {
+            style: 'width:62px;height:62px;border-radius:31px;background:var(--surface-input);display:flex;' +
+                   'align-items:center;justify-content:center;font-weight:800;font-size:22px;color:var(--rose)'
+          }, [profileInitials(op)]),
+          el('div', { style: 'flex:1;min-width:0' }, [
+            el('p', {
+              class: 't-item-title',
+              style: 'margin:0;font-size:16px',
+              text: (op.name || '').trim() || 'Operator Sekolah'
+            }),
+            el('p', {
+              class: 't-small',
+              style: 'margin:3px 0 0 0',
+              text: (op.role || '').trim() || 'Operator sekolah'
+            }),
+            el('p', {
+              class: 't-small',
+              style: 'margin:2px 0 0 0',
+              text: (op.unit || '').trim() || 'Unit kerja belum diisi'
+            })
+          ])
+        ]),
+        el('button', {
+          class: 'karsa-btn clay-raised pressable', type: 'button',
+          style: 'margin-top:14px;border:none;cursor:pointer;height:44px',
+          'aria-label': 'Ubah profil operator',
+          onclick: function () { openSetting('Informasi pribadi'); }
+        }, ['Ubah profil'])
+      ]),
+      el('p', { class: 't-section', style: 'margin-bottom:10px', text: 'Informasi pribadi' }),
+      operatorProfileFields(op),
+      el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Pengaturan' }),
+      el('div', { class: 'clay-soft', style: 'padding:0;overflow:hidden' },
+        settings.map(function (item, index) {
+          return el('button', {
+            class: 'setting-row pressable' + (index === settings.length - 1 ? ' last' : ''),
+            type: 'button',
+            style: 'width:100%;border:none;cursor:pointer',
+            onclick: function () { openSetting(item[0]); }
+          }, [
+            el('span', { class: 'setting-row-icon' }, [icon(item[1], 18)]),
+            el('span', { class: 'setting-row-label', text: item[0] }),
+            el('span', { style: 'display:inline-flex;color:var(--muted)' }, [icon('chevron-forward', 17)])
+          ]);
+        })
+      ),
+      el('div', { style: 'text-align:center' }, [
+        el('button', {
+          class: 't-link pressable', type: 'button', style: 'padding:20px',
+          onclick: logoutDemo
+        }, ['Keluar dari akun demo'])
+      ]),
+      el('p', {
+        class: 't-small',
+        style: 'text-align:center;color:var(--muted);font-size:12px',
+        text: 'Data profil tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'
+      })
+    ]);
   }
 
   function renderOperatorSiswa() {
@@ -3684,6 +4688,141 @@
   /* ------------------------------------------------------------------ *
    * Operator sekolah: pengumuman
    * ------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------ *
+   * Pengumuman guru mapel
+   * Cermin AnnouncementFormPage + AppState.saveAnnouncement: guru hanya
+   * mengumumkan untuk mapelnya, ke "Semua kelas" atau kelas yang diajar.
+   * ------------------------------------------------------------------ */
+  function teacherClasses() {
+    return operatorClassNames().filter(function (c) {
+      return subjectsForClass(c).indexOf(state.teacherSubject) >= 0;
+    });
+  }
+
+  function renderGuruPengumuman() {
+    var mine = ANNOUNCEMENTS.filter(function (a) { return a.category === 'PENGUMUMAN GURU'; });
+    var taught = teacherClasses();
+
+    var children = [
+      pageHeader('Pengumuman', state.teacherSubject + ' · ' + taught.length + ' kelas', function () {
+        go('guru-beranda');
+      }),
+      el('button', {
+        class: 'karsa-btn clay-raised pressable', type: 'button',
+        style: 'border:none;cursor:pointer',
+        onclick: function () { openGuruAnnouncementForm(null); }
+      }, ['+ Buat pengumuman']),
+      el('p', {
+        class: 't-small', style: 'margin:10px 0 14px 0',
+        text: 'Hanya sampai ke ' + taught.join(', ') + ' atau semua kelas.'
+      })
+    ];
+
+    if (!mine.length) {
+      children.push(noticeCard('Belum ada pengumumanmu',
+        'Buat pengumuman pertama untuk kelas yang kamu ajar.'));
+    }
+    mine.forEach(function (a) {
+      children.push(listItemCard({
+        iconEmoji: '📣', tileColor: '#F8EBEC', title: a.title,
+        meta: a.className + ' · ' + a.body,
+        status: 'Ubah', onTap: function () { openGuruAnnouncementForm(a); }
+      }));
+    });
+
+    // Pengumuman sekolah tetap terlihat, tapi tidak bisa diubah guru.
+    var school = ANNOUNCEMENTS.filter(function (a) { return a.category !== 'PENGUMUMAN GURU'; });
+    if (school.length) {
+      children.push(el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Dari sekolah' }));
+      school.forEach(function (a) {
+        children.push(listItemCard({
+          iconEmoji: '🏫', tileColor: '#E4EEF7', title: a.title,
+          meta: a.className + ' · ' + a.body, status: null,
+          onTap: function () { openAnnouncements(); }
+        }));
+      });
+    }
+    return el('div', {}, children);
+  }
+
+  function openGuruAnnouncementForm(announcement) {
+    var taught = teacherClasses();
+    var options = ['Semua kelas'].concat(taught);
+    var defaultClass = taught.indexOf(state.filter) >= 0 ? state.filter
+      : (taught[0] || 'Semua kelas');
+    var draft = announcement
+      ? { id: announcement.id, title: announcement.title, body: announcement.body,
+          className: announcement.className, error: '' }
+      : { id: '', title: '', body: '', className: defaultClass, error: '' };
+    if (options.indexOf(draft.className) < 0) draft.className = defaultClass;
+
+    function refresh() {
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', {
+          class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
+          text: draft.id ? 'Ubah Pengumuman' : 'Buat Pengumuman'
+        }),
+        el('p', { class: 't-muted', style: 'margin-bottom:14px', text: 'Tersimpan di perangkat ini.' }),
+        el('p', { class: 't-label', style: 'margin-bottom:8px', text: 'Judul' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.title, placeholder: 'Judul pengumuman',
+          'aria-label': 'Judul pengumuman',
+          oninput: function (e) { draft.title = e.target.value; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Isi pengumuman' }),
+        el('textarea', {
+          class: 'karsa-input', rows: '3', value: draft.body,
+          placeholder: 'Tulis pengumuman...', 'aria-label': 'Isi pengumuman',
+          style: 'height:auto;resize:vertical',
+          oninput: function (e) { draft.body = e.target.value; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Untuk kelas' }),
+        // chips memakai daftar kelas yang diajar mapel guru, bukan semua kelas
+        chips(options, draft.className, function (v) { draft.className = v; refresh(); }),
+        draft.error ? el('p', {
+          class: 'notice-title', style: 'margin:10px 0 0 0', text: draft.error
+        }) : null,
+        el('button', {
+          class: 'karsa-btn clay-raised pressable', type: 'button',
+          style: 'border:none;cursor:pointer;margin-top:14px;width:100%',
+          onclick: function () {
+            if (!draft.title.trim() || !draft.body.trim()) {
+              draft.error = 'Isi judul dan isi pengumuman.';
+              refresh();
+              return;
+            }
+            if (draft.className !== 'Semua kelas' && taught.indexOf(draft.className) < 0) {
+              draft.error = draft.className + ' bukan kelas yang kamu ajar.';
+              refresh();
+              return;
+            }
+            if (draft.id) {
+              ANNOUNCEMENTS = ANNOUNCEMENTS.map(function (a) {
+                return a.id === draft.id
+                  ? Object.assign({}, a, {
+                    title: draft.title.trim(), body: draft.body.trim(),
+                    className: draft.className, detail: 'Diperbarui · ' + draft.className
+                  })
+                  : a;
+              });
+            } else {
+              ANNOUNCEMENTS = [{
+                id: 'a' + Date.now(), category: 'PENGUMUMAN GURU',
+                title: draft.title.trim(), body: draft.body.trim(),
+                detail: 'Baru saja · ' + draft.className, className: draft.className
+              }].concat(ANNOUNCEMENTS);
+            }
+            persistState();
+            closeSheet();
+            go('guru-pengumuman');
+          }
+        }, ['Kirim pengumuman'])
+      ]));
+    }
+    refresh();
+  }
+
   function renderOperatorPengumuman() {
     var filter = state.filter === 'Semua kelas' ? 'Semua kelas' : state.filter;
     var list = filter === 'Semua kelas'
@@ -4216,10 +5355,19 @@
     } else {
       list.forEach(function (n) {
         var read = isNotificationRead(n.id);
+        // Notifikasi pengumpulan menampilkan nama siswa + nilainya, bukan
+        // sekadar "Tugas dikumpulkan siswa".
+        var isSubmission = n.kind === 'submission' || n.target === 'teachers';
+        var meta = isSubmission && n.studentName
+          ? n.subject + ' · ' + n.className + ' · ' +
+            scoreLabel(n) + ' · ' + createdAtId(n.createdAt)
+          : n.subject + ' · ' + n.className + ' · ' + createdAtId(n.createdAt);
         children.push(listItemCard({
-          iconEmoji: n.target === 'teachers' ? '✅' : (n.kind === 'material' ? '📚' : '📝'),
-          tileColor: '#F8EBEC', title: n.title,
-          meta: n.subject + ' · ' + n.className + ' · ' + createdAtId(n.createdAt),
+          iconEmoji: isSubmission ? '✅' : (n.kind === 'material' ? '📚' : '📝'),
+          tileColor: '#F8EBEC',
+          // Nama cukup muncul sekali, di judul; meta mengisi kelas + nilai.
+          title: isSubmission && n.studentName ? n.studentName + ' mengumpulkan tugas' : n.title,
+          meta: meta,
           status: read ? 'Dibaca' : 'Baru',
           onTap: function () { openNotification(n); }
         }));
@@ -4242,6 +5390,13 @@
   function openNotification(n) {
     markNotificationRead(n.id);
     render();
+    // Guru tidak mengerjakan tugas: klik notifikasi pengumpulan membuka daftar
+    // siapa saja yang sudah mengumpulkan beserta nilainya.
+    if (state.role === 'guru' && (n.kind === 'submission' || n.target === 'teachers')) {
+      var submissionTask = TASKS.filter(function (t) { return t.id === n.contentId; })[0];
+      openSubmissions(submissionTask, n);
+      return;
+    }
     if (n.kind === 'task') {
       var task = TASKS.filter(function (t) { return t.id === n.contentId; })[0];
       if (task) {
@@ -4275,7 +5430,15 @@
   }
 
   function openTaskDetail(task) {
-    var bank = quizBankFor(task.subject);
+    // Tugas hasil asisten membawa soalnya sendiri; hitungan harus mencerminkan
+    // soal yang benar-benar akan dikerjakan siswa.
+    var own = task && task.questions && task.questions.length ? task.questions : null;
+    var bank = own || quizBankFor(task.subject);
+    var isAssistant = !!(own && task.questionsSource === 'assistant');
+    var essayBank = essayBankFor(task.subject);
+    var savedResult = RESULTS[task.id];
+    var essayAnswers = (savedResult && savedResult.essayAnswers) || [];
+    var essayDone = essayAnswers.some(function (a) { return String(a).trim(); });
     openSheet(el('div', {}, [
       el('div', { class: 'sheet-handle' }),
       el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0', text: task.title }),
@@ -4284,16 +5447,58 @@
         text: task.subject + ' · ' + task.className + ' · ' + task.minutes + ' menit · ' +
           deadlineCountdown(task.dueAt, NOW)
       }),
-      el('p', { class: 't-item-title', style: 'margin-bottom:8px', text: 'Soal tersedia: ' + bank.length + ' pertanyaan' }),
-      RESULTS[task.id]
-        ? el('button', {
-          class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
-          onclick: function () { closeSheet(); showResult(task); }
-        }, ['Lihat hasil'])
-        : el('button', {
-          class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
-          onclick: function () { closeSheet(); startQuiz(task); }
-        }, ['Kerjakan kuis']),
+      el('p', { class: 't-item-title', style: 'margin-bottom:8px',
+        text: state.role === 'siswa' || state.role === 'orangtua'
+          ? 'Pilih metode pengerjaan'
+          : 'Metode pengerjaan siswa' }),
+      isAssistant ? el('p', {
+        class: 't-small', style: 'margin:0 0 10px 0',
+        text: 'Soal disusun asisten dari bahan yang diunggah ' + task.teacher +
+          ' (simulasi offline, bukan AI sungguhan).'
+      }) : null,
+      // Metode 1: pilihan ganda (dinilai otomatis).
+      el('button', {
+        class: 'method-card pressable', type: 'button',
+        'aria-label': 'Pilihan ganda',
+        onclick: function () {
+          closeSheet();
+          if (savedResult) showResult(task); else startQuiz(task);
+        }
+      }, [
+        el('span', { class: 'method-icon', text: '🔠' }),
+        el('span', { style: 'flex:1;min-width:0;text-align:left' }, [
+          el('span', { class: 't-item-title', style: 'display:block', text: 'Pilihan ganda' }),
+          el('span', { class: 't-small', style: 'display:block',
+            text: bank.length + ' soal · dinilai otomatis' }),
+          savedResult && savedResult.score !== undefined
+            ? el('span', { class: 'method-badge',
+                text: 'Nilai ' + savedResult.score + '/' + savedResult.total })
+            : null
+        ]),
+        el('span', { class: 'method-action',
+          text: savedResult && savedResult.score !== undefined ? 'Kerjakan lagi' : 'Mulai' })
+      ]),
+      // Metode 2: esai (jawaban disimpan, tidak dinilai otomatis).
+      el('button', {
+        class: 'method-card pressable', type: 'button',
+        'aria-label': 'Esai',
+        onclick: function () { closeSheet(); startEssayForTask(task); }
+      }, [
+        el('span', { class: 'method-icon', text: '✍️' }),
+        el('span', { style: 'flex:1;min-width:0;text-align:left' }, [
+          el('span', { class: 't-item-title', style: 'display:block', text: 'Esai' }),
+          el('span', { class: 't-small', style: 'display:block',
+            text: essayBank.length + ' soal · jawabanmu disimpan' }),
+          essayDone ? el('span', { class: 'method-badge', text: 'Sudah dikirim' }) : null
+        ]),
+        el('span', { class: 'method-action', text: essayDone ? 'Lihat jawaban' : 'Mulai' })
+      ]),
+      el('p', {
+        class: 't-small', style: 'margin:10px 0 0 0',
+        text: essayDone
+          ? 'Kedua metode sudah dikerjakan. Kamu bisa mengulanginya kapan saja.'
+          : 'Kamu boleh mengerjakan salah satu atau keduanya. Esai tidak dinilai otomatis.'
+      }),
       el('button', {
         class: 't-link pressable', type: 'button', style: 'margin-top:12px;display:block;width:100%',
         onclick: function () { closeSheet(); render(); }
@@ -4302,9 +5507,13 @@
   }
 
   function startQuiz(task) {
+    // Tugas hasil asisten membawa soalnya sendiri (cermin
+    // AppState.currentQuizBank): tanpa ini soal asisten tidak pernah tampil.
+    var own = task && task.questions && task.questions.length ? task.questions : null;
     state.quiz = {
       task: task,
-      bank: quizBankFor(task.subject),
+      practice: null,
+      bank: own || quizBankFor(task.subject),
       index: 0,
       choice: -1,
       checked: false,
@@ -4312,6 +5521,147 @@
       score: 0
     };
     go('kuis');
+  }
+
+  /* Pilihan ganda sebuah latihan (metode 1). Memakai layar kuis yang sama,
+     tetapi skornya disimpan di PRACTICE_RESULTS - bukan di RESULTS tugas. */
+  function startPracticeQuiz(practice) {
+    state.quiz = {
+      task: null,
+      practice: practice,
+      bank: questionsForPractice(practice.subject),
+      index: 0,
+      choice: -1,
+      checked: false,
+      answers: [],
+      score: 0
+    };
+    go('kuis');
+  }
+
+  function questionsForPractice(subject) {
+    var norm = normalizeSubject(subject);
+    if (typeof CURR.questionsFor === 'function') {
+      return CURR.questionsFor(norm, state.religion || '');
+    }
+    return CURR.quizBank[norm] || CURR.quizBank['Matematika'] || [];
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Bagian esai sebuah tugas (metode 2)
+   * Cermin AppState.startTaskEssay/submitTaskEssay: bank esai mengikuti
+   * mapel tugas, jawaban disimpan ke RESULTS[task.id].essayAnswers, dan
+   * skor pilihan ganda yang sudah ada tidak dihapus.
+   * ------------------------------------------------------------------ */
+  function startEssayForTask(task) {
+    var bank = essayBankFor(task.subject);
+    var saved = (RESULTS[task.id] && RESULTS[task.id].essayAnswers) || [];
+    var drafts = bank.map(function (_, i) { return saved[i] || ''; });
+    state.essay = {
+      task: task,
+      bank: bank,
+      index: 0,
+      drafts: drafts,
+      showExample: false,
+      error: ''
+    };
+    go('esai');
+  }
+
+  function submitTaskEssay() {
+    var esai = state.essay;
+    if (!esai) return;
+    var answers = esai.drafts.map(function (a) { return String(a || '').trim(); });
+    if (!answers.some(function (a) { return a; })) {
+      esai.error = 'Tulis minimal satu jawaban esai sebelum mengirim.';
+      render();
+      return;
+    }
+    var previous = RESULTS[esai.task.id] || {};
+    RESULTS[esai.task.id] = {
+      score: previous.score,
+      total: previous.total,
+      answers: previous.answers || [],
+      demo: previous.demo || false,
+      studentName: state.studentName,
+      className: esai.task.className,
+      essayAnswers: answers,
+      essayAt: new Date().toISOString()
+    };
+    state.essay = null;
+    state.quizResult = { task: esai.task, result: RESULTS[esai.task.id] };
+    go('hasil-kuis');
+  }
+
+  function renderEssay() {
+    var esai = state.essay;
+    if (!esai || !esai.bank.length) {
+      // Tanpa data (mis. dibuka lewat deep link): tetap ada isi yang jelas,
+      // jangan layar kosong.
+      return el('div', {}, [
+        pageHeader('Esai', null, function () { go(ROLE_SCREEN_PREFIX[state.role] + 'beranda'); }),
+        el('p', { class: 't-muted', style: 'margin-top:20px',
+          text: 'Belum ada soal esai yang dibuka. Pilih tugas dari daftar Tugas, ' +
+            'lalu pilih metode Esai.' })
+      ]);
+    }
+    var pair = esai.bank[esai.index];
+    var ratio = (esai.index + 1) / esai.bank.length;
+    var isLast = esai.index + 1 >= esai.bank.length;
+
+    var input = el('textarea', {
+      class: 'karsa-input essay-input', rows: '5',
+      placeholder: 'Tulis jawabanmu di sini...',
+      'aria-label': 'Jawaban esai',
+      oninput: function (e) {
+        esai.drafts[esai.index] = e.target.value;
+        esai.error = '';
+        // Perbarui status tombol tanpa menimpa kotak yang sedang diketik.
+        var btn = document.getElementById('essay-primary');
+        if (btn) btn.disabled = !String(e.target.value).trim();
+      }
+    }, [esai.drafts[esai.index] || '']);
+
+    return el('div', {}, [
+      pageHeader(esai.task.subject + ' · Esai',
+        'Soal ' + (esai.index + 1) + ' dari ' + esai.bank.length + ' · esai tugas',
+        // Kembali ke daftar tugas role aktif, bukan selalu siswa.
+        function () { state.essay = null; go(tasksScreenForRole()); }),
+      el('div', { class: 'quiz-progress' }, [
+        el('div', { class: 'quiz-progress-fill', style: 'width:' + (ratio * 100) + '%' })
+      ]),
+      el('p', { class: 'quiz-question', text: pair.prompt }),
+      el('p', { class: 't-label', style: 'margin:0 0 8px 0', text: 'Jawabanmu' }),
+      input,
+      esai.showExample ? noticeCard('💡 Contoh jawaban', pair.sampleAnswer) : null,
+      el('button', {
+        class: 'karsa-btn clay-raised pressable', type: 'button',
+        id: 'essay-primary',
+        style: 'border:none;cursor:pointer',
+        disabled: !String(esai.drafts[esai.index] || '').trim() ? true : null,
+        onclick: function () {
+          if (!String(esai.drafts[esai.index] || '').trim()) return;
+          if (!esai.showExample) {
+            esai.showExample = true;
+            render();
+            return;
+          }
+          if (isLast) { submitTaskEssay(); return; }
+          esai.index += 1;
+          esai.showExample = false;
+          render();
+        }
+      }, [esai.showExample
+        ? (isLast ? 'Kirim jawaban esai' : 'Soal berikutnya')
+        : 'Lihat contoh jawaban']),
+      esai.error ? el('p', { class: 'notice-title', style: 'margin:10px 0 0 0', text: esai.error }) : null,
+      el('p', {
+        class: 't-small',
+        style: 'text-align:center;color:var(--muted);font-size:12px;margin-top:18px',
+        text: 'Esai tidak dinilai otomatis. Jawabanmu tersimpan untuk tugas ini, ' +
+          'dan kamu tetap bisa mengerjakan pilihan gandanya.'
+      })
+    ]);
   }
 
   function renderQuiz() {
@@ -4324,47 +5674,153 @@
     var q = quiz.bank[quiz.index];
     var letters = ['A', 'B', 'C', 'D'];
     var ratio = (quiz.index + 1) / quiz.bank.length;
+    var checked = quiz.checked;
+    var isLast = quiz.index + 1 >= quiz.bank.length;
 
+    function closeQuiz() {
+      var backTo = tasksScreenForRole();
+      state.quiz = null;
+      go(backTo);
+    }
+
+    // Tiap pilihan punya tiga keadaan: biasa, dipilih (belum diperiksa), dan
+    // setelah diperiksa -> benar / salah. Label di kanan mengikuti keadaan itu,
+    // seperti rancangan (Dipilih / Benar / Salah + ikon).
     var choices = q.choices.map(function (choice, i) {
-      var selected = quiz.choice === i;
-      var isCorrect = quiz.checked && i === q.answerIndex;
+      var isChosen = quiz.choice === i;
+      var isAnswer = i === q.answerIndex;
       var cls = 'choice-btn pressable';
-      if (isCorrect) cls += ' correct';
-      else if (selected) cls += ' selected';
+      var label = null;
+      var labelIcon = null;
+
+      if (checked) {
+        if (isAnswer) {
+          cls += ' correct';
+          label = 'Benar';
+          labelIcon = 'checkmark-circle';
+        } else if (isChosen) {
+          cls += ' wrong';
+          label = 'Salah';
+          labelIcon = 'close-circle';
+        } else {
+          cls += ' muted-choice';
+        }
+      } else if (isChosen) {
+        cls += ' selected';
+        label = 'Dipilih';
+        labelIcon = 'checkmark-circle';
+      }
+
       return el('button', {
         class: cls, type: 'button',
+        disabled: checked ? true : null,
         onclick: function () {
-          if (quiz.checked) return;
+          if (checked) return;
           quiz.choice = i;
           render();
         }
       }, [
         el('span', { class: 'choice-letter', text: letters[i % letters.length] }),
-        el('span', { style: 'flex:1;font-size:14px;color:var(--ink)', text: choice })
+        el('span', { style: 'flex:1;font-size:14px;color:var(--ink);text-align:left', text: choice }),
+        label ? el('span', { class: 'choice-state' }, [
+          // Teks label dipisah dari ikon agar teks tetap bersih saat dibaca
+          // pembaca layar maupun diuji.
+          el('span', { class: 'choice-state-text', text: label }),
+          el('span', { class: 'choice-state-icon', style: 'display:inline-flex' }, [icon(labelIcon, 15)])
+        ]) : null
       ]);
     });
 
+    // Petunjuk kecil di bawah pilihan saat siswa sudah memilih tapi belum
+    // memeriksa: "Pilihanmu: B. Sudah yakin?" seperti rancangan.
+    var hint = null;
+    if (!checked && quiz.choice >= 0) {
+      hint = el('div', { class: 'quiz-hint' }, [
+        el('span', { style: 'display:inline-flex;color:var(--rose)' }, [icon('bulb-outline', 14)]),
+        el('span', {
+          text: 'Pilihanmu: ' + letters[quiz.choice % 4] + '. Sudah yakin?'
+        })
+      ]);
+    }
+
+    // Setelah diperiksa: kartu umpan balik benar/salah menggantikan petunjuk.
+    var feedback = null;
+    if (checked) {
+      var ok = quiz.choice === q.answerIndex;
+      feedback = el('div', { class: 'quiz-feedback ' + (ok ? 'is-correct' : 'is-wrong') }, [
+        el('p', {
+          class: 'quiz-feedback-title',
+          text: ok
+            ? '✓ Tepat! Jawabannya ' + letters[q.answerIndex % 4] + '.'
+            : 'Belum tepat. Jawaban yang benar: ' +
+              letters[q.answerIndex % 4] + '. ' + q.choices[q.answerIndex]
+        }),
+        el('p', { class: 'quiz-feedback-body', text: q.explanation })
+      ]);
+    }
+
     return el('div', {}, [
-      pageHeader(quiz.task.subject + ' · ' + quiz.task.title, 'Soal ' + (quiz.index + 1) + ' dari ' + quiz.bank.length,
-        function () { go('kuis'); }),
+      // Header ringkas seperti rancangan: mapel + topik kecil di atas, soal ke-n
+      // besar di bawah, dan tombol tutup (X) di kanan.
+      el('div', { class: 'quiz-top' }, [
+        // Panah kembali + tombol tutup, keduanya tetap ada: panah untuk
+        // navigasi seperti layar lain, X untuk keluar cepat seperti rancangan.
+        el('button', {
+          class: 'back-chevron pressable', type: 'button',
+          'aria-label': 'Kembali',
+          onclick: closeQuiz
+        }, [icon('chevron-back', 20)]),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', {
+            class: 'quiz-eyebrow',
+            text: quiz.practice
+              ? quiz.practice.subject + ' · ' + quiz.practice.title
+              : quiz.task.subject + ' · ' + quiz.task.title
+          }),
+          el('p', { class: 'quiz-step', text: 'Soal ' + (quiz.index + 1) + ' dari ' + quiz.bank.length })
+        ]),
+        el('button', {
+          class: 'quiz-close pressable', type: 'button',
+          'aria-label': 'Tutup kuis',
+          onclick: closeQuiz
+        }, [icon('close', 18)])
+      ]),
       el('div', { class: 'quiz-progress' }, [
         el('div', { class: 'quiz-progress-fill', style: 'width:' + (ratio * 100) + '%' })
       ]),
       el('p', { class: 'quiz-question', text: q.question }),
       choices,
-      quiz.checked ? noticeCard('Jawaban benar: ' + q.choices[q.answerIndex] + ' · ' + q.explanation) : null,
+      hint,
+      feedback,
       el('button', {
-        class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
+        class: 'karsa-btn clay-raised pressable', type: 'button',
+        style: 'border:none;cursor:pointer;margin-top:14px',
+        disabled: !checked && quiz.choice < 0 ? true : null,
         onclick: function () {
-          if (!quiz.checked) {
+          if (!checked) {
             if (quiz.choice < 0) return;
             quiz.checked = true;
             if (quiz.choice === q.answerIndex) quiz.score += 1;
-          } else if (quiz.index + 1 >= quiz.bank.length) {
-            quiz.answers = quiz.answers;
+          } else if (isLast) {
+            if (quiz.practice) {
+              // Latihan: skor masuk PRACTICE_RESULTS, status selesai dicatat,
+              // dan nilai tugas tidak tersentuh.
+              PRACTICE_RESULTS[quiz.practice.id] = {
+                score: quiz.score, total: quiz.bank.length, answers: quiz.answers
+              };
+              PRACTICE_DONE[quiz.practice.id] = true;
+              state.quiz = null;
+              go('hasil-latihan');
+              return;
+            }
             RESULTS[quiz.task.id] = {
               score: quiz.score, total: quiz.bank.length, answers: quiz.answers, demo: quiz.task.demo
             };
+            // Catat siapa yang mengumpulkan supaya muncul di daftar guru.
+            recordSubmission(quiz.task, {
+              score: quiz.score, total: quiz.bank.length,
+              name: state.studentName, className: quiz.task.className
+            });
             state.quiz = null;
             go('hasil-kuis');
             return;
@@ -4375,17 +5831,188 @@
           }
           render();
         }
-      }, [
-        quiz.checked
-          ? (quiz.index + 1 >= quiz.bank.length ? 'Selesai' : 'Soal berikutnya')
-          : 'Periksa jawaban'
-      ])
+      }, [checked
+        ? (isLast ? 'Lihat hasil' : 'Soal berikutnya')
+        : 'Periksa jawaban'])
     ]);
   }
 
-  function showResult(task) {
-    state.quizResult = { task: task, result: RESULTS[task.id] };
-    go('hasil-kuis');
+  /* Hasil latihan: menampilkan skor pilihan ganda bila latihan dikerjakan
+     lewat metode itu; esai tidak dinilai otomatis sehingga tanpa skor. */
+  /* ------------------------------------------------------------------ *
+   * Daftar pengumpulan tugas untuk guru
+   * Menjawab "siapa saja yang sudah mengerjakan dan nilainya berapa".
+   * ------------------------------------------------------------------ */
+  function submissionsFor(task) {
+    // Siswa nyata (roster) + hasil yang tersimpan, ditambah siswa yang
+    // memang mengirim dari perangkat ini.
+    var rows = (state.roster || [])
+      .filter(function (r) { return task && r.className === task.className; })
+      .map(function (r) {
+        var res = RESULTS[task.id];
+        var own = SUBMISSIONS[task.id] && SUBMISSIONS[task.id][r.id];
+        return {
+          id: r.id, name: r.name, className: r.className,
+          score: own ? own.score : null,
+          total: own ? own.total : (res && res.total) || null,
+          at: own ? own.at : null
+        };
+      });
+
+    // Siswa di luar roster (mis. siswa demo yang mengirim) tidak boleh hilang.
+    var known = rows.map(function (r) { return r.id; });
+    var extra = SUBMISSIONS[task.id] || {};
+    Object.keys(extra).forEach(function (sid) {
+      if (known.indexOf(sid) >= 0) return;
+      var row = extra[sid];
+      rows.push({
+        id: sid, name: row.name || state.studentName, className: row.className || task.className,
+        score: row.score, total: row.total, at: row.at
+      });
+    });
+    return rows;
+  }
+
+  function openSubmissions(task, notification) {
+    if (!task) {
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0', text: 'Pengumpulan tugas' }),
+        el('p', { class: 't-muted', text: 'Tugas tidak ditemukan di perangkat ini.' })
+      ]));
+      return;
+    }
+    var rows = submissionsFor(task);
+    var done = rows.filter(function (r) { return r.score !== null && r.score !== undefined; });
+    var avg = done.length
+      ? Math.round(done.reduce(function (a, r) { return a + r.score; }, 0) / done.length * 10) / 10
+      : null;
+
+    var children = [
+      el('div', { class: 'sheet-handle' }),
+      el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 2px 0', text: task.title }),
+      el('p', { class: 't-muted', style: 'margin-bottom:12px',
+        text: task.subject + ' · ' + task.className }),
+      el('div', { class: 'stats-grid', style: 'margin-bottom:6px' }, [
+        statCard({
+          icon: 'checkmark-circle', label: 'Sudah kumpul', value: String(done.length),
+          desc: 'dari ' + rows.length + ' siswa', color: 'var(--rose)', onTap: function () {}
+        }),
+        statCard({
+          icon: 'bar-chart', label: 'Rata-rata', value: avg === null ? '—' : String(avg),
+          desc: avg === null ? 'belum ada nilai' : 'dari 10', color: 'var(--blue)', onTap: function () {}
+        })
+      ])
+    ];
+
+    if (!rows.length) {
+      children.push(noticeCard('Belum ada siswa', 'Kelas ini belum punya daftar siswa.'));
+    } else {
+      // Yang sudah mengumpulkan tampil lebih dulu, nilai tertinggi di atas.
+      rows.sort(function (a, b) {
+        var aDone = a.score !== null && a.score !== undefined;
+        var bDone = b.score !== null && b.score !== undefined;
+        if (aDone !== bDone) return aDone ? -1 : 1;
+        if (aDone && bDone) return b.score - a.score;
+        return a.name.localeCompare(b.name);
+      });
+      rows.forEach(function (r) {
+        var submitted = r.score !== null && r.score !== undefined;
+        children.push(listItemCard({
+          iconEmoji: submitted ? '✅' : '⏳',
+          tileColor: submitted ? '#D1F4D8' : '#F8EBEC',
+          title: r.name,
+          meta: submitted
+            ? r.className + ' · Nilai ' + r.score + '/' + (r.total || 10) +
+              (r.at ? ' · ' + createdAtId(r.at) : '')
+            : r.className + ' · Belum mengumpulkan',
+          status: submitted ? (r.score >= 8 ? 'Baik' : 'Perlu latihan') : 'Belum',
+          onTap: function () {
+            if (!submitted) return;
+            // Sorot siswa yang diklik dari notifikasi.
+            openStudentSubmission(task, r);
+          }
+        }));
+      });
+    }
+
+    children.push(el('p', {
+      class: 't-small', style: 'margin-top:14px',
+      text: 'Nilai pilihan ganda dihitung otomatis. Esai tidak dinilai otomatis ' +
+        'sehingga tidak mengubah angka di atas.'
+    }));
+    openSheet(el('div', {}, children));
+  }
+
+  function openStudentSubmission(task, row) {
+    var esai = (SUBMISSIONS[task.id] && SUBMISSIONS[task.id][row.id] &&
+      SUBMISSIONS[task.id][row.id].essayAnswers) || [];
+    openSheet(el('div', {}, [
+      el('div', { class: 'sheet-handle' }),
+      el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 2px 0', text: row.name }),
+      el('p', { class: 't-muted', style: 'margin-bottom:12px',
+        text: task.subject + ' · ' + task.className }),
+      clayCard([
+        el('p', { class: 't-overline', style: 'margin:0 0 4px 0', text: 'NILAI PILIHAN GANDA' }),
+        el('p', { style: 'margin:0;font-size:30px;font-weight:800;color:var(--ink)',
+          text: row.score + ' / ' + (row.total || 10) }),
+        el('p', { class: 't-small', style: 'margin:4px 0 0 0',
+          text: row.at ? 'Dikumpulkan ' + createdAtId(row.at) : 'Waktu pengumpulan tidak tercatat' })
+      ]),
+      el('p', { class: 't-section', style: 'margin:16px 0 8px 0', text: 'Jawaban esai' }),
+      esai.length
+        ? el('div', {}, esai.map(function (a, i) {
+          return clayCard([
+            el('p', { class: 't-overline', style: 'margin:0 0 4px 0', text: 'SOAL ' + (i + 1) }),
+            el('p', { class: 't-item-title', style: 'margin:0', text: a || '(tidak dijawab)' })
+          ]);
+        }))
+        : el('p', { class: 't-muted', text: 'Siswa belum mengirim jawaban esai untuk tugas ini.' })
+    ]));
+  }
+
+  function renderHasilLatihan() {
+    var practice = state.practiceResult || null;
+    var res = practice ? PRACTICE_RESULTS[practice.id] : null;
+    var back = function () {
+      state.practiceResult = null;
+      go(tasksScreenForRole());
+    };
+    if (!practice) {
+      return el('div', {}, [pageHeader('Hasil latihan', null, back)]);
+    }
+    var total = res ? res.total : 0;
+    var pct = total ? Math.round((res.score / total) * 100) : 0;
+    return el('div', {}, [
+      pageHeader('Hasil latihan', practice.subject + ' · ' + practice.title, back),
+      el('div', { class: 'clay-soft karsa-card', style: 'text-align:center;padding:26px 18px' }, [
+        el('p', { style: 'font-size:44px;margin:0', text: res ? '🎯' : '🌱' }),
+        el('p', {
+          class: 't-page-title', style: 'margin:8px 0 0 0',
+          text: res ? 'Latihan selesai!' : 'Jawaban esai tersimpan'
+        }),
+        el('p', {
+          class: 't-muted', style: 'margin:6px 0 0 0',
+          text: res
+            ? 'Pilihan ganda langsung dinilai.'
+            : 'Esai tidak dinilai otomatis; jawabanmu tersimpan untuk tugas ini.'
+        })
+      ]),
+      res ? el('div', { class: 'stats-grid', style: 'margin-top:14px' }, [
+        statCard({
+          icon: 'checkmark-circle', label: 'Nilai', value: res.score + '/' + total,
+          desc: pct + '% benar', color: 'var(--rose)', onTap: function () {}
+        }),
+        statCard({
+          icon: 'grid', label: 'Soal', value: String(total),
+          desc: 'pilihan ganda', color: 'var(--blue)', onTap: function () {}
+        })
+      ]) : null,
+      el('button', {
+        class: 'karsa-btn clay-raised pressable', type: 'button',
+        style: 'border:none;cursor:pointer;margin-top:16px', onclick: back
+      }, ['Kembali ke latihan'])
+    ]);
   }
 
   function renderHasilKuis() {
@@ -4397,18 +6024,53 @@
     }
     var task = target.task;
     var result = target.result;
-    var bank = quizBankFor(task.subject);
+    var own = task && task.questions && task.questions.length ? task.questions : null;
+    var bank = own || quizBankFor(task.subject);
     var total = result.total || bank.length;
+    // Hasil bisa datang dari pilihan ganda, esai, atau keduanya.
+    var essayAnswers = (result.essayAnswers || []).filter(function (a) {
+      return String(a || '').trim();
+    });
+    var hasQuizScore = result.score !== undefined && result.score !== null;
+    var essayOnly = !hasQuizScore && essayAnswers.length > 0;
+    var essayBank = essayBankFor(task.subject);
 
     var children = [
-      pageHeader('Hasil kuis', task.subject + ' · ' + task.title + (result.demo ? ' · Contoh' : ''),
-        function () { go(ROLE_SCREEN_PREFIX[state.role] + 'beranda'); }),
-      el('div', { class: 'clay-soft', style: 'margin-bottom:16px;padding:45px;text-align:center' }, [
+      pageHeader(essayOnly ? 'Hasil esai' : 'Hasil kuis',
+        task.subject + ' · ' + task.title + (result.demo ? ' · Contoh' : ''),
+        function () { go(ROLE_SCREEN_PREFIX[state.role] + 'beranda'); })
+    ];
+
+    if (!essayOnly) {
+      children.push(el('div', { class: 'clay-soft', style: 'margin-bottom:16px;padding:45px;text-align:center' }, [
         el('span', { style: 'font-size:45px', text: '🌟' }),
         el('p', { class: 't-result-number', style: 'margin:15px 0', text: (result.score || 0) + ' / ' + total }),
         el('p', { class: 't-section', style: 'margin:0', text: 'Bagus! Terus berlatih ya.' })
-      ])
-    ];
+      ]));
+    } else {
+      children.push(el('div', { class: 'clay-soft', style: 'margin-bottom:16px;padding:32px;text-align:center' }, [
+        el('span', { style: 'font-size:45px', text: '✍️' }),
+        el('p', { class: 't-section', style: 'margin:12px 0 6px 0', text: 'Jawaban esai terkirim' }),
+        el('p', { class: 't-small', style: 'margin:0',
+          text: essayAnswers.length + ' jawaban tersimpan di perangkat ini.' })
+      ]));
+    }
+
+    // Bagian esai selalu ditampilkan bila ada jawabannya.
+    if (essayAnswers.length) {
+      children.push(el('p', { class: 't-section', style: 'margin:0 0 10px 0', text: 'Jawaban esai' }));
+      children.push(clayCard([
+        el('p', { class: 't-small', style: 'margin:0',
+          text: 'Esai tidak dinilai otomatis. Berikut jawaban yang kamu kirim; guru dapat memeriksanya.' }),
+        el('div', {}, essayAnswers.map(function (answer, i) {
+          return el('div', { style: 'margin-top:12px' }, [
+            el('p', { class: 't-item-title', style: 'margin:0',
+              text: (i + 1) + '. ' + (i < essayBank.length ? essayBank[i].prompt : 'Soal esai') }),
+            el('p', { class: 't-muted', style: 'margin:4px 0 0 0', text: answer })
+          ]);
+        }))
+      ]));
+    }
 
     if (total !== bank.length) {
       children.push(el('p', {
@@ -4448,6 +6110,7 @@
   var SCREENS = [
     { id: 'splash', label: 'Splash', group: 'Umum', render: renderSplash, nav: null },
     { id: 'welcome', label: 'Pilih Peran', group: 'Umum', render: renderWelcome, nav: null },
+    { id: 'login', label: 'Login', group: 'Umum', render: renderUnifiedLogin, nav: null },
     { id: 'login-operator', label: 'Login · Operator Sekolah', group: 'Umum', render: function () { return renderLogin('operator'); }, nav: null },
     { id: 'login-wali', label: 'Login · Wali Kelas', group: 'Umum', render: function () { return renderLogin('wali'); }, nav: null },
     { id: 'login-guru', label: 'Login · Guru', group: 'Umum', render: function () { return renderLogin('guru'); }, nav: null },
@@ -4476,14 +6139,18 @@
     { id: 'operator-kelas', label: 'Operator · Kelas', group: 'Operator Sekolah', render: renderOperatorKelas, nav: 'operator' },
     { id: 'operator-materi', label: 'Operator · Materi', group: 'Operator Sekolah', render: renderOperatorMateri, nav: 'operator' },
     { id: 'operator-media', label: 'Operator · Media', group: 'Operator Sekolah', render: renderOperatorMedia, nav: 'operator' },
+    { id: 'operator-profil', label: 'Operator · Profil', group: 'Operator Sekolah', render: renderOperatorProfil, nav: 'operator' },
     { id: 'operator-tugas', label: 'Operator · Tugas', group: 'Operator Sekolah', render: renderOperatorTugas, nav: null, role: 'operator' },
     { id: 'operator-pengumuman', label: 'Operator · Pengumuman', group: 'Operator Sekolah', render: renderOperatorPengumuman, nav: null, role: 'operator' },
+    { id: 'guru-pengumuman', label: 'Guru · Pengumuman', group: 'Guru', render: renderGuruPengumuman, nav: null, role: 'guru' },
     { id: 'operator-agenda', label: 'Operator · Agenda', group: 'Operator Sekolah', render: renderOperatorAgenda, nav: null, role: 'operator' },
     { id: 'operator-nilai', label: 'Operator · Nilai', group: 'Operator Sekolah', render: renderOperatorNilai, nav: null, role: 'operator' },
     { id: 'materi', label: 'Materi', group: 'Umum', render: renderMateri, nav: null },
     { id: 'notifikasi', label: 'Notifikasi', group: 'Umum', render: renderNotifikasi, nav: null },
     { id: 'kuis', label: 'Kuis', group: 'Umum', render: renderQuiz, nav: null },
-    { id: 'hasil-kuis', label: 'Hasil Kuis', group: 'Umum', render: renderHasilKuis, nav: null }
+    { id: 'esai', label: 'Esai', group: 'Umum', render: renderEssay, nav: null },
+    { id: 'hasil-kuis', label: 'Hasil Kuis', group: 'Umum', render: renderHasilKuis, nav: null },
+    { id: 'hasil-latihan', label: 'Hasil Latihan', group: 'Umum', render: renderHasilLatihan, nav: null }
   ];
 
   var SCREEN_ALIASES = { 'wali-rekap': 'wali-recap' };
@@ -4516,7 +6183,10 @@
     var prefix = ROLE_SCREEN_PREFIX[role];
     var map = {
       Beranda: prefix + 'beranda', Anggota: prefix + 'anggota', Rekap: prefix + 'recap',
-      Agenda: prefix + 'agenda', Profil: prefix + 'profil', Kelas: prefix + 'kelas',
+      Agenda: prefix + 'agenda',
+      // Operator memakai 'operator-profil'; peran lain tetap '<prefix>profil'.
+      Profil: role === 'operator' ? 'operator-profil' : prefix + 'profil',
+      Kelas: prefix + 'kelas',
       Tugas: prefix + 'tugas', Kalender: prefix + 'kalender', Latihan: prefix + 'latihan',
       Siswa: prefix + 'siswa', Materi: prefix + 'materi', Media: prefix + 'media'
     };
@@ -4583,9 +6253,8 @@
   function applyTheme() {
     document.documentElement.setAttribute('data-theme', state.dark ? 'dark' : 'light');
     document.body.classList.toggle('is-splash', state.screen === 'splash');
-    var toggle = document.getElementById('theme-toggle');
-    clear(toggle);
-    toggle.appendChild(icon(state.dark ? 'sunny-outline' : 'moon-outline', 18));
+    // Tema diganti lewat tombol di dalam layar (header sapaan), bukan dari
+    // bar pengembang yang sudah dihapus.
   }
 
   /* ------------------------------------------------------------------ *
@@ -4632,40 +6301,12 @@
       clear(nav);
       nav.hidden = true;
     }
-    var select = document.getElementById('screen-select');
-    if (select.value !== state.screen) select.value = state.screen;
   }
 
   /* ------------------------------------------------------------------ *
    * Boot
    * ------------------------------------------------------------------ */
-  function buildScreenSelect() {
-    var select = document.getElementById('screen-select');
-    clear(select);
-    var groups = [];
-    SCREENS.forEach(function (s) {
-      if (groups.indexOf(s.group) < 0) groups.push(s.group);
-    });
-    groups.forEach(function (group) {
-      var optgroup = el('optgroup', { label: group });
-      SCREENS.forEach(function (s) {
-        if (s.group !== group) return;
-        optgroup.appendChild(el('option', { value: s.id, text: s.label }));
-      });
-      select.appendChild(optgroup);
-    });
-    select.addEventListener('change', function (e) {
-      var value = e.target.value;
-      var resolved = resolveScreen(value);
-      if (resolved) {
-        go(resolved);
-      }
-    });
-  }
-
   function boot() {
-    buildScreenSelect();
-    document.getElementById('theme-toggle').addEventListener('click', function () { toggleTheme(); });
     applyTheme();
     restoreState();
 
@@ -4688,7 +6329,8 @@
       state.screen = 'splash';
       render();
       window.setTimeout(function () {
-        if (state.screen === 'splash') go('welcome');
+        // Splash langsung ke form login: tidak ada lagi layar pilih peran.
+        if (state.screen === 'splash') go('login');
       }, 2300);
     }
 
@@ -4724,6 +6366,22 @@
     restoreState: restoreState,
     materials: function () { return MATERIALS; },
     tasks: function () { return TASKS; },
+    visiblePractices: visiblePractices,
+    results: function () { return RESULTS; },
+    announcements: function () { return ANNOUNCEMENTS; },
+    notifications: function () { return NOTIFICATIONS; },
+    visibleAnnouncements: visibleAnnouncements,
+    submissionsFor: submissionsFor,
+    seedRoster: buildRoster,
+    openSubmissions: openSubmissions,
+    subjectsForClass: subjectsForClass,
+    startQuiz: startQuiz,
+    startEssayForTask: startEssayForTask,
+    startPracticeQuiz: startPracticeQuiz,
+    openPractice: openPractice,
+    closeSheet: closeSheet,
+    practiceResults: function () { return PRACTICE_RESULTS; },
+    practiceDone: function () { return PRACTICE_DONE; },
     operator: {
       classNames: operatorClassNames,
       classOptions: operatorClassOptions,

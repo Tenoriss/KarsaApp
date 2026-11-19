@@ -165,12 +165,14 @@ void main() {
       expect(state.role, UserRole.operator);
       expect(state.isOperator, isTrue);
       expect(state.canManageAll, isTrue);
+      // Operator punya enam tab: Profil di paling kanan, di sebelah Media.
       expect(state.role!.navTabs, <String>[
         'Beranda',
         'Siswa',
         'Kelas',
         'Materi',
         'Media',
+        'Profil',
       ]);
 
       // Roster siswa tersedia lintas kelas.
@@ -241,6 +243,132 @@ void main() {
       expect(state.canManageAll, isFalse);
 
       state.dispose();
+    });
+
+    test('login tunggal mendeteksi peran dari kredensial', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final state = AppState(autoLoad: false);
+      await state.loadFromStorage();
+
+      // Tanpa memilih peran lebih dulu: cukup NIP/NISN.
+      expect(state.roleForCredentials('19870003', 'operator123'), UserRole.operator);
+      expect(state.roleForCredentials('19870001', 'wali123'), UserRole.wali);
+      expect(state.roleForCredentials('19870002', 'guru123'), UserRole.guru);
+      expect(state.roleForCredentials('10050001', 'siswa123'), UserRole.siswa);
+      expect(state.roleForCredentials('10010001', 'ortu123'), UserRole.orangtua);
+
+      // Kombinasi salah tidak menghasilkan peran.
+      expect(state.roleForCredentials('19870003', 'salah'), isNull);
+      expect(state.roleForCredentials('99999999', 'operator123'), isNull);
+
+      // Galat terpisah untuk kolom kosong.
+      expect(state.authenticate(), isFalse);
+      expect(state.error, 'Isi NIP atau NISN terlebih dahulu.');
+      state.setUsername('19870003');
+      expect(state.authenticate(), isFalse);
+      expect(state.error, 'Isi kata sandi terlebih dahulu.');
+
+      // Masuk tanpa pernah memanggil selectRoleForLogin.
+      state.setPassword('operator123');
+      expect(state.authenticate(), isTrue);
+      expect(state.role, UserRole.operator);
+      expect(state.screen, 'main');
+
+      state.dispose();
+    });
+
+    test('splash langsung ke login, bukan ke pemilih peran', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final state = AppState(autoLoad: false);
+      await state.loadFromStorage();
+      expect(state.screen, 'splash');
+      state.finishSplash();
+      expect(state.screen, 'login');
+      state.dispose();
+    });
+
+    test('"Ingat saya" menyimpan identitas tanpa kata sandi', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final state = AppState(autoLoad: false);
+      await state.loadFromStorage();
+
+      expect(state.rememberMe, isTrue);
+      state.setUsername('19870002');
+      state.setPassword('guru123');
+      expect(state.authenticate(), isTrue);
+
+      final saved = state.rememberedLogin;
+      expect(saved, isNotNull);
+      expect(saved!.identifier, '19870002');
+      expect(saved.roleName, 'guru');
+      // Kata sandi tidak pernah ikut tersimpan.
+      expect(saved.toJson().containsKey('password'), isFalse);
+
+      state.dispose();
+    });
+
+    test('keluar tetap mengingat identitas, "Bukan saya" menghapusnya', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final state = AppState(autoLoad: false);
+      await state.loadFromStorage();
+
+      state.setUsername('19870001');
+      state.setPassword('wali123');
+      state.authenticate();
+      state.logout();
+
+      // Kembali ke form login dengan identitas terisi, sandi kosong.
+      expect(state.screen, 'login');
+      expect(state.username, '19870001');
+      expect(state.password, isEmpty);
+      expect(state.rememberedLogin, isNotNull);
+
+      state.forgetRememberedLogin();
+      expect(state.rememberedLogin, isNull);
+      expect(state.username, isEmpty);
+
+      state.dispose();
+    });
+
+    test('"Ingat saya" dimatikan tidak menyimpan apa pun', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final state = AppState(autoLoad: false);
+      await state.loadFromStorage();
+
+      state.setRememberMe(false);
+      state.setUsername('10050001');
+      state.setPassword('siswa123');
+      expect(state.authenticate(), isTrue);
+      expect(state.rememberedLogin, isNull);
+
+      state.dispose();
+    });
+
+    test('identitas tersimpan mengisi form setelah splash', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final first = AppState(autoLoad: false);
+      await first.loadFromStorage();
+      first.setUsername('19870003');
+      first.setPassword('operator123');
+      first.authenticate();
+      // Penyimpanan berjalan asinkron; tunggu sampai benar-benar tertulis.
+      final prefs = await SharedPreferences.getInstance();
+      for (var i = 0; i < 50 && !prefs.containsKey('@karsa-demo-v1'); i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+      first.dispose();
+
+      final reopened = AppState(autoLoad: false);
+      await reopened.loadFromStorage();
+      expect(reopened.screen, 'splash');
+      reopened.finishSplash();
+      expect(reopened.screen, 'login');
+      // Terisi otomatis: tidak perlu mengetik ulang.
+      expect(reopened.username, '19870003');
+      expect(reopened.password, isEmpty);
+      expect(reopened.hasRememberedLogin, isTrue);
+
+      reopened.dispose();
     });
 
     test('OfflineSummarizer picks up to first three sentences', () {

@@ -54,6 +54,14 @@
   --quote-color: #385D76;
   --demo-footer-color: #C8AAB0;
   --student-hero-text: #71899B;
+
+  /* Umpan balik kuis: benar vs salah. */
+  --success: #2E7D5B;
+  --danger: #B1445D;
+  --surface-quiz-feedback: #EFF7EF;
+  --border-quiz-feedback: #DCEBDC;
+  --surface-quiz-wrong: #FBEDEF;
+  --border-quiz-wrong: #F1E0E2;
 }
 
 [data-theme='dark'] {
@@ -105,6 +113,13 @@
   --quote-color: #EEE7ED;
   --demo-footer-color: #F2A9BC;
   --student-hero-text: #EEE7ED;
+  /* Umpan balik kuis versi gelap (nullStyle: tetap kontras). */
+  --success: #7FD1A8;
+  --danger: #F09AB0;
+  --surface-quiz-feedback: #2C3B33;
+  --border-quiz-feedback: #3B4C42;
+  --surface-quiz-wrong: #3A2F36;
+  --border-quiz-wrong: #4E414A;
 }
 
 * {
@@ -138,11 +153,16 @@ body.is-splash {
   user-select: none;
 }
 
-/* Mobile-first App Shell: 100dvh on phones, max-width 480px column on wider viewports */
+/* Mobile-first App Shell: 100dvh di ponsel, kolom 480px di layar lebar.
+   Tidak ada bingkai perangkat - tampilan ini harus terasa seperti aplikasi
+   sungguhan di HP, bukan mockup. */
 .app-shell {
   width: 100%;
   max-width: 480px;
+  /* Fallback dulu untuk iOS < 15.4 / Android lama yang belum kenal dvh. */
+  min-height: 100vh;
   min-height: 100dvh;
+  height: 100vh;
   height: 100dvh;
   margin: 0 auto;
   background-color: var(--bg);
@@ -158,45 +178,7 @@ body.is-splash {
   background-color: #A2D7FB;
 }
 
-/* Compact screen-switcher bar (dropdown + dark mode button only, NO "Pratinjau" label) */
-.switcher-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  background-color: var(--card);
-  border-bottom: 1px solid var(--line);
-  z-index: 20;
-  flex-shrink: 0;
-}
-
-.screen-select {
-  flex: 1;
-  height: 36px;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  background-color: var(--surface-input);
-  color: var(--ink);
-  padding: 0 12px;
-  font-size: 12px;
-  font-weight: 700;
-  outline: none;
-}
-
-.switcher-theme-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  background-color: var(--card);
-  color: var(--rose);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: var(--clay-soft-shadow);
-  transition: transform 110ms ease-out;
-}
+/* Tidak ada bar pengembang di atas layar; aplikasi langsung tampil penuh. */
 
 .pressable {
   cursor: pointer;
@@ -218,6 +200,10 @@ body.is-splash {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0 20px 30px 20px;
+  /* Scroll di dalam shell tidak boleh memantul ke halaman dan memicu
+     pull-to-refresh di HP. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .scroll-viewport.no-pad {
@@ -521,16 +507,22 @@ body.is-splash {
   background-color: var(--surface-input);
   color: var(--ink);
   padding: 15px;
-  font-size: 14px;
+  /* 16px, bukan 14px: Safari iOS memperbesar (zoom) halaman saat input
+     ber-font < 16px difokus, dan zoom itu tidak kembali sendiri. */
+  font-size: 16px;
   margin-bottom: 18px;
   outline: none;
   font-family: inherit;
+  /* Cegah pembesaran otomatis teks pada orientasi lanskap di iOS. */
+  -webkit-text-size-adjust: 100%;
 }
 
 .chips-row {
   display: flex;
   overflow-x: auto;
   padding: 4px 0;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   margin-bottom: 8px;
   scrollbar-width: none;
 }
@@ -674,12 +666,28 @@ body.is-splash {
 .back-chevron {
   background: none;
   border: none;
-  padding: 4px;
-  margin-right: 10px;
+  /* Target sentuh minimal 44x44 px (panduan Apple/Material). Sebelumnya
+     padding 4px + ikon 20px = 28px, terlalu kecil untuk jari sehingga
+     tombol ini sering terasa "tidak bisa diklik" di HP. */
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  margin-left: -10px;
+  margin-right: 6px;
   color: var(--ink);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  border-radius: 22px;
+  /* Pastikan tombol di atas elemen dekoratif mana pun di sekitarnya. */
+  position: relative;
+  z-index: 5;
+  flex: 0 0 auto;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .section-row {
@@ -1200,6 +1208,44 @@ body.is-splash {
   margin-top: 10px;
 }
 
+/* Header kuis: judul kecil di atas, "Soal n dari m" besar, tombol tutup (X). */
+.quiz-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 6px 0 14px 0;
+}
+
+.quiz-eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.quiz-step {
+  margin: 2px 0 0 0;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.quiz-close {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: 20px;
+  border: 2px solid var(--clay-soft-border);
+  background-color: var(--card);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--clay-soft-shadow);
+  touch-action: manipulation;
+}
+
 .quiz-progress {
   height: 7px;
   background-color: var(--surface-chart-track);
@@ -1237,7 +1283,76 @@ body.is-splash {
 
 .choice-btn.selected {
   border-color: var(--rose);
-  background-color: #FFF2F4;
+  background-color: var(--surface-rose);
+}
+
+/* Label keadaan di kanan pilihan: Dipilih / Benar / Salah. */
+.choice-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  color: var(--rose);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.choice-btn.correct .choice-state {
+  color: var(--success, #2E7D5B);
+}
+
+.choice-btn.wrong .choice-state {
+  color: var(--danger, #B1445D);
+}
+
+/* Pilihan yang tidak dipilih & bukan jawaban: diredupkan setelah diperiksa. */
+.choice-btn.muted-choice {
+  opacity: 0.72;
+}
+
+.choice-btn[disabled] {
+  cursor: default;
+}
+
+/* Petunjuk kecil di bawah pilihan. */
+.quiz-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* Kartu umpan balik setelah "Periksa jawaban". */
+.quiz-feedback {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border-quiz-feedback, #E6EDE4);
+  background-color: var(--surface-quiz-feedback, #EFF7EF);
+}
+
+.quiz-feedback-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.quiz-feedback-body {
+  margin: 5px 0 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.quiz-feedback.is-wrong {
+  border-color: var(--border-quiz-wrong, #F1E0E2);
+  background-color: var(--surface-quiz-wrong, #FBEDEF);
 }
 
 [data-theme='dark'] .choice-btn.selected {
@@ -1334,8 +1449,11 @@ body.is-splash {
   border-top-right-radius: 28px;
   border: 2px solid var(--clay-soft-border);
   box-shadow: var(--clay-soft-shadow);
-  padding: 0 20px 28px 20px;
+  /* Ruang ekstra di bawah untuk home indicator iPhone. */
+  padding: 0 20px calc(28px + env(safe-area-inset-bottom, 0px)) 20px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sheet-handle {
@@ -1344,4 +1462,405 @@ body.is-splash {
   border-radius: 3px;
   background-color: #D8C9C5;
   margin: 10px auto 4px auto;
+}
+
+/* ------------------------------------------------------------------ *
+ * Login tunggal: "Ingat saya", badge peran terdeteksi, kartu tersimpan
+ * ------------------------------------------------------------------ */
+.login-helper-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.remember-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: none;
+  border: none;
+  padding: 6px 2px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.remember-box {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1.5px solid #E8DDD7;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.remember-box.checked {
+  background: var(--rose);
+  border-color: var(--rose);
+}
+
+[data-theme="dark"] .remember-box {
+  background: #2E2A33;
+  border-color: #4A4350;
+}
+
+[data-theme="dark"] .remember-box.checked {
+  background: var(--rose);
+  border-color: var(--rose);
+}
+
+.remember-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.login-role-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0 4px;
+  padding: 5px 11px;
+  border-radius: 12px;
+  background: #FBEAEC;
+  border: 1px solid #F2CED4;
+  color: var(--rose);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.login-role-hint[hidden] {
+  display: none;
+}
+
+[data-theme="dark"] .login-role-hint {
+  background: #493640;
+  border-color: #66535E;
+}
+
+.remembered-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #F2F6F8;
+  border: 1px solid #DCE9EE;
+}
+
+[data-theme="dark"] .remembered-card {
+  background: #34414E;
+  border-color: #47535F;
+}
+
+.demo-cred-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.demo-cred-role {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.demo-cred-id {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ *
+ * Beranda operator: kartu pintasan yang bisa dilipat + section profil
+ * ------------------------------------------------------------------ */
+.collapsible-card {
+  padding: 0;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.collapsible-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px;
+  cursor: pointer;
+  border-radius: inherit;
+}
+
+.collapsible-head:focus-visible {
+  outline: 2px solid var(--rose);
+  outline-offset: -2px;
+}
+
+.collapsible-head .item-tile {
+  flex: 0 0 auto;
+}
+
+.collapsible-caret {
+  display: inline-flex;
+  color: var(--muted);
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.collapsible-caret.open {
+  transform: rotate(90deg);
+  color: var(--rose);
+}
+
+.collapsible-body {
+  margin: 0 15px 15px 15px;
+  padding: 11px 13px;
+  border-radius: 14px;
+  background: #FBF3F4;
+  border: 1px solid #F1E5E2;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+[data-theme='dark'] .collapsible-body {
+  background: #3A2F36;
+  border-color: #4E414A;
+}
+
+.collapsible-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.collapsible-dot {
+  width: 5px;
+  height: 5px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--rose);
+  flex: 0 0 auto;
+}
+
+/* Section profil operator (read-only) */
+.profile-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.profile-field.last {
+  border-bottom: none;
+}
+
+.profile-field-label {
+  flex: 0 0 104px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.profile-field-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.38;
+  font-weight: 700;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.profile-field-value.empty {
+  font-weight: 500;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.profile-complete {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: 13px;
+  background: #FBF3F4;
+  border: 1px solid #F1E5E2;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--rose);
+}
+
+[data-theme='dark'] .profile-complete {
+  background: #3A2F36;
+  border-color: #4E414A;
+}
+
+.profile-complete .ion {
+  flex: 0 0 auto;
+}
+
+/* Baris pengaturan di tab Profil operator */
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 15px;
+  background: none;
+  border-bottom: 1px solid var(--line);
+  font: inherit;
+  text-align: left;
+}
+
+.setting-row.last {
+  border-bottom: none;
+}
+
+.setting-row-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #F8EBEC;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rose);
+  flex: 0 0 auto;
+}
+
+[data-theme='dark'] .setting-row-icon {
+  background: #493640;
+}
+
+.setting-row-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------------ *
+ * Simulasi asisten penyusun soal (form tambah tugas)
+ * ------------------------------------------------------------------ */
+.assistant-panel {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #F2F6F8;
+  border: 1px solid #DCE9EE;
+}
+
+[data-theme='dark'] .assistant-panel {
+  background: #34414E;
+  border-color: #47535F;
+}
+
+.assistant-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 17px;
+  background: var(--blue);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.assistant-panel textarea.karsa-input {
+  margin-top: 10px;
+  width: 100%;
+  min-height: 86px;
+  resize: vertical;
+  font: inherit;
+  font-size: 13px;
+}
+
+.assistant-result {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 15px;
+  background: #FBF3F4;
+  border: 1px solid #F1E5E2;
+}
+
+[data-theme='dark'] .assistant-result {
+  background: #3A2F36;
+  border-color: #4E414A;
+}
+
+/* ------------------------------------------------------------------ *
+ * Kartu pemilih metode pengerjaan (pilihan ganda / esai)
+ * Dua kartu setara, bukan satu tombol utama + satu tautan.
+ * ------------------------------------------------------------------ */
+.method-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  border-radius: 18px;
+  border: 2px solid var(--clay-soft-border);
+  box-shadow: var(--clay-soft-shadow);
+  background-color: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+  text-align: left;
+}
+
+.method-card .method-icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 21px;
+  background-color: var(--rose);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.method-card .method-badge {
+  display: inline-block;
+  margin-top: 3px;
+  color: var(--rose);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.method-card .method-action {
+  flex: 0 0 auto;
+  color: var(--rose);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* Kotak jawaban esai: 16px agar iOS tidak memperbesar halaman saat fokus. */
+.essay-input {
+  min-height: 130px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.t-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }

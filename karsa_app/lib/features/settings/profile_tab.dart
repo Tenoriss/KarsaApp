@@ -49,6 +49,19 @@ class ProfileTab extends StatelessWidget {
 
     final isTeacher = role.isTeacher;
     final isStudent = role.isStudent;
+    // Hitung tugas selesai hanya untuk kelas yang relevan dengan peran ini.
+    // `results` menyimpan hasil semua kelas (termasuk data contoh), jadi
+    // memakainya apa adanya membuat angka orang tua membengkak.
+    final studentDoneCount = state.data.tasks
+        .where((t) =>
+            t.className == state.data.studentClass &&
+            state.data.results.containsKey(t.id))
+        .length;
+    final parentDoneCount = state.data.tasks
+        .where((t) =>
+            t.className == state.data.childClass &&
+            state.data.results.containsKey(t.id))
+        .length;
     final activeTasks = state.activeTasks;
     final educatorTasks = state.educatorTasks;
     final needReviewCount = educatorTasks
@@ -113,12 +126,18 @@ class ProfileTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
+              // Orang tua dulu memakai state.data.results.length apa adanya,
+              // sehingga hasil tugas kelas lain ikut terhitung (mis. 18 tugas
+              // padahal anak di Kelas 1 belum menyelesaikan satu pun).
+              // Sekarang siswa dan orang tua memakai aturan yang sama.
               Text(
                 isTeacher
                     ? 'Mata Pelajaran'
                     : (isStudent
                         ? 'Semangat mengerjakan tugas!'
-                        : 'Terus bertumbuh! 🌱'),
+                        : (parentDoneCount > 0
+                            ? 'Terus bertumbuh! 🌱'
+                            : 'Ayo mulai perjalanannya! 🚀')),
                 style: theme.text.itemTitle,
               ),
               const SizedBox(height: 4),
@@ -126,8 +145,8 @@ class ProfileTab extends StatelessWidget {
                 isTeacher
                     ? state.data.teacherSubject
                     : (isStudent
-                        ? '${state.data.tasks.where((t) => t.className == state.data.childClass && state.data.results.containsKey(t.id)).length} tugas selesai.'
-                        : '${state.data.results.length} tugas dan ${state.donePracticeCount} latihan selesai.'),
+                        ? '$studentDoneCount tugas selesai.'
+                        : '$parentDoneCount tugas dan ${state.donePracticeCount} latihan selesai.'),
                 style: theme.text.muted,
               ),
             ],

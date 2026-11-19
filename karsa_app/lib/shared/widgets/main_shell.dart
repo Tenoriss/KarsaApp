@@ -37,6 +37,7 @@ import '../../features/operator/operator_home_tab.dart';
 import '../../features/operator/operator_materials_tab.dart';
 import '../../features/operator/operator_material_form_page.dart';
 import '../../features/operator/operator_media_tab.dart';
+import '../../features/operator/operator_profile_tab.dart';
 import '../../features/operator/operator_students_tab.dart';
 import '../../features/operator/operator_student_form_page.dart';
 import '../../features/operator/operator_tasks_page.dart';
@@ -63,6 +64,7 @@ import '../../features/teacher/teacher_task_detail_page.dart';
 import '../../models/user_role.dart';
 import '../../providers/app_state.dart';
 import 'detail_bottom_sheet.dart';
+import '../../features/teacher/task_submissions_page.dart';
 
 class MainShell extends StatelessWidget {
   const MainShell({super.key});
@@ -122,6 +124,8 @@ class MainShell extends StatelessWidget {
           return const OperatorMaterialsTab();
         case 'Media':
           return const OperatorMediaTab();
+        case 'Profil':
+          return const OperatorProfileTab();
         default:
           return const OperatorHomeTab();
       }
@@ -189,6 +193,9 @@ class MainShell extends StatelessWidget {
         return const PracticeResultPage();
       case 'teacherTask':
         return const TeacherTaskDetailPage();
+      case 'submissions':
+        // Rekap pengumpulan: guru melihat siapa yang sudah mengerjakan.
+        return const TaskSubmissionsPage();
       case 'gradeRecap':
         return state.isGuru ? const GradeRecapPage() : _mainTabBody(state);
       case 'subject':

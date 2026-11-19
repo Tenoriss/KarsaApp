@@ -17,9 +17,16 @@ class AnnouncementFormPage extends StatelessWidget {
     final theme = KarsaThemeScope.of(context);
     final c = theme.colors;
 
-    final classOptions = state.isWali
-        ? const <String>[AppConstants.waliClass]
-        : const <String>['Semua kelas', ...AppConstants.classes];
+    // Wali kelas: kelasnya sendiri. Guru mapel: "Semua kelas" + kelas yang
+    // benar-benar diajar mapelnya. Operator/admin: semua kelas.
+    final List<String> classOptions;
+    if (state.isWali) {
+      classOptions = const <String>[AppConstants.waliClass];
+    } else if (state.isTeacher) {
+      classOptions = <String>['Semua kelas', ...state.teacherClasses];
+    } else {
+      classOptions = const <String>['Semua kelas', ...AppConstants.classes];
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -56,9 +63,23 @@ class AnnouncementFormPage extends StatelessWidget {
         ),
         KarsaChips(
           options: classOptions,
-          value: state.draftClass,
+          // Jaga-jaga: bila kelas tersimpan di luar opsi (mis. guru berganti
+          // mapel), jatuhkan ke opsi pertama supaya tidak ada chip terpilih
+          // yang tak terlihat.
+          value: classOptions.contains(state.draftClass)
+              ? state.draftClass
+              : classOptions.first,
           onChanged: state.setDraftClass,
         ),
+        if (state.isTeacher && state.teacherClasses.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'Pengumuman hanya dikirim ke kelas yang kamu ajar '
+              '(${state.teacherClasses.join(', ')}).',
+              style: theme.text.smallMuted,
+            ),
+          ),
         if (state.error.isNotEmpty)
           Text(
             state.error,

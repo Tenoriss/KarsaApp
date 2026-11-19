@@ -29,6 +29,8 @@ class QuizResultPage extends StatelessWidget {
     }
 
     final total = result.total ?? bank.length;
+    final essayBank = state.currentEssayBank;
+    final essayAnswers = result.essayAnswers;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -84,6 +86,41 @@ class QuizResultPage extends StatelessWidget {
                 ],
               ),
             ),
+        if (essayAnswers.any((a) => a.trim().isNotEmpty)) ...<Widget>[
+          Padding(
+            padding: const EdgeInsets.only(top: 20, bottom: 10),
+            child: Text('Jawaban esai', style: theme.text.section),
+          ),
+          ClayCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Esai tidak dinilai otomatis. Berikut jawaban yang kamu kirim; '
+                  'guru dapat memeriksanya.',
+                  style: theme.text.smallMuted,
+                ),
+                for (int i = 0; i < essayAnswers.length; i++)
+                  if (essayAnswers[i].trim().isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            '${i + 1}. '
+                            '${i < essayBank.length ? essayBank[i].prompt : 'Soal esai'}',
+                            style: theme.text.itemTitle,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(essayAnswers[i], style: theme.text.muted),
+                        ],
+                      ),
+                    ),
+              ],
+            ),
+          ),
+        ],
         Padding(
           padding: const EdgeInsets.only(top: 18),
           child: Text(

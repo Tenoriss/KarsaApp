@@ -5,9 +5,12 @@ import '../../core/theme/karsa_theme.dart';
 import '../../core/utils/date_utils.dart';
 import '../../core/widgets/clay_card.dart';
 import '../../core/widgets/karsa_button.dart';
+import '../../core/widgets/karsa_icons.dart';
+import '../../core/widgets/motion_pressable.dart';
 import '../../core/widgets/page_header.dart';
 import '../../data/curriculum_data.dart';
 import '../../providers/app_state.dart';
+import '../../core/widgets/method_card.dart';
 
 class TaskDetailSheet extends StatelessWidget {
   const TaskDetailSheet({super.key});
@@ -49,7 +52,9 @@ class TaskDetailSheet extends StatelessWidget {
           child: Text(
             task.isFileTask
                 ? 'Buka file tugas. Setelah mengerjakan, tandai selesai di perangkat ini. Jawaban tidak dikirim otomatis.'
-                : '10 soal pilihan ganda. Pilih jawaban lalu lihat hasil setelah selesai. Waktu hanya informasi dalam demo.',
+                : task.questionsFromAssistant
+                    ? '${task.questions.length} soal pilihan ganda disusun asisten dari bahan yang diunggah guru (simulasi offline, bukan AI sungguhan). Pilih jawaban lalu lihat hasil setelah selesai.'
+                    : '10 soal pilihan ganda. Pilih jawaban lalu lihat hasil setelah selesai. Waktu hanya informasi dalam demo.',
             style: theme.text.muted.copyWith(height: 23 / 13),
           ),
         ),
@@ -104,11 +109,42 @@ class TaskDetailSheet extends StatelessWidget {
               style: theme.text.smallMuted,
             ),
           ),
-        ] else
-          KarsaButton(
-            title: result != null ? 'Kerjakan lagi' : 'Mulai mengerjakan',
+        ] else ...<Widget>[
+          // Dua metode pengerjaan, seperti rancangan: pilihan ganda dan esai.
+          // Siswa boleh mengerjakan keduanya; keduanya tersimpan per tugas.
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 10),
+            child: Text('Pilih metode pengerjaan', style: theme.text.section),
+          ),
+          MethodCard(
+            icon: '🔠',
+            title: 'Pilihan ganda',
+            meta: '${state.currentQuizBank.length} soal · dinilai otomatis',
+            badge: result?.score != null
+                ? 'Nilai ${result!.score}/${result.total}'
+                : null,
+            actionLabel: result?.score != null ? 'Kerjakan lagi' : 'Mulai',
             onTap: state.startQuiz,
           ),
+          const SizedBox(height: 10),
+          MethodCard(
+            icon: '✍️',
+            title: 'Esai',
+            meta: '${state.currentEssayBank.length} soal · jawabanmu disimpan',
+            badge: state.taskEssayDone ? 'Sudah dikirim' : null,
+            actionLabel: state.taskEssayDone ? 'Lihat jawaban' : 'Mulai',
+            onTap: state.startTaskEssay,
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(
+              state.taskEssayDone
+                  ? 'Kedua metode sudah dikerjakan. Kamu bisa mengulanginya kapan saja.'
+                  : 'Kamu boleh mengerjakan salah satu atau keduanya. Esai tidak dinilai otomatis.',
+              style: theme.text.smallMuted,
+            ),
+          ),
+        ],
         if (state.error.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -121,3 +157,7 @@ class TaskDetailSheet extends StatelessWidget {
     );
   }
 }
+
+/// Kartu pemilih metode pengerjaan pada detail tugas: pilihan ganda atau esai.
+/// Sengaja memakai tampilan yang sama agar kedua metode setara, bukan salah
+/// satu terlihat sebagai opsi tambahan.
