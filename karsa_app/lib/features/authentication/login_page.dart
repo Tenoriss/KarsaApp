@@ -42,9 +42,11 @@ class _LoginPageState extends State<LoginPage> {
     final state = context.watch<AppState>();
     final theme = KarsaThemeScope.of(context);
     final c = theme.colors;
-    final activeRole = state.role ?? UserRole.wali;
-    final account = DemoAccount.forRole(activeRole);
-    final isEducator = activeRole.isTeacher;
+    // Satu form untuk semua peran: label kolom mengikuti identitas yang
+    // sedang diketik, bukan peran yang dipilih sebelumnya.
+    final hintRole = state.loginHintRole;
+    final hintAccount = DemoAccount.forRole(hintRole);
+    final isEducator = hintRole.isTeacher || hintRole.isOperator;
 
     if (_userController.text != state.username) {
       _userController.value = TextEditingValue(
@@ -143,29 +145,6 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-                      Positioned(
-                        top: 18,
-                        left: 20,
-                        child: MotionPressable(
-                          semanticsLabel: 'Kembali',
-                          onTap: () => state.setScreen('welcome'),
-                          child: Container(
-                            width: 46,
-                            height: 46,
-                            decoration: ClayStyles.soft(
-                              color: Colors.white,
-                              isDark: c.isDark,
-                              radius: 23,
-                            ),
-                            alignment: Alignment.center,
-                            child: Icon(
-                              KarsaIcons.chevronBack,
-                              color: c.ink,
-                              size: 23,
-                            ),
-                          ),
-                        ),
-                      ),
                       Image.asset(
                         AppConstants.assetLoginLogo,
                         width: 195,
@@ -199,7 +178,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       Text(
-                        account.loginTitle,
+                        'Selamat datang di KARSA',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 27,
@@ -210,11 +189,13 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 7),
                       Text(
-                        account.loginSubtitle,
+                        'Masuk dengan NIP atau NISN Anda',
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 12, color: c.muted),
                       ),
                       const SizedBox(height: 20),
+                      if (state.hasRememberedLogin)
+                        _RememberedCard(state: state, theme: theme),
                       Container(
                         height: 56,
                         margin: const EdgeInsets.only(bottom: 13),
@@ -245,7 +226,7 @@ class _LoginPageState extends State<LoginPage> {
                                 enableSuggestions: false,
                                 style: TextStyle(fontSize: 15, color: c.ink),
                                 decoration: InputDecoration(
-                                  hintText: account.idFieldLabel,
+                                  hintText: hintAccount.idFieldLabel,
                                   hintStyle: const TextStyle(
                                     fontSize: 15,
                                     color: Color(0xFF9AAABD),
@@ -324,15 +305,49 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: MotionPressable(
-                          onTap: () => state.setScreen('forgot'),
+                      if (hintRole != null && state.username.trim().isNotEmpty)
+                        Align(
+                          alignment: Alignment.centerLeft,
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Text('Lupa kata sandi?', style: theme.text.link),
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: _RoleBadge(role: hintRole, theme: theme),
                           ),
                         ),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: MotionPressable(
+                              semanticsLabel:
+                                  'Ingat saya. Saat dicentang, NIP atau NISN '
+                                  'disimpan di perangkat ini supaya tidak perlu '
+                                  'diketik ulang.',
+                              onTap: () => state.setRememberMe(!state.rememberMe),
+                              child: Row(
+                                children: <Widget>[
+                                  _CheckBox(checked: state.rememberMe, theme: theme),
+                                  const SizedBox(width: 9),
+                                  Expanded(
+                                    child: Text(
+                                      'Ingat saya',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: c.ink,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          MotionPressable(
+                            onTap: () => state.setScreen('forgot'),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Text('Lupa kata sandi?', style: theme.text.link),
+                            ),
+                          ),
+                        ],
                       ),
                       MotionPressable(
                         semanticsLabel: 'Masuk',
@@ -357,7 +372,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       Container(
-                        margin: const EdgeInsets.only(top: 22),
+                        margin: const EdgeInsets.only(top: 18),
                         padding: const EdgeInsets.all(16),
                         decoration: ClayStyles.soft(
                           color: const Color(0xFFF2F6F8),
@@ -369,23 +384,22 @@ class _LoginPageState extends State<LoginPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
+                            Text('Akun demo', style: theme.text.itemTitle),
+                            const SizedBox(height: 6),
+                            for (final role in UserRole.values)
+                              _DemoCredentialRow(
+                                account: DemoAccount.forRole(role),
+                                onUse: () {
+                                  state.setUsername(DemoAccount.forRole(role).id);
+                                  state.setPassword(
+                                    DemoAccount.forRole(role).password,
+                                  );
+                                },
+                              ),
+                            const SizedBox(height: 6),
                             Text(
-                              'Akun demo · ${account.label}',
-                              style: theme.text.itemTitle,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${account.idFieldLabel}: ${account.id}',
-                              style: theme.text.muted,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Kata sandi: ${account.password}',
-                              style: theme.text.muted,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Akun contoh untuk mencoba aplikasi, bukan autentikasi aman.',
+                              'Ketuk salah satu akun untuk mengisi form. '
+                              'Peran dideteksi otomatis dari NIP/NISN.',
                               style: theme.text.smallMuted,
                             ),
                           ],
@@ -398,6 +412,177 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Kartu "terakhir masuk" dari "Ingat saya": mengingatkan identitas yang
+/// tersimpan dan memberi jalan keluar bila perangkat dipakai orang lain.
+class _RememberedCard extends StatelessWidget {
+  const _RememberedCard({required this.state, required this.theme});
+
+  final AppState state;
+  final KarsaThemeScope theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = theme.colors;
+    final saved = state.rememberedLogin;
+    if (saved == null) return const SizedBox.shrink();
+    final role = UserRole.fromName(saved.roleName);
+    final roleLabel =
+        role == null ? 'Pengguna' : DemoAccount.forRole(role).label;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 13),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: ClayStyles.soft(
+        color: const Color(0xFFF2F6F8),
+        isDark: c.isDark,
+        radius: 16,
+        borderColor: const Color(0xFFDCE9EE),
+        borderWidth: 1,
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Terakhir masuk sebagai',
+                  style: TextStyle(fontSize: 11, color: c.muted),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$roleLabel · ${saved.identifier}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: c.ink,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          MotionPressable(
+            semanticsLabel: 'Bukan saya, gunakan akun lain',
+            onTap: state.forgetRememberedLogin,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              child: Text('Bukan saya', style: theme.text.link),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Kotak centang "Ingat saya" bergaya clay, tanpa dependensi Checkbox Material
+/// supaya warnanya konsisten dengan palet aplikasi.
+class _CheckBox extends StatelessWidget {
+  final bool checked;
+  final KarsaThemeScope theme;
+
+  const _CheckBox({required this.checked, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = theme.colors;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      width: 22,
+      height: 22,
+      decoration: ClayStyles.inset(
+        color: checked ? c.rose : Colors.white,
+        isDark: c.isDark,
+        radius: 7,
+        borderColor: checked ? c.rose : const Color(0xFFE8DDD7),
+        borderWidth: 1.5,
+      ),
+      alignment: Alignment.center,
+      child: checked
+          ? const Icon(KarsaIcons.checkmark, color: Colors.white, size: 15)
+          : null,
+    );
+  }
+}
+
+/// Label kecil yang menampilkan peran hasil deteksi dari identitas yang diketik.
+class _RoleBadge extends StatelessWidget {
+  final UserRole role;
+  final KarsaThemeScope theme;
+
+  const _RoleBadge({required this.role, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = theme.colors;
+    final account = DemoAccount.forRole(role);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      decoration: ClayStyles.soft(
+        color: const Color(0xFFFBEAEC),
+        isDark: c.isDark,
+        radius: 12,
+        borderWidth: 1,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(account.roleEmoji, style: const TextStyle(fontSize: 13)),
+          const SizedBox(width: 6),
+          Text(
+            account.label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: c.rose,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Satu baris akun demo yang bisa diketuk untuk mengisi form.
+class _DemoCredentialRow extends StatelessWidget {
+  final DemoAccount account;
+  final VoidCallback onUse;
+
+  const _DemoCredentialRow({required this.account, required this.onUse});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = KarsaThemeScope.of(context);
+    final c = theme.colors;
+    return MotionPressable(
+      semanticsLabel: 'Isi form dengan akun demo ${account.label}',
+      onTap: onUse,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          children: <Widget>[
+            Text(account.roleEmoji, style: const TextStyle(fontSize: 15)),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                account.label,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: c.ink,
+                ),
+              ),
+            ),
+            Text(
+              '${account.id} / ${account.password}',
+              style: theme.text.smallMuted,
+            ),
+          ],
+        ),
       ),
     );
   }

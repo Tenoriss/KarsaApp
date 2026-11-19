@@ -18,6 +18,17 @@ enum UserRole {
   /// guru dan wali kelas.
   bool get isOperator => this == UserRole.operator;
 
+  /// Mencari peran dari nama enum yang tersimpan (mis. `'operator'`).
+  ///
+  /// Mengembalikan `null` bila namanya tidak dikenal, sehingga data tersimpan
+  /// yang rusak tidak membuat aplikasi gagal saat dibuka.
+  static UserRole? fromName(String name) {
+    for (final role in UserRole.values) {
+      if (role.name == name) return role;
+    }
+    return null;
+  }
+
   /// Boleh mengelola data lintas guru/wali (tugas, materi, pengumuman, nilai).
   bool get canManageAll => this == UserRole.operator;
 

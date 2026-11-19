@@ -39,7 +39,7 @@ curl http://127.0.0.1:8000/healthz
 | --- | --- |
 | `index.html` | Kerangka halaman: bar pemilih layar + tombol mode gelap, viewport, bottom nav, dan sheet modal. |
 | `styles.css` | Token claymorphism, palet terang/gelap, tipografi, dan komponen (1:1 dengan `lib/core/theme/*`). |
-| `app.js` | Seluruh logika pratinjau: state, 38 layar, interaksi, router hash. |
+| `app.js` | Seluruh logika pratinjau: state, 39 layar, interaksi, router hash. |
 | `curriculum-data.js` | **Berkas hasil generate** — bank soal, bank esai, info mata pelajaran, daftar agama, dan peta glif Ionicons. |
 | `serve.py` | Server statis tanpa cache + `/healthz`. |
 | `test_preview.js` | Harness verifikasi (mock DOM) — `node test_preview.js`. |
@@ -65,29 +65,49 @@ node karsa_app/tool/generate_preview_data.js
 
 ---
 
-## Layar (38)
+## Layar (39)
 
-| # | Layar | # | Layar |
-| --- | --- | --- | --- |
-| 1 | `splash` | 20 | `siswa-tugas` |
-| 2 | `welcome` | 21 | `siswa-profil` |
-| 3 | `login-operator` | 22 | `ortu-beranda` |
-| 4 | `login-wali` | 23 | `ortu-tugas` |
-| 5 | `login-guru` | 24 | `ortu-latihan` |
-| 6 | `login-ortu` | 25 | `ortu-profil` |
-| 7 | `login-siswa` | 26 | `operator-beranda` |
-| 8 | `forgot` | 27 | `operator-siswa` |
-| 9 | `wali-beranda` | 28 | `operator-kelas` |
-| 10 | `wali-anggota` | 29 | `operator-materi` |
-| 11 | `wali-recap` (alias `wali-rekap`) | 30 | `operator-media` |
-| 12 | `wali-agenda` | 31 | `operator-tugas` |
-| 13 | `wali-profil` | 32 | `operator-pengumuman` |
-| 14 | `guru-beranda` | 33 | `operator-agenda` |
-| 15 | `guru-kelas` | 34 | `operator-nilai` |
-| 16 | `guru-tugas` | 35 | `materi` |
-| 17 | `guru-kalender` | 36 | `notifikasi` |
-| 18 | `guru-profil` | 37 | `kuis` |
-| 19 | `siswa-beranda` | 38 | `hasil-kuis` |
+| # | Layar | Catatan |
+| --- | --- | --- |
+| 1 | `splash` |  |
+| 2 | `login` | **satu form untuk 5 peran** |
+| 3 | `welcome` | arsip, tak dijangkau dari splash |
+| 4 | `login-operator` | deep link |
+| 5 | `login-wali` | deep link |
+| 6 | `login-guru` | deep link |
+| 7 | `login-ortu` | deep link |
+| 8 | `login-siswa` | deep link |
+| 9 | `forgot` |  |
+| 10 | `wali-beranda` |  |
+| 11 | `wali-anggota` |  |
+| 12 | `wali-recap` | alias `wali-rekap` |
+| 13 | `wali-agenda` |  |
+| 14 | `wali-profil` |  |
+| 15 | `guru-beranda` |  |
+| 16 | `guru-kelas` |  |
+| 17 | `guru-tugas` |  |
+| 18 | `guru-kalender` |  |
+| 19 | `guru-profil` |  |
+| 20 | `siswa-beranda` |  |
+| 21 | `siswa-tugas` |  |
+| 22 | `siswa-profil` |  |
+| 23 | `ortu-beranda` |  |
+| 24 | `ortu-tugas` |  |
+| 25 | `ortu-latihan` |  |
+| 26 | `ortu-profil` |  |
+| 27 | `operator-beranda` |  |
+| 28 | `operator-siswa` |  |
+| 29 | `operator-kelas` |  |
+| 30 | `operator-materi` |  |
+| 31 | `operator-media` |  |
+| 32 | `operator-tugas` |  |
+| 33 | `operator-pengumuman` |  |
+| 34 | `operator-agenda` |  |
+| 35 | `operator-nilai` |  |
+| 36 | `materi` |  |
+| 37 | `notifikasi` |  |
+| 38 | `kuis` |  |
+| 39 | `hasil-kuis` |  |
 
 ### Cakupan operator sekolah
 
@@ -165,6 +185,12 @@ Deep link memakai hash: `index.html#guru-tugas`, `#wali-recap`, `#wali-rekap`,
 * **Media sekolah** — pratinjau mengganti logo/banner siswa/banner guru dari
   pilihan berkas atau URL, lalu menyimpan sumbernya agar tetap tampil setelah
   dimuat ulang.
+* **Login tunggal + "Ingat saya"** — satu form melayani kelima peran; peran
+  dideteksi dari NIP/NISN yang diketik (badge peran muncul begitu identitas
+  dikenali), dan kotak centang "Ingat saya" menyimpan identitas + peran di
+  `localStorage` agar tidak perlu diketik ulang. Kata sandi tidak pernah
+  disimpan; kartu "Terakhir masuk sebagai" punya tombol "Bukan saya" untuk
+  berganti akun.
 * **Penyimpanan lokal** — data pribadi, status notifikasi, dan seluruh hasil
   CRUD operator disimpan di `localStorage` pada kunci `@karsa-demo-v1`
   (kunci yang sama dengan aplikasi Flutter), jadi tetap ada setelah halaman
@@ -179,19 +205,42 @@ node karsa_app/preview/test_preview.js
 ```
 
 Harness memakai **mock DOM** (tanpa browser) dan memverifikasi:
-38 layar ter-render tanpa error, transisi splash 2300 ms, login 5 peran
-(termasuk pesan galat), navigasi bawah, filter chip/segmen/pencarian,
+39 layar ter-render tanpa error, transisi splash 2300 ms yang langsung membuka
+form login tunggal, deteksi peran dari NIP/NISN (kelima akun masuk lewat form
+yang sama, termasuk pesan galat per kolom kosong), "Ingat saya" yang menyimpan
+identitas tanpa kata sandi, navigasi bawah, filter chip/segmen/pencarian,
 pemilihan status kehadiran, pergantian tips, alur kuis → hasil, adaptasi agama,
 deep link, toggle mode gelap, dan seluruh CRUD operator sekolah (tugas,
 materi, pengumuman, agenda, nilai, kelas, akun guru/wali, siswa) termasuk
 validasi nilai 0-100, tenggat bertanggal salah, IPAS yang hanya untuk kelas
 3-6 (kelas khusus tanpa angka tingkat tetap boleh semua mapel), kelas terakhir
 yang tidak boleh dihapus, dan fakta bahwa data yang dihapus operator tidak
-dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar pilih peran
-juga diuji satu per satu: masing-masing harus membuka layar login perannya
-sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak bereaksi),
-dan label medan masuk harus NIP untuk staf vs NISN untuk siswa/orang tua.
-Total **388 pemeriksaan**.
+dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
+(arsip) tetap diuji satu per satu: masing-masing harus membuka layar login
+perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
+bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
+siswa/orang tua.
+Total **433 pemeriksaan**.
+
+---
+
+## Alur login terbaru
+
+Splash (2300 ms) → **satu form login** → dashboard sesuai peran. Tidak ada lagi
+layar pilih peran di jalur utama.
+
+| Langkah | Perilaku |
+| --- | --- |
+| Peran | Dideteksi dari NIP/NISN + kata sandi (`roleForCredentials`), bukan dipilih lebih dulu |
+| Label kolom | NIP untuk staf (wali/guru/operator), NISN untuk siswa/orang tua — ikut berubah saat mengetik |
+| Badge peran | Muncul di bawah kolom identitas begitu NIP/NISN dikenali |
+| Akun demo | Satu kotak berisi kelima akun; ketuk untuk mengisi form |
+| Ingat saya | Menyimpan `identifier` + `roleName` di `@karsa-demo-v1`, **tanpa kata sandi** |
+| Terakhir masuk | Kartu dengan tombol "Bukan saya" untuk menghapus identitas tersimpan |
+| Logout | Kembali ke form login dengan identitas masih terisi, kata sandi kosong |
+
+Pesan galat: `Isi NIP atau NISN terlebih dahulu.` / `Isi kata sandi terlebih
+dahulu.` / `NIP/NISN atau kata sandi tidak sesuai.`
 
 ---
 

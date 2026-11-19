@@ -2,7 +2,7 @@
  *
  * Runs the preview script inside a tiny mock DOM (no browser required) and
  * asserts that:
- *   - every one of the 38 canonical screens renders without throwing,
+ *   - every one of the 39 canonical screens renders without throwing,
  *   - the splash screen auto-advances to the welcome screen,
  *   - each role login validates credentials exactly like AppState.authenticate(),
  *   - the bottom navigation switches tabs,
@@ -304,10 +304,10 @@ const preview = sandbox.window.KARSA_PREVIEW;
 ok(!!preview, 'KARSA_PREVIEW global is exposed');
 
 /* ------------------------------------------------------------------ *
- * 1. Screen registry — 38 canonical screens + alias
+ * 1. Screen registry — 39 canonical screens + alias
  * ------------------------------------------------------------------ */
 const EXPECTED_SCREENS = [
-  'splash', 'welcome',
+  'splash', 'welcome', 'login',
   'login-operator', 'login-wali', 'login-guru', 'login-ortu', 'login-siswa',
   'forgot',
   'wali-beranda', 'wali-anggota', 'wali-recap', 'wali-agenda', 'wali-profil',
@@ -320,8 +320,8 @@ const EXPECTED_SCREENS = [
   'materi', 'notifikasi', 'kuis', 'hasil-kuis'
 ];
 
-eq(preview.screens.length, 38, 'screen registry contains 38 screens');
-eq(EXPECTED_SCREENS.length, 38, 'the expected screen list has 38 entries');
+eq(preview.screens.length, 39, 'screen registry contains 39 screens');
+eq(EXPECTED_SCREENS.length, 39, 'the expected screen list has 39 entries');
 EXPECTED_SCREENS.forEach((id) => {
   ok(preview.screens.indexOf(id) >= 0, 'screen "' + id + '" is registered');
 });
@@ -387,7 +387,7 @@ ok(!!splashTimer, 'splash schedules a 2300 ms timer');
 if (splashTimer) {
   preview.go('splash');
   splashTimer.fn();
-  eq(preview.state.screen, 'welcome', 'splash auto-advances to welcome after 2300 ms');
+  eq(preview.state.screen, 'login', 'splash auto-advances straight to the login form after 2300 ms');
 }
 
 /* ------------------------------------------------------------------ *
@@ -1504,6 +1504,166 @@ if (operatorUser && operatorPass) {
       'operator credentials open the operator home');
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * 9c. Unified login: role detected from credentials + "Ingat saya"
+ * ------------------------------------------------------------------ */
+// Alur baru: splash -> satu form login. Tidak ada layar pilih peran di jalur
+// utama, dan peran ditentukan dari NIP/NISN yang diketik.
+preview.go('splash');
+eq(preview.state.screen, 'splash', 'the splashes stays put before the timer fires');
+
+preview.go('login');
+ok(viewport.textContent.indexOf('Selamat datang di KARSA') >= 0,
+  'the unified login greets the user');
+ok(viewport.textContent.indexOf('Masuk dengan NIP atau NISN Anda') >= 0,
+  'the unified login explains that one form serves every role');
+ok(viewport.textContent.indexOf('Pilih peran') < 0,
+  'the unified login has no role picker');
+
+// Kelima akun demo terdaftar dalam satu kotak.
+const demoBtn = () => viewport.querySelectorAll('.demo-cred-row');
+eq(demoBtn().length, 5, 'the demo box lists all five accounts');
+
+// Kolom identitas mengikuti peran yang terdeteksi dari ketikan.
+const unifiedUser = () => viewport.querySelectorAll('#login-username')[0];
+ok(!!unifiedUser(), 'the unified login has an identity field');
+if (unifiedUser()) {
+  unifiedUser().value = '19870003';
+  unifiedUser().dispatch('input', { target: unifiedUser() });
+  eq(viewport.querySelectorAll('#login-username')[0].getAttribute('placeholder'), 'NIP',
+    'staff identifiers are labelled NIP');
+  ok(viewport.textContent.indexOf('Operator sekolah') >= 0,
+    'typing the operator NIP reveals the detected role');
+}
+
+preview.go('login');
+if (unifiedUser()) {
+  unifiedUser().value = '10050001';
+  unifiedUser().dispatch('input', { target: unifiedUser() });
+  eq(viewport.querySelectorAll('#login-username')[0].getAttribute('placeholder'), 'NISN',
+    'student identifiers are labelled NISN');
+}
+
+// Galat yang jelas untuk kolom kosong.
+preview.go('login');
+preview.state.login.username = '';
+preview.state.login.password = '';
+let unifiedSubmit = opButton(viewport, 'Masuk');
+if (unifiedSubmit) unifiedSubmit.click();
+ok(viewport.textContent.indexOf('Isi NIP atau NISN terlebih dahulu.') >= 0,
+  'an empty identity shows a visible error');
+eq(preview.state.screen, 'login', 'an empty identity keeps the user on the login screen');
+
+// Kata sandi salah -> tetap di login.
+preview.go('login');
+preview.state.login.username = '19870003';
+preview.state.login.password = 'salah';
+unifiedSubmit = opButton(viewport, 'Masuk');
+if (unifiedSubmit) unifiedSubmit.click();
+ok(viewport.textContent.indexOf('NIP/NISN atau kata sandi tidak sesuai.') >= 0,
+  'wrong credentials show a visible error');
+eq(preview.state.screen, 'login', 'wrong credentials keep the user on the login screen');
+
+// Setiap peran masuk lewat form yang sama dan mendarat di berandanya.
+[
+  { id: '19870003', pass: 'operator123', role: 'operator', screen: 'operator-beranda' },
+  { id: '19870001', pass: 'wali123', role: 'wali', screen: 'wali-beranda' },
+  { id: '19870002', pass: 'guru123', role: 'guru', screen: 'guru-beranda' },
+  { id: '10050001', pass: 'siswa123', role: 'siswa', screen: 'siswa-beranda' },
+  { id: '10010001', pass: 'ortu123', role: 'orangtua', screen: 'ortu-beranda' }
+].forEach((c) => {
+  preview.go('login');
+  preview.state.login.username = c.id;
+  preview.state.login.password = c.pass;
+  const btn = opButton(viewport, 'Masuk');
+  ok(!!btn, 'the unified login has a submit button for ' + c.role);
+  if (btn) btn.click();
+  eq(preview.state.screen, c.screen, c.role + ' logs in through the shared form');
+  eq(preview.state.role, c.role, c.role + ' role is detected from the credentials');
+});
+
+// "Ingat saya" menyimpan identitas, bukan kata sandi.
+preview.go('login');
+preview.state.rememberMe = true;
+preview.state.rememberedLogin = null;
+preview.state.login.username = '19870003';
+preview.state.login.password = 'operator123';
+preview.render();
+unifiedSubmit = opButton(viewport, 'Masuk');
+if (unifiedSubmit) unifiedSubmit.click();
+eq(preview.state.rememberedLogin && preview.state.rememberedLogin.identifier, '19870003',
+  '"Ingat saya" remembers the identifier after a successful login');
+eq(preview.state.rememberedLogin && preview.state.rememberedLogin.role, 'operator',
+  '"Ingat saya" remembers the detected role');
+ok(!('password' in (preview.state.rememberedLogin || {})),
+  '"Ingat saya" never stores the password');
+
+// Kartu "terakhir masuk" muncul dan bisa ditolak.
+preview.go('login');
+ok(!!viewport.querySelectorAll('.remembered-card')[0],
+  'a remembered login shows a "terakhir masuk" card');
+const rememberedText = viewport.textContent;
+ok(rememberedText.indexOf('19870003') >= 0,
+  'the remembered card shows the saved identifier');
+const notMe = viewport.querySelectorAll('button')
+  .filter((b) => (b.textContent || '').indexOf('Bukan saya') >= 0)[0];
+ok(!!notMe, 'the remembered card offers a way to switch account');
+if (notMe) {
+  notMe.click();
+  eq(preview.state.rememberedLogin, null, '"Bukan saya" clears the remembered login');
+}
+
+// Centang bisa dimatikan: login berikutnya tidak mengingat apa pun.
+preview.go('login');
+preview.state.rememberMe = false;
+preview.state.rememberedLogin = null;
+preview.state.login.username = '19870001';
+preview.state.login.password = 'wali123';
+preview.render();
+unifiedSubmit = opButton(viewport, 'Masuk');
+if (unifiedSubmit) unifiedSubmit.click();
+eq(preview.state.rememberedLogin, null,
+  'unchecking "Ingat saya" stores no identifier');
+
+// "Ingat saya" bertahan setelah state dimuat ulang.
+preview.state.rememberMe = true;
+preview.state.rememberedLogin = { identifier: '19870002', role: 'guru' };
+if (typeof preview.persistState === 'function') preview.persistState();
+if (typeof preview.restoreState === 'function') {
+  preview.state.rememberedLogin = null;
+  preview.restoreState();
+}
+eq(preview.state.rememberedLogin && preview.state.rememberedLogin.identifier, '19870002',
+  'the remembered login survives a reload');
+
+// Keluar dari akun kembali ke form login dengan identitas terisi.
+preview.state.rememberedLogin = { identifier: '19870003', role: 'operator' };
+preview.state.role = 'operator';
+preview.go('wali-profil');
+const logoutBtn = viewport.querySelectorAll('button')
+  .filter((b) => (b.textContent || '').indexOf('Keluar dari akun demo') >= 0)[0];
+ok(!!logoutBtn, 'the profile screen offers a logout action');
+if (logoutBtn) logoutBtn.click();
+eq(preview.state.screen, 'login', 'logout returns to the login form');
+eq(preview.state.login.username, '19870003',
+  'logout keeps the remembered identifier in the form');
+eq(preview.state.login.password, '', 'logout clears the password');
+
+// Identitas tersimpan langsung terisi saat form login dibuka.
+preview.state.rememberedLogin = { identifier: '10050001', role: 'siswa' };
+preview.state.login = { username: '', password: '', show: false, error: '' };
+preview.go('login');
+eq(preview.state.login.username, '10050001',
+  'the remembered identifier is prefilled when the form opens');
+eq(viewport.querySelectorAll('#login-username')[0].getAttribute('placeholder'), 'NISN',
+  'the prefilled identifier sets the field label to NISN');
+
+// Kembalikan keadaan demo.
+preview.state.rememberedLogin = null;
+preview.state.rememberMe = true;
+preview.state.login = { username: '', password: '', show: false, error: '' };
+if (typeof preview.persistState === 'function') preview.persistState();
 
 /* ------------------------------------------------------------------ *
  * 10. Dark mode toggle

@@ -6,6 +6,7 @@ import 'class_event.dart';
 import 'local_notification.dart';
 import 'material_item.dart';
 import 'operator_profile.dart';
+import 'remembered_login.dart';
 import 'practice_item.dart';
 import 'school_class.dart';
 import 'staff_account.dart';
@@ -23,6 +24,12 @@ class KarsaStoreData {
   final String teacherName;
   final String waliName;
   final String studentName;
+
+  /// Login terakhir yang disimpan lewat "Ingat saya".
+  ///
+  /// Berisi identitas yang dipakai untuk masuk lagi tanpa mengetik ulang.
+  /// Null berarti belum pernah memilih "Ingat saya" (atau sudah keluar).
+  final RememberedLogin? rememberedLogin;
 
   /// Nama operator sekolah.
   final String operatorName;
@@ -73,6 +80,7 @@ class KarsaStoreData {
     required this.teacherName,
     required this.waliName,
     required this.studentName,
+    this.rememberedLogin,
     required this.operatorName,
     required this.operatorProfile,
     required this.notifications,
@@ -110,6 +118,7 @@ class KarsaStoreData {
       teacherName: 'Ibu Sari',
       waliName: 'Ibu Sari',
       studentName: 'Dimas Nugroho',
+      rememberedLogin: null,
       operatorName: OperatorProfile.defaults().name,
       operatorProfile: OperatorProfile.defaults(),
       notifications: true,
@@ -147,6 +156,8 @@ class KarsaStoreData {
     String? studentName,
     String? operatorName,
     OperatorProfile? operatorProfile,
+    RememberedLogin? rememberedLogin,
+    bool clearRememberedLogin = false,
     bool? notifications,
     List<String>? reviewed,
     String? childClass,
@@ -181,6 +192,9 @@ class KarsaStoreData {
       studentName: studentName ?? this.studentName,
       operatorName: operatorName ?? this.operatorName,
       operatorProfile: operatorProfile ?? this.operatorProfile,
+      rememberedLogin: clearRememberedLogin
+          ? null
+          : (rememberedLogin ?? this.rememberedLogin),
       notifications: notifications ?? this.notifications,
       reviewed: reviewed ?? this.reviewed,
       childClass: childClass ?? this.childClass,
@@ -386,6 +400,7 @@ class KarsaStoreData {
       waliName: (saved['waliName'] ?? base.waliName).toString(),
       studentName: (saved['studentName'] ?? base.studentName).toString(),
       operatorName: (saved['operatorName'] ?? base.operatorName).toString(),
+      rememberedLogin: RememberedLogin.fromSaved(saved['rememberedLogin']),
       operatorProfile: OperatorProfile.fromSaved(
         saved['operatorProfile'],
         fallbackName: (saved['operatorName'] ?? base.operatorName).toString(),
@@ -467,6 +482,7 @@ class KarsaStoreData {
       'studentName': studentName,
       'operatorName': operatorName,
       'operatorProfile': operatorProfile.toJson(),
+      'rememberedLogin': rememberedLogin?.toJson(),
       'notifications': notifications,
       'reviewed': reviewed,
       'childClass': childClass,

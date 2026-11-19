@@ -12,11 +12,11 @@
   var ICONS = CURR.icons || {};
 
   var ACCOUNTS = {
-    operator: { id: '19870003', password: 'operator123', label: 'Operator sekolah' },
-    wali: { id: '19870001', password: 'wali123', label: 'Wali kelas' },
-    guru: { id: '19870002', password: 'guru123', label: 'Guru mata pelajaran' },
-    siswa: { id: '10050001', password: 'siswa123', label: 'Siswa kelas 5–6' },
-    orangtua: { id: '10010001', password: 'ortu123', label: 'Orang tua / wali' }
+    operator: { id: '19870003', password: 'operator123', label: 'Operator sekolah', emoji: '🗂️' },
+    wali: { id: '19870001', password: 'wali123', label: 'Wali kelas', emoji: '👩🏻‍🏫' },
+    guru: { id: '19870002', password: 'guru123', label: 'Guru mata pelajaran', emoji: '📚' },
+    siswa: { id: '10050001', password: 'siswa123', label: 'Siswa kelas 5–6', emoji: '🎒' },
+    orangtua: { id: '10010001', password: 'ortu123', label: 'Orang tua / wali', emoji: '👩🏻' }
   };
 
   var SCHOOL_NAME = 'SD KARITAS PURWOKERTO';
@@ -431,6 +431,8 @@
     studentName: 'Dimas Nugroho',
     teacherName: 'Ibu Sari',
     waliName: 'Ibu Sari',
+    rememberMe: true,
+    rememberedLogin: null,
     operatorName: 'Operator Sekolah',
     // Cermin OperatorProfile di Flutter: identitas kerja operator.
     operatorProfile: {
@@ -972,6 +974,7 @@
         teacherName: state.teacherName,
         waliName: state.waliName,
         operatorName: state.operatorName,
+        rememberedLogin: state.rememberedLogin,
         operatorProfile: state.operatorProfile,
         studentClass: state.studentClass,
         parentClass: state.parentClass,
@@ -1005,6 +1008,14 @@
         .forEach(function (key) {
           if (typeof saved[key] === 'string' && saved[key]) state[key] = saved[key];
         });
+      if (saved.rememberedLogin && typeof saved.rememberedLogin === 'object' &&
+          typeof saved.rememberedLogin.identifier === 'string' &&
+          typeof saved.rememberedLogin.role === 'string') {
+        state.rememberedLogin = {
+          identifier: saved.rememberedLogin.identifier,
+          role: saved.rememberedLogin.role
+        };
+      }
       if (saved.operatorProfile && typeof saved.operatorProfile === 'object') {
         var savedProfile = saved.operatorProfile;
         ['name', 'nip', 'role', 'email', 'phone', 'unit'].forEach(function (key) {
@@ -1259,6 +1270,261 @@
           el('p', { class: 't-muted', text: 'Kata sandi: ' + account.password }),
           el('p', { class: 't-small', text: 'Akun contoh untuk mencoba aplikasi, bukan autentikasi aman.' })
         ])
+      ]),
+      el('div', { class: 'login-wave-pink' }),
+      el('div', { class: 'login-wave-blue' })
+    ]);
+  }
+
+  // Cermin AppState.logout(): kembali ke form login, bukan ke pemilih peran.
+  // Identitas tersimpan dibiarkan supaya pengguna tidak mengetik ulang.
+  function logoutDemo() {
+    state.role = null;
+    state.login = {
+      username: state.rememberedLogin ? state.rememberedLogin.identifier : '',
+      password: '',
+      show: false,
+      error: ''
+    };
+    state.tab = 'Beranda';
+    go('login');
+  }
+
+  /* Form login tunggal untuk kelima peran.
+     Peran dideteksi dari NIP/NISN, jadi tidak ada lagi layar pilih peran.
+     Cermin LoginPage (Flutter) setelah penyatuan form. */
+  function renderUnifiedLogin() {
+    var remembered = state.rememberedLogin;
+    // "Ingat saya": isi kolom identitas otomatis, kata sandi tetap kosong.
+    if (remembered && !state.login.username) {
+      state.login.username = remembered.identifier;
+    }
+
+    function detectRole(identifier) {
+      var id = (identifier || '').trim();
+      if (!id) return null;
+      var keys = Object.keys(ACCOUNTS);
+      for (var i = 0; i < keys.length; i += 1) {
+        if (ACCOUNTS[keys[i]].id === id) return keys[i];
+      }
+      return null;
+    }
+
+    var detected = detectRole(state.login.username);
+    var hintRole = detected || (remembered && remembered.role) || 'operator';
+    var isStaff = hintRole === 'wali' || hintRole === 'guru' || hintRole === 'operator';
+
+    var usernameInput = el('input', {
+      type: 'text',
+      id: 'login-username',
+      inputmode: 'numeric',
+      autocomplete: 'username',
+      autocapitalize: 'off',
+      spellcheck: 'false',
+      placeholder: idFieldLabel(hintRole),
+      'aria-label': idFieldLabel(hintRole),
+      value: state.login.username,
+      oninput: function (e) {
+        state.login.username = e.target.value;
+        state.login.error = '';
+        refreshFields();
+      }
+    });
+
+    var passwordInput = el('input', {
+      type: state.login.show ? 'text' : 'password',
+      id: 'login-password',
+      autocomplete: 'current-password',
+      placeholder: 'Kata sandi',
+      'aria-label': 'Kata sandi',
+      value: state.login.password,
+      oninput: function (e) {
+        state.login.password = e.target.value;
+        state.login.error = '';
+      }
+    });
+
+    var hintBadge = el('div', { class: 'login-role-hint', hidden: !detected });
+    var errorSlot = el('div', {});
+
+    function refreshFields() {
+      var nowDetected = detectRole(state.login.username);
+      usernameInput.setAttribute('placeholder', idFieldLabel(nowDetected || hintRole));
+      usernameInput.setAttribute('aria-label', idFieldLabel(nowDetected || hintRole));
+      hintBadge.hidden = !nowDetected;
+      clear(hintBadge);
+      if (nowDetected) {
+        hintBadge.appendChild(el('span', { text: ACCOUNTS[nowDetected].emoji || '' }));
+        hintBadge.appendChild(el('span', { text: ACCOUNTS[nowDetected].label }));
+      }
+    }
+
+    function showError(message) {
+      clear(errorSlot);
+      errorSlot.appendChild(el('p', {
+        class: 'notice-title', style: 'margin:4px 0 0 0', text: message
+      }));
+    }
+
+    function submit() {
+      var id = (state.login.username || '').trim();
+      var pass = state.login.password || '';
+      if (!id) { showError('Isi NIP atau NISN terlebih dahulu.'); return; }
+      if (!pass) { showError('Isi kata sandi terlebih dahulu.'); return; }
+
+      var role = null;
+      var keys = Object.keys(ACCOUNTS);
+      for (var i = 0; i < keys.length; i += 1) {
+        var acc = ACCOUNTS[keys[i]];
+        if (acc.id === id && acc.password === pass) { role = keys[i]; break; }
+      }
+      if (!role) {
+        showError('NIP/NISN atau kata sandi tidak sesuai.');
+        return;
+      }
+
+      state.login.error = '';
+      // "Ingat saya": simpan identitas + peran saja, kata sandi tidak pernah.
+      if (state.rememberMe) {
+        state.rememberedLogin = { identifier: id, role: role };
+      } else {
+        state.rememberedLogin = null;
+      }
+      persistState();
+
+      if (role === 'siswa') state.studentClass = 'Kelas 5';
+      if (role === 'orangtua') state.parentClass = 'Kelas 1';
+      state.filter = role === 'wali' ? WALI_CLASS : 'Semua kelas';
+      state.tab = 'Beranda';
+      state.role = role;
+      go(ROLE_SCREEN_PREFIX[role] + 'beranda');
+    }
+
+    passwordInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    });
+    usernameInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); passwordInput.focus(); }
+    });
+
+    // Kotak centang "Ingat saya".
+    var checkBox = el('span', {
+      class: 'remember-box' + (state.rememberMe ? ' checked' : ''),
+      'aria-hidden': 'true'
+    }, state.rememberMe ? [icon('checkmark', 13)] : []);
+    var rememberRow = el('button', {
+      class: 'remember-row pressable', type: 'button', id: 'remember-toggle',
+      'aria-pressed': state.rememberMe ? 'true' : 'false',
+      'aria-label': 'Ingat saya. Saat dicentang, NIP atau NISN disimpan di perangkat ini ' +
+        'supaya tidak perlu diketik ulang.',
+      onclick: function () {
+        state.rememberMe = !state.rememberMe;
+        checkBox.className = 'remember-box' + (state.rememberMe ? ' checked' : '');
+        clear(checkBox);
+        if (state.rememberMe) checkBox.appendChild(icon('checkmark', 13));
+        rememberRow.setAttribute('aria-pressed', state.rememberMe ? 'true' : 'false');
+      }
+    }, [
+      checkBox,
+      el('span', { class: 'remember-label', text: 'Ingat saya' })
+    ]);
+
+    // Daftar akun demo: ketuk untuk mengisi form.
+    var demoRows = Object.keys(ACCOUNTS).map(function (key) {
+      var acc = ACCOUNTS[key];
+      return el('button', {
+        class: 'demo-cred-row pressable', type: 'button',
+        onclick: function () {
+          state.login.username = acc.id;
+          state.login.password = acc.password;
+          state.login.error = '';
+          var next = renderUnifiedLogin();
+          var vp = document.getElementById('app-viewport');
+          if (vp) { clear(vp); vp.appendChild(next); }
+        }
+      }, [
+        el('span', { class: 'demo-cred-role', text: acc.label }),
+        el('span', { class: 'demo-cred-id', text: acc.id + ' / ' + acc.password })
+      ]);
+    });
+
+    // Kartu "lanjutkan sebagai" bila ada identitas tersimpan.
+    var rememberedCard = remembered ? el('div', { class: 'remembered-card' }, [
+      el('div', { style: 'flex:1;min-width:0' }, [
+        el('p', { class: 't-small', style: 'margin:0', text: 'Terakhir masuk sebagai' }),
+        el('p', { class: 't-item-title', style: 'margin:2px 0 0 0',
+          text: (ACCOUNTS[remembered.role] ? ACCOUNTS[remembered.role].label : 'Pengguna') +
+                ' · ' + remembered.identifier })
+      ]),
+      el('button', {
+        class: 't-link pressable', type: 'button',
+        onclick: function () {
+          state.rememberedLogin = null;
+          state.login.username = '';
+          state.login.password = '';
+          persistState();
+          render();
+        }
+      }, ['Bukan saya'])
+    ]) : null;
+
+    refreshFields();
+
+    return el('div', { class: 'login-page' }, [
+      el('div', { class: 'login-hero' }, [
+        el('div', { class: 'login-circle-pink' }),
+        el('div', { class: 'login-circle-blue' }),
+        el('img', { class: 'login-logo', src: ASSETS.loginLogo, alt: 'Logo KARSA' })
+      ]),
+      el('div', { class: 'login-body' }, [
+        schoolIdentity(true),
+        el('div', { style: 'display:flex;justify-content:flex-end' }, [
+          el('button', {
+            class: 'pressable', type: 'button', style: 'padding:8px;background:none;border:none',
+            'aria-label': 'Ubah mode terang atau gelap',
+            onclick: function () { toggleTheme(); }
+          }, [icon(state.dark ? 'sunny-outline' : 'moon-outline', 20)])
+        ]),
+        el('h1', { class: 'login-title', text: 'Selamat datang di KARSA' }),
+        el('p', { class: 'login-subtitle', text: 'Masuk dengan NIP atau NISN Anda' }),
+        rememberedCard,
+        el('div', { class: 'login-field' }, [
+          icon(isStaff ? 'card-outline' : 'person-outline', 22),
+          usernameInput
+        ]),
+        hintBadge,
+        el('div', { class: 'login-field' }, [
+          icon('lock-closed-outline', 22),
+          passwordInput,
+          el('button', {
+            class: 'pressable', type: 'button', style: 'padding:4px;background:none;border:none',
+            'aria-label': state.login.show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi',
+            onclick: function () {
+              state.login.show = !state.login.show;
+              var next = renderUnifiedLogin();
+              var vp = document.getElementById('app-viewport');
+              if (vp) { clear(vp); vp.appendChild(next); }
+              var pw = document.getElementById('login-password');
+              if (pw) pw.focus();
+            }
+          }, [icon(state.login.show ? 'eye-off-outline' : 'eye-outline', 22)])
+        ]),
+        errorSlot,
+        el('div', { class: 'login-helper-row' }, [
+          rememberRow,
+          el('button', {
+            class: 't-link pressable', type: 'button',
+            onclick: function () { go('forgot'); }
+          }, ['Lupa kata sandi?'])
+        ]),
+        el('button', {
+          class: 'login-submit-btn pressable', type: 'button', onclick: submit
+        }, ['Masuk →']),
+        el('div', { class: 'demo-account-box' }, [
+          el('p', { class: 't-item-title', text: 'Akun demo' })
+        ].concat(demoRows).concat([
+          el('p', { class: 't-small', text: 'Ketuk salah satu akun untuk mengisi form. Peran dideteksi otomatis dari NIP/NISN. Akun contoh, bukan autentikasi aman.' })
+        ]))
       ]),
       el('div', { class: 'login-wave-pink' }),
       el('div', { class: 'login-wave-blue' })
@@ -1649,7 +1915,7 @@
       el('div', { style: 'text-align:center' }, [
         el('button', {
           class: 't-link pressable', type: 'button', style: 'padding:20px',
-          onclick: function () { go('welcome'); }
+          onclick: logoutDemo
         }, ['Keluar dari akun demo'])
       ])
     ]);
@@ -2391,7 +2657,7 @@
         }),
       el('div', { style: 'text-align:center' }, [
         el('button', {
-          class: 't-link pressable', type: 'button', style: 'padding:20px', onclick: function () { go('welcome'); }
+          class: 't-link pressable', type: 'button', style: 'padding:20px', onclick: logoutDemo
         }, ['Keluar dari akun demo'])
       ])
     ]);
@@ -2613,7 +2879,7 @@
       }),
       el('div', { style: 'text-align:center' }, [
         el('button', {
-          class: 't-link pressable', type: 'button', style: 'padding:20px', onclick: function () { go('welcome'); }
+          class: 't-link pressable', type: 'button', style: 'padding:20px', onclick: logoutDemo
         }, ['Keluar dari akun demo'])
       ])
     ]);
@@ -2862,7 +3128,7 @@
       }),
       el('div', { style: 'text-align:center' }, [
         el('button', {
-          class: 't-link pressable', type: 'button', style: 'padding:20px', onclick: function () { go('welcome'); }
+          class: 't-link pressable', type: 'button', style: 'padding:20px', onclick: logoutDemo
         }, ['Keluar dari akun demo'])
       ])
     ]);
@@ -4448,6 +4714,7 @@
   var SCREENS = [
     { id: 'splash', label: 'Splash', group: 'Umum', render: renderSplash, nav: null },
     { id: 'welcome', label: 'Pilih Peran', group: 'Umum', render: renderWelcome, nav: null },
+    { id: 'login', label: 'Login', group: 'Umum', render: renderUnifiedLogin, nav: null },
     { id: 'login-operator', label: 'Login · Operator Sekolah', group: 'Umum', render: function () { return renderLogin('operator'); }, nav: null },
     { id: 'login-wali', label: 'Login · Wali Kelas', group: 'Umum', render: function () { return renderLogin('wali'); }, nav: null },
     { id: 'login-guru', label: 'Login · Guru', group: 'Umum', render: function () { return renderLogin('guru'); }, nav: null },
@@ -4688,7 +4955,8 @@
       state.screen = 'splash';
       render();
       window.setTimeout(function () {
-        if (state.screen === 'splash') go('welcome');
+        // Splash langsung ke form login: tidak ada lagi layar pilih peran.
+        if (state.screen === 'splash') go('login');
       }, 2300);
     }
 

@@ -24,7 +24,7 @@ sebagai rujukan audit dan perbandingan visual.
 | Aset | `assets/*.png` | `karsa_app/assets/images/*.png` (salinan identik) |
 | Ikon | `@expo/vector-icons` Ionicons | Font `Ionicons.ttf` + `KarsaIcons` (27 codepoint) |
 | Bank soal | `curriculum.js` | `lib/data/curriculum_data.dart` (generate 1:1) |
-| Pratinjau | — | `karsa_app/preview/` — 38 layar HTML interaktif, offline |
+| Pratinjau | — | `karsa_app/preview/` — 39 layar HTML interaktif, offline |
 
 **Skala implementasi**
 
@@ -90,7 +90,7 @@ karsa_app/
 │                           # operator (11 layar CRUD sekolah)
 ├── test/                   # 5 berkas uji
 ├── tool/                   # generator kurikulum & ikon, check_syntax.py
-├── preview/                # pratinjau HTML 38 layar
+├── preview/                # pratinjau HTML 39 layar
 └── docs/                   # 01–03
 ```
 
@@ -158,15 +158,30 @@ label 10px.
 
 ### 4.2 Autentikasi
 
-Alur: `SplashPage` (2300 ms) → `WelcomePage` (pilih peran) → `LoginPage`
-(per peran) → `MainShell` sesuai peran. `ForgotPasswordPage` menampilkan
-informasi akun demo.
+Alur: `SplashPage` (2300 ms) → `LoginPage` (**satu form untuk kelima peran**)
+→ `MainShell` sesuai peran yang terdeteksi. `WelcomePage` (pilih peran) masih
+ada di repo tetapi tidak lagi dijangkau dari splash. `ForgotPasswordPage`
+menampilkan informasi akun demo.
 
-Validasi memakai `AppState.authenticate()`; pesan galat persis sama dengan RN:
+Peran tidak lagi dipilih lebih dulu: `AppState.authenticate()` mencocokkan
+NIP/NISN + kata sandi ke `DemoAccount` kelima peran lewat
+`roleForCredentials()`, lalu menyimpan peran yang cocok. Form memakai
+`loginHintRole` hanya untuk label kolom (NIP/NISN) dan badge saran peran.
+
+Pesan galat:
 
 ```
+Isi NIP atau NISN terlebih dahulu.
+Isi kata sandi terlebih dahulu.
 NIP/NISN atau kata sandi tidak sesuai.
 ```
+
+**"Ingat saya"** (default aktif): setelah login berhasil, `RememberedLogin`
+(`identifier` + `roleName`) disimpan di store `@karsa-demo-v1` — **kata sandi
+tidak pernah disimpan**. Saat splash selesai, `finishSplash()` mengisi kolom
+identitas otomatis; kartu "Terakhir masuk sebagai" menyediakan tombol
+"Bukan saya" (`forgetRememberedLogin()`). `logout()` kembali ke form login
+dengan identitas tetap terisi.
 
 | Peran | NIP/NISN | Kata sandi | Label |
 | --- | --- | --- | --- |
@@ -303,7 +318,7 @@ Pemeriksaan yang dilakukan:
 | Sintaks & struktur Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 120 berkas, 16.623 baris, 148 class/enum/mixin; semua import, aset, referensi member, inisialisasi field `final`, argumen bernama `Image`, null-check `.isEmpty`, dan import simbol lokal resolve |
 | Uji unit Flutter (disiapkan, belum dieksekusi) | `flutter test` | **Tidak dijalankan** — SDK tidak tersedia (termasuk uji baru: ringkasan nilai kelas + pengeditan data pribadi) |
 | Sintaks JS pratinjau | `node --check` | OK untuk `app.js`, `curriculum-data.js`, `test_preview.js`, `tool/generate_preview_data.js` |
-| Perilaku pratinjau (mock DOM) | `node karsa_app/preview/test_preview.js` | OK — 388 pemeriksaan lulus |
+| Perilaku pratinjau (mock DOM) | `node karsa_app/preview/test_preview.js` | OK — 433 pemeriksaan lulus |
 | Server pratinjau | `curl http://127.0.0.1:8000/...` | OK — `/healthz` 200, HTML/CSS/JS 200 + charset utf-8, 6 PNG 200, `Ionicons.ttf` 200, 404 untuk berkas tak dikenal |
 
 Rencana uji lengkap: [`03_TESTING_PLAN.md`](03_TESTING_PLAN.md).
@@ -312,7 +327,7 @@ Rencana uji lengkap: [`03_TESTING_PLAN.md`](03_TESTING_PLAN.md).
 
 ## 7. Tahap 9 — Pratinjau HTML (`karsa_app/preview/`)
 
-Pratinjau HTML interaktif 38 layar dibuat agar tampilan dan alur dapat
+Pratinjau HTML interaktif 39 layar dibuat agar tampilan dan alur dapat
 diperiksa **tanpa Flutter** dan **tanpa browser automation**.
 
 * **Mobile-first**: `100dvh` pada ponsel, kolom `480px` pada layar lebar,
@@ -321,7 +336,8 @@ diperiksa **tanpa Flutter** dan **tanpa browser automation**.
   `/assets/...` milik `serve.py`.
 * **Bar atas** hanya berisi dropdown pemilih layar + tombol mode gelap
   (tanpa label "Pratinjau").
-* **38 layar**: splash, pilih peran, 5 login, lupa kata sandi, 5 tab wali,
+* **39 layar**: splash, login tunggal, pilih peran (arsip), 5 login per peran
+  (deep link), lupa kata sandi, 5 tab wali,
   5 tab guru, 3 tab siswa, 4 tab orang tua, 9 layar operator sekolah, materi,
   notifikasi, kuis, hasil kuis.
 * **CRUD operator**: seluruh tambah/ubah/hapus siswa, kelas, akun guru/wali,
@@ -329,8 +345,10 @@ diperiksa **tanpa Flutter** dan **tanpa browser automation**.
   `@karsa-demo-v1`; nilai ditolak di luar 0–100, kelas terakhir dilindungi,
   dan array kosong yang tersimpan tidak di-seed ulang.
 * **Interaksi hidup**: input NIP/NISN + kata sandi asli dengan tombol mata dan
-  submit Enter, validasi per peran dengan pesan galat RN, kotak akun demo
-  berbeda per peran, bottom nav per peran, chip kelas/mapel + segmen +
+  submit Enter, deteksi peran dari kredensial dengan pesan galat per kolom,
+  centang "Ingat saya" + kartu "Terakhir masuk sebagai", kotak akun demo
+  berisi kelima akun (ketuk untuk mengisi form), bottom nav per peran,
+  chip kelas/mapel + segmen +
   pencarian, tombol status kehadiran, kartu tips berganti, kuis interaktif,
   toggle mode gelap, deep link hash (`#guru-tugas`, `#wali-recap`, alias
   `#wali-rekap`).
@@ -378,7 +396,7 @@ HTML. Kode React Native di root repository tetap tidak disentuh.
   `x@y.z` bila diisi, telepon 8-16 angka bila diisi. Galat tampil di dalam
   form dan tidak menyimpan apa pun.
 * **Regresi**: `test/operator_crud_test.dart` (Flutter, belum dieksekusi karena
-  SDK tidak ada) dan blok operator di `preview/test_preview.js` (388
+  SDK tidak ada) dan blok operator di `preview/test_preview.js` (433
   pemeriksaan lulus), termasuk pembuktian bahwa uji gagal bila perlindungan
   kelas terakhir atau penghapusan materi dimatikan.
 

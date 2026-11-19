@@ -18,6 +18,7 @@ import '../models/local_notification.dart';
 import '../models/material_item.dart';
 import '../models/practice_item.dart';
 import '../models/operator_profile.dart';
+import '../models/remembered_login.dart';
 import '../models/quiz_question.dart';
 import '../models/school_class.dart';
 import '../models/staff_account.dart';
@@ -77,6 +78,9 @@ class AppState extends ChangeNotifier {
   String _username = '';
   String _password = '';
   bool _showPassword = false;
+
+  /// Apakah pengguna mencentang "Ingat saya" pada form login.
+  bool _rememberMe = true;
 
   String _draftTitle = '';
   String _draftBody = '';
@@ -1307,9 +1311,59 @@ class AppState extends ChangeNotifier {
   // Navigation & Auth
   void finishSplash() {
     if (_screen == 'splash') {
-      _screen = 'welcome';
+      _screen = 'login';
+      _prefillRememberedLogin();
       notifyListeners();
     }
+  }
+
+  /// Login yang tersimpan lewat "Ingat saya", null bila tidak ada.
+  RememberedLogin? get rememberedLogin => _data.rememberedLogin;
+
+  /// Apakah form login sudah terisi otomatis dari "Ingat saya".
+  bool get hasRememberedLogin => _data.rememberedLogin != null;
+
+  bool get rememberMe => _rememberMe;
+
+  void setRememberMe(bool value) {
+    _rememberMe = value;
+    notifyListeners();
+  }
+
+  /// Mengisi kolom login dari identitas tersimpan tanpa menimpa ketikan
+  /// pengguna yang sedang berlangsung.
+  void _prefillRememberedLogin() {
+    final saved = _data.rememberedLogin;
+    if (saved == null) return;
+    if (_username.isEmpty) _username = saved.identifier;
+    final restored = UserRole.fromName(saved.roleName);
+    if (restored != null) _role = restored;
+    _password = '';
+  }
+
+  /// Menghapus identitas tersimpan (tombol "Bukan saya?" dan saat keluar).
+  void forgetRememberedLogin() {
+    if (_data.rememberedLogin == null) return;
+    _username = '';
+    _password = '';
+    _role = null;
+    _error = '';
+    _persistData(_data.copyWith(clearRememberedLogin: true));
+  }
+
+  /// Menjalankan aksi "masuk sebagai" dari kartu login tersimpan.
+  ///
+  /// Hanya mengisi form dengan identitas tersimpan; kata sandi tetap harus
+  /// diketik karena tidak pernah disimpan.
+  void useRememberedLogin() {
+    final saved = _data.rememberedLogin;
+    if (saved == null) return;
+    _username = saved.identifier;
+    _password = '';
+    _role = UserRole.fromName(saved.roleName);
+    _error = '';
+    _screen = 'login';
+    notifyListeners();
   }
 
   void setScreen(String nextScreen) {
@@ -1344,35 +1398,95 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Mencari peran yang cocok dengan identitas dan kata sandi.
+  ///
+  /// Form login sekarang satu untuk semua peran: pengguna tidak memilih peran
+  /// lebih dulu, melainkan cukup mengetik NIP/NISN. Peran ditentukan dari akun
+  /// demo yang identitasnya cocok, dan baru setelah itu kata sandinya diperiksa
+  /// supaya pesan galat tidak membocorkan akun mana yang ada.
+  UserRole? roleForCredentials(String identifier, String password) {
+    final userIn = identifier.trim();
+    for (final role in UserRole.values) {
+      final account = DemoAccount.forRole(role);
+      if (account.id == userIn && account.password == password) {
+        return role;
+      }
+    }
+    return null;
+  }
+
+  /// Apakah suatu identitas dikenal (tanpa memeriksa kata sandi).
+  ///
+  /// Dipakai untuk menampilkan label kolom (NIP/NISN) dan saran peran saat
+  /// pengguna mulai mengetik, bukan untuk menyatakan login berhasil.
+  UserRole? roleForIdentifier(String identifier) {
+    final userIn = identifier.trim();
+    if (userIn.isEmpty) return null;
+    for (final role in UserRole.values) {
+      if (DemoAccount.forRole(role).id == userIn) return role;
+    }
+    return null;
+  }
+
+  /// Peran yang sedang diisyaratkan form login.
+  ///
+  /// Hasil ketikan identitas yang dikenal menang; kalau belum dikenal, pakai
+  /// peran tersimpan atau operator sebagai tampilan awal label.
+  UserRole get loginHintRole =>
+      roleForIdentifier(_username) ??
+      UserRole.fromName(_data.rememberedLogin?.roleName ?? '') ??
+      UserRole.operator;
+
   bool authenticate([String? customUsername, String? customPassword]) {
-    if (_role == null) return false;
-    final account = DemoAccount.forRole(_role!);
     final userIn = (customUsername ?? _username).trim();
     final passIn = customPassword ?? _password;
 
-    if (userIn != account.id || passIn != account.password) {
-      _error = 'NIP/NISN atau kata sandi tidak sesuai.';
+    if (userIn.isEmpty) {
+      _error = 'Isi NIP atau NISN terlebih dahulu.';
+      notifyListeners();
+      return false;
+    }
+    if (passIn.isEmpty) {
+      _error = 'Isi kata sandi terlebih dahulu.';
       notifyListeners();
       return false;
     }
 
+    final resolved = roleForCredentials(userIn, passIn);
+    if (resolved == null) {
+      _error = 'NIP/NISN atau kata sandi tidak sesuai.';
+      notifyListeners();
+      return false;
+    }
+    _role = resolved;
+
     var nextData = _data;
-    if (_role == UserRole.siswa) {
+    if (resolved == UserRole.siswa) {
       final targetClass = AppConstants.studentClasses.contains(_data.studentClass)
           ? _data.studentClass
           : 'Kelas 5';
       nextData = nextData.copyWith(childClass: targetClass);
-    } else if (_role == UserRole.orangtua) {
+    } else if (resolved == UserRole.orangtua) {
       final targetClass = AppConstants.parentClasses.contains(_data.parentClass)
           ? _data.parentClass
           : 'Kelas 1';
       nextData = nextData.copyWith(childClass: targetClass);
     }
 
+    // "Ingat saya": simpan identitas + peran saja, kata sandi tidak pernah.
+    nextData = _rememberMe
+        ? nextData.copyWith(
+            rememberedLogin: RememberedLogin(
+              identifier: userIn,
+              roleName: resolved.name,
+            ),
+          )
+        : nextData.copyWith(clearRememberedLogin: true);
+
     _error = '';
-    _filter = _role == UserRole.wali ? AppConstants.waliClass : 'Semua kelas';
+    _filter = resolved == UserRole.wali ? AppConstants.waliClass : 'Semua kelas';
     _tab = 'Beranda';
-    _taskFilter = _role!.isTeacher ? 'Semua' : 'Aktif';
+    _taskFilter = resolved.isTeacher ? 'Semua' : 'Aktif';
     _screen = 'main';
     _persistData(nextData);
     return true;
@@ -1380,8 +1494,10 @@ class AppState extends ChangeNotifier {
 
   void logout() {
     _role = null;
-    _screen = 'welcome';
-    _username = '';
+    _screen = 'login';
+    // Identitas tersimpan tetap dipakai supaya pengguna tidak mengetik ulang.
+    final saved = _data.rememberedLogin;
+    _username = saved?.identifier ?? '';
     _password = '';
     _error = '';
     notifyListeners();
