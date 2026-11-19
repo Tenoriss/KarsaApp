@@ -312,6 +312,7 @@ const EXPECTED_SCREENS = [
   'forgot',
   'wali-beranda', 'wali-anggota', 'wali-recap', 'wali-agenda', 'wali-profil',
   'guru-beranda', 'guru-kelas', 'guru-tugas', 'guru-kalender', 'guru-profil',
+  'guru-pengumuman',
   'siswa-beranda', 'siswa-tugas', 'siswa-profil',
   'ortu-beranda', 'ortu-tugas', 'ortu-latihan', 'ortu-profil',
   'operator-beranda', 'operator-siswa', 'operator-kelas', 'operator-materi', 'operator-profil',
@@ -320,8 +321,8 @@ const EXPECTED_SCREENS = [
   'materi', 'notifikasi', 'kuis', 'esai', 'hasil-kuis', 'hasil-latihan'
 ];
 
-eq(preview.screens.length, 42, 'screen registry contains 42 screens');
-eq(EXPECTED_SCREENS.length, 42, 'the expected screen list has 42 entries');
+eq(preview.screens.length, 43, 'screen registry contains 43 screens');
+eq(EXPECTED_SCREENS.length, 43, 'the expected screen list has 43 entries');
 EXPECTED_SCREENS.forEach((id) => {
   ok(preview.screens.indexOf(id) >= 0, 'screen "' + id + '" is registered');
 });
@@ -828,9 +829,9 @@ const openBody = viewport.querySelectorAll('.collapsible-body')[0];
 ok(!!openBody && (openBody.textContent || '').length > 3,
   'the opened card reveals its stored entries');
 if (openBody) {
-  const hasEntry = preview.state.announcements === undefined ||
+  const hasEntry = preview.announcements() === undefined ||
     (openBody.textContent.indexOf('Belum ada pengumuman') < 0 ||
-     preview.state.announcements.length === 0);
+     preview.announcements().length === 0);
   ok(hasEntry, 'the opened announcement card lists real entries, not just an empty state');
 }
 
@@ -2189,6 +2190,103 @@ if (themeBtn) {
   preview.state.dark = false;
   preview.render();
 }
+
+/* ------------------------------------------------------------------ *
+ * 10f. Pengumuman guru mapel
+ * ------------------------------------------------------------------ */
+preview.state.role = 'guru';
+preview.state.dark = false;
+preview.state.teacherSubject = 'Matematika';
+preview.go('guru-pengumuman');
+eq(preview.state.screen, 'guru-pengumuman', 'guru punya layar pengumuman sendiri');
+ok((viewport.textContent || '').indexOf('Buat pengumuman') >= 0,
+  'guru bisa membuat pengumuman dari layarnya sendiri');
+
+// Form guru hanya menawarkan kelas yang diajar mapelnya.
+const openGuruForm = () => {
+  const btn = Array.from(viewport.querySelectorAll('button'))
+    .filter((b) => /Buat pengumuman/.test(b.textContent || ''))[0];
+  ok(!!btn, 'tombol buat pengumuman ada');
+  if (btn) btn.click();
+  return sheetPanel;
+};
+
+let form = openGuruForm();
+let chipLabels = form.querySelectorAll('.chip-btn').map((c) => c.textContent);
+ok(chipLabels.indexOf('Semua kelas') >= 0, 'guru boleh mengumumkan ke semua kelas');
+ok(chipLabels.length > 1, 'form guru punya pilihan kelas');
+preview.closeSheet();
+
+// Mapel yang hanya ada di kelas atas: IPAS mulai Kelas 3.
+preview.state.teacherSubject = 'Ilmu Pengetahuan Alam dan Sosial (IPAS)';
+preview.go('guru-pengumuman');
+form = openGuruForm();
+chipLabels = form.querySelectorAll('.chip-btn').map((c) => c.textContent);
+ok(chipLabels.indexOf('Kelas 3') >= 0, 'guru IPAS bisa memilih Kelas 3');
+// `indexOf` pada array eksak, bukan pada string, agar "Kelas 1" tidak
+// tertukar dengan "Kelas 10" bila kelak ada.
+eq(chipLabels.indexOf('Kelas 1'), -1,
+  'guru IPAS tidak ditawari Kelas 1 (IPAS tidak ada di kelas itu), ketemu: ' + chipLabels.join(','));
+eq(chipLabels.indexOf('Kelas 2'), -1, 'guru IPAS tidak ditawari Kelas 2');
+// Sekolah bisa punya kelas tambahan dari uji operator sebelumnya, jadi
+// bandingkan dengan daftar mapel per kelas, bukan daftar tetap 3-6.
+const ipasTaught = preview.state.schoolClasses
+  .map((c) => c.name)
+  .filter((name) => preview.subjectsForClass(name)
+    .some((sub) => sub.indexOf('IPAS') >= 0));
+ok(chipLabels.every((c) => c === 'Semua kelas' || ipasTaught.indexOf(c) >= 0),
+  'semua opsi kelas guru IPAS memang kelas yang diajar mapelnya, ketemu: ' +
+  chipLabels.join(',') + ' | diajar: ' + ipasTaught.join(','));
+
+// Kirim pengumuman dan pastikan tercatat + bisa diubah.
+const titleInput = form.querySelectorAll('input')[0];
+titleInput.value = 'Ulangan IPAS bab 2';
+titleInput.dispatch('input', { target: titleInput });
+const bodyInput = form.querySelectorAll('textarea')[0];
+bodyInput.value = 'Belajar halaman 20 sampai 30.';
+bodyInput.dispatch('input', { target: bodyInput });
+const send = form.querySelectorAll('button')
+  .filter((b) => /Kirim pengumuman/.test(b.textContent || ''))[0];
+ok(!!send, 'tombol kirim pengumuman ada');
+const beforeCount = preview.announcements().length;
+if (send) {
+  send.click();
+  eq(preview.announcements().length, beforeCount + 1,
+    'pengumuman guru tersimpan');
+  const created = preview.announcements()[0];
+  eq(created.category, 'PENGUMUMAN GURU', 'kategori pengumuman guru benar');
+  eq(created.title, 'Ulangan IPAS bab 2', 'judul tersimpan');
+  eq(created.className, 'Kelas 3',
+    'kelas awal mengikuti kelas pertama yang diajar mapelnya');
+  ok((viewport.textContent || '').indexOf('Ulangan IPAS bab 2') >= 0,
+    'pengumuman langsung tampil di daftar guru');
+}
+
+// Judul kosong ditolak, bukan tersimpan sebagai pengumuman kosong.
+form = openGuruForm();
+const countBeforeBad = preview.announcements().length;
+const sendBad = form.querySelectorAll('button')
+  .filter((b) => /Kirim pengumuman/.test(b.textContent || ''))[0];
+if (sendBad) sendBad.click();
+eq(preview.announcements().length, countBeforeBad,
+  'pengumuman tanpa judul/isi ditolak');
+preview.closeSheet();
+
+// Pengumuman guru hanya sampai ke kelas yang dituju.
+preview.state.teacherSubject = 'Matematika';
+preview.announcements().forEach((a) => {
+  if (a.category === 'PENGUMUMAN GURU' && a.title === 'Ulangan IPAS bab 2') {
+    a.className = 'Kelas 3';
+  }
+});
+preview.state.role = 'siswa';
+preview.state.parentClass = 'Kelas 3';
+preview.state.studentName = 'Dimas Nugroho';
+ok(preview.visibleAnnouncements().some((a) => a.title === 'Ulangan IPAS bab 2'),
+  'siswa Kelas 3 menerima pengumuman untuk Kelas 3');
+preview.state.parentClass = 'Kelas 5';
+ok(!preview.visibleAnnouncements().some((a) => a.title === 'Ulangan IPAS bab 2'),
+  'siswa Kelas 5 tidak menerima pengumuman untuk Kelas 3');
 
 /* ------------------------------------------------------------------ *
  * 11. Tata letak kuis mengikuti rancangan (warna tetap)

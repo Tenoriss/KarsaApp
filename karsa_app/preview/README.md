@@ -208,6 +208,9 @@ Media** — bukan lagi section yang menempel di ujung beranda.
   muncul sebelum diperiksa; kartu umpan balik hijau/merah setelah diperiksa.
   Warna tetap memakai token yang sudah ada (`--rose`, `--surface-*`,
   `--surface-quiz-feedback`) sehingga aman di mode gelap.
+* **Pengumuman guru** — layar `guru-pengumuman`: guru mapel membuat dan
+  mengubah pengumumannya sendiri. Pilihan kelas hanya "Semua kelas" + kelas
+  yang benar-benar diajar mapelnya (guru IPAS: Kelas 3–6, bukan 1–2).
 * **Dua metode latihan** — detail latihan juga menawarkan pilihan ganda
   (dinilai, skor di `PRACTICE_RESULTS`) dan esai (tidak dinilai otomatis).
   Skor latihan terpisah dari nilai tugas; layar `hasil-latihan` menampilkan
@@ -309,7 +312,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **652 pemeriksaan**.
+Total **674 pemeriksaan**.
 
 ---
 

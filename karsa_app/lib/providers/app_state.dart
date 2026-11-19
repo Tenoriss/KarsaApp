@@ -300,6 +300,18 @@ class AppState extends ChangeNotifier {
 
   bool get isDark => _data.darkMode;
   bool get isTeacher => _role?.isTeacher ?? false;
+
+  /// Kelas yang diajar guru untuk mapelnya sendiri.
+  ///
+  /// Guru mapel hanya mengajar satu mata pelajaran, jadi daftar kelasnya
+  /// diturunkan dari `subjectsForClass` (mis. IPAS baru ada mulai Kelas 3).
+  /// Dipakai form pengumuman agar guru tidak mengirim pengumuman ke kelas
+  /// yang tidak diajarnya.
+  List<String> get teacherClasses => AppConstants.classes
+      .where(
+        (c) => CurriculumData.subjectsForClass(c).contains(_data.teacherSubject),
+      )
+      .toList();
   bool get isWali => _role?.isWali ?? false;
   bool get isGuru => _role?.isGuru ?? false;
   bool get isStudent => _role?.isStudent ?? false;
@@ -2044,6 +2056,32 @@ class AppState extends ChangeNotifier {
     final subj = overrideSubject ?? (isGuru ? _data.teacherSubject : 'Matematika');
     _draftSubject = subj;
 
+    // Pengumuman guru tidak terikat satu kelas: pilihannya "Semua kelas" atau
+    // salah satu kelas yang diajar mapelnya. Sebelumnya kelas awal diambil
+    // dari `_filter` (filter daftar tugas), sehingga guru Matematika bisa
+    // membuka form dengan "Kelas 1" yang tidak ada hubungannya.
+    if (kind == 'announcementForm' && isGuru) {
+      final taught = teacherClasses;
+      _draftClass = taught.isEmpty
+          ? 'Semua kelas'
+          : (taught.contains(_filter) ? _filter : taught.first);
+      _draftMinutes = '30';
+      _draftDue = KarsaDateUtils.formatDateKey(
+        DateTime.now().add(const Duration(days: 7)),
+      );
+      _error = '';
+      _notice = '';
+      _attachment = null;
+      _sourceText = '';
+      _summaryText = '';
+      _assistantSource = '';
+      _assistantQuestions = <QuizQuestion>[];
+      _assistantUsed = false;
+      _screen = kind;
+      notifyListeners();
+      return;
+    }
+
     String resolvedClass;
     if (overrideClass != null) {
       resolvedClass = (subj == 'Ilmu Pengetahuan Alam dan Sosial (IPAS)' &&
@@ -2397,6 +2435,15 @@ class AppState extends ChangeNotifier {
   void saveAnnouncement() {
     if (_draftTitle.trim().isEmpty || _draftBody.trim().isEmpty) {
       _error = 'Isi judul dan isi pengumuman.';
+      notifyListeners();
+      return;
+    }
+    // Guru mapel hanya boleh mengumumkan ke kelas yang diajar atau ke semua
+    // kelas. Ini penjaga terakhir kalau kelas dipilih lewat jalur lain.
+    if (isGuru &&
+        _draftClass != 'Semua kelas' &&
+        !teacherClasses.contains(_draftClass)) {
+      _error = '$_draftClass bukan kelas yang kamu ajar.';
       notifyListeners();
       return;
     }

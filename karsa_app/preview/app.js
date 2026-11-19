@@ -2436,7 +2436,9 @@
       }),
       wideStatCard({
         icon: 'megaphone', label: 'Pengumuman', value: String(unreadAnnouncementsCount()),
-        desc: 'Belum dibaca', color: PURPLE_STAT, onTap: function () { go('notifikasi'); }
+        // Guru punya layar pengumuman sendiri (buat + ubah), bukan hanya
+        // membaca daftar notifikasi.
+        desc: 'Buat dan kelola', color: PURPLE_STAT, onTap: function () { go('guru-pengumuman'); }
       }),
       wideStatCard({
         icon: 'book', label: 'Materi', value: String(MATERIALS.length),
@@ -4615,6 +4617,141 @@
   /* ------------------------------------------------------------------ *
    * Operator sekolah: pengumuman
    * ------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------ *
+   * Pengumuman guru mapel
+   * Cermin AnnouncementFormPage + AppState.saveAnnouncement: guru hanya
+   * mengumumkan untuk mapelnya, ke "Semua kelas" atau kelas yang diajar.
+   * ------------------------------------------------------------------ */
+  function teacherClasses() {
+    return operatorClassNames().filter(function (c) {
+      return subjectsForClass(c).indexOf(state.teacherSubject) >= 0;
+    });
+  }
+
+  function renderGuruPengumuman() {
+    var mine = ANNOUNCEMENTS.filter(function (a) { return a.category === 'PENGUMUMAN GURU'; });
+    var taught = teacherClasses();
+
+    var children = [
+      pageHeader('Pengumuman', state.teacherSubject + ' · ' + taught.length + ' kelas', function () {
+        go('guru-beranda');
+      }),
+      el('button', {
+        class: 'karsa-btn clay-raised pressable', type: 'button',
+        style: 'border:none;cursor:pointer',
+        onclick: function () { openGuruAnnouncementForm(null); }
+      }, ['+ Buat pengumuman']),
+      el('p', {
+        class: 't-small', style: 'margin:10px 0 14px 0',
+        text: 'Hanya sampai ke ' + taught.join(', ') + ' atau semua kelas.'
+      })
+    ];
+
+    if (!mine.length) {
+      children.push(noticeCard('Belum ada pengumumanmu',
+        'Buat pengumuman pertama untuk kelas yang kamu ajar.'));
+    }
+    mine.forEach(function (a) {
+      children.push(listItemCard({
+        iconEmoji: '📣', tileColor: '#F8EBEC', title: a.title,
+        meta: a.className + ' · ' + a.body,
+        status: 'Ubah', onTap: function () { openGuruAnnouncementForm(a); }
+      }));
+    });
+
+    // Pengumuman sekolah tetap terlihat, tapi tidak bisa diubah guru.
+    var school = ANNOUNCEMENTS.filter(function (a) { return a.category !== 'PENGUMUMAN GURU'; });
+    if (school.length) {
+      children.push(el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Dari sekolah' }));
+      school.forEach(function (a) {
+        children.push(listItemCard({
+          iconEmoji: '🏫', tileColor: '#E4EEF7', title: a.title,
+          meta: a.className + ' · ' + a.body, status: null,
+          onTap: function () { openAnnouncements(); }
+        }));
+      });
+    }
+    return el('div', {}, children);
+  }
+
+  function openGuruAnnouncementForm(announcement) {
+    var taught = teacherClasses();
+    var options = ['Semua kelas'].concat(taught);
+    var defaultClass = taught.indexOf(state.filter) >= 0 ? state.filter
+      : (taught[0] || 'Semua kelas');
+    var draft = announcement
+      ? { id: announcement.id, title: announcement.title, body: announcement.body,
+          className: announcement.className, error: '' }
+      : { id: '', title: '', body: '', className: defaultClass, error: '' };
+    if (options.indexOf(draft.className) < 0) draft.className = defaultClass;
+
+    function refresh() {
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', {
+          class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
+          text: draft.id ? 'Ubah Pengumuman' : 'Buat Pengumuman'
+        }),
+        el('p', { class: 't-muted', style: 'margin-bottom:14px', text: 'Tersimpan di perangkat ini.' }),
+        el('p', { class: 't-label', style: 'margin-bottom:8px', text: 'Judul' }),
+        el('input', {
+          class: 'karsa-input', type: 'text', value: draft.title, placeholder: 'Judul pengumuman',
+          'aria-label': 'Judul pengumuman',
+          oninput: function (e) { draft.title = e.target.value; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Isi pengumuman' }),
+        el('textarea', {
+          class: 'karsa-input', rows: '3', value: draft.body,
+          placeholder: 'Tulis pengumuman...', 'aria-label': 'Isi pengumuman',
+          style: 'height:auto;resize:vertical',
+          oninput: function (e) { draft.body = e.target.value; }
+        }),
+        el('p', { class: 't-label', style: 'margin:12px 0 8px 0', text: 'Untuk kelas' }),
+        // chips memakai daftar kelas yang diajar mapel guru, bukan semua kelas
+        chips(options, draft.className, function (v) { draft.className = v; refresh(); }),
+        draft.error ? el('p', {
+          class: 'notice-title', style: 'margin:10px 0 0 0', text: draft.error
+        }) : null,
+        el('button', {
+          class: 'karsa-btn clay-raised pressable', type: 'button',
+          style: 'border:none;cursor:pointer;margin-top:14px;width:100%',
+          onclick: function () {
+            if (!draft.title.trim() || !draft.body.trim()) {
+              draft.error = 'Isi judul dan isi pengumuman.';
+              refresh();
+              return;
+            }
+            if (draft.className !== 'Semua kelas' && taught.indexOf(draft.className) < 0) {
+              draft.error = draft.className + ' bukan kelas yang kamu ajar.';
+              refresh();
+              return;
+            }
+            if (draft.id) {
+              ANNOUNCEMENTS = ANNOUNCEMENTS.map(function (a) {
+                return a.id === draft.id
+                  ? Object.assign({}, a, {
+                    title: draft.title.trim(), body: draft.body.trim(),
+                    className: draft.className, detail: 'Diperbarui · ' + draft.className
+                  })
+                  : a;
+              });
+            } else {
+              ANNOUNCEMENTS = [{
+                id: 'a' + Date.now(), category: 'PENGUMUMAN GURU',
+                title: draft.title.trim(), body: draft.body.trim(),
+                detail: 'Baru saja · ' + draft.className, className: draft.className
+              }].concat(ANNOUNCEMENTS);
+            }
+            persistState();
+            closeSheet();
+            go('guru-pengumuman');
+          }
+        }, ['Kirim pengumuman'])
+      ]));
+    }
+    refresh();
+  }
+
   function renderOperatorPengumuman() {
     var filter = state.filter === 'Semua kelas' ? 'Semua kelas' : state.filter;
     var list = filter === 'Semua kelas'
@@ -5781,6 +5918,7 @@
     { id: 'operator-profil', label: 'Operator · Profil', group: 'Operator Sekolah', render: renderOperatorProfil, nav: 'operator' },
     { id: 'operator-tugas', label: 'Operator · Tugas', group: 'Operator Sekolah', render: renderOperatorTugas, nav: null, role: 'operator' },
     { id: 'operator-pengumuman', label: 'Operator · Pengumuman', group: 'Operator Sekolah', render: renderOperatorPengumuman, nav: null, role: 'operator' },
+    { id: 'guru-pengumuman', label: 'Guru · Pengumuman', group: 'Guru', render: renderGuruPengumuman, nav: null, role: 'guru' },
     { id: 'operator-agenda', label: 'Operator · Agenda', group: 'Operator Sekolah', render: renderOperatorAgenda, nav: null, role: 'operator' },
     { id: 'operator-nilai', label: 'Operator · Nilai', group: 'Operator Sekolah', render: renderOperatorNilai, nav: null, role: 'operator' },
     { id: 'materi', label: 'Materi', group: 'Umum', render: renderMateri, nav: null },
@@ -6006,6 +6144,9 @@
     tasks: function () { return TASKS; },
     visiblePractices: visiblePractices,
     results: function () { return RESULTS; },
+    announcements: function () { return ANNOUNCEMENTS; },
+    visibleAnnouncements: visibleAnnouncements,
+    subjectsForClass: subjectsForClass,
     startQuiz: startQuiz,
     startEssayForTask: startEssayForTask,
     startPracticeQuiz: startPracticeQuiz,
