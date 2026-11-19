@@ -22,15 +22,22 @@ void main() {
       expect(AppConstants.splashDuration.inMilliseconds, isNot(2300));
     });
 
-    test('animasi logo membagi habis durasi splash', () {
-      // Satu putaran 2,5 detik: 10 / 2,5 = 4 putaran penuh, jadi animasi
-      // tidak pernah terpotong di tengah saat splash selesai.
+    test('animasi logo memakai beberapa ritme berbeda', () {
+      // Animasi logo sekarang berlapis dengan ritme berbeda (melayang 3,4s,
+      // detak 2,5s, aura 4,2s, cincin 2,9s & 4,6s, sapuan 5s). Tidak ada satu
+      // putaran tunggal lagi, jadi yang diuji: splash lebih panjang dari
+      // setiap putaran (animasi berulang beberapa kali) dan durasinya masuk
+      // akal untuk splash 10 detik.
+      expect(AppConstants.splashDuration.inSeconds, 10);
       final cycle = AppConstants.splashLogoCycle.inMilliseconds;
       expect(cycle, greaterThan(0));
-      expect(AppConstants.splashDuration.inMilliseconds % cycle, 0,
-          reason: 'durasi splash harus kelipatan satu putaran animasi logo');
-      expect(cycle, lessThanOrEqualTo(3000),
-          reason: 'satu putaran cukup cepat agar terlihat hidup');
+      expect(cycle, lessThanOrEqualTo(AppConstants.splashDuration.inMilliseconds),
+          reason: 'satu putaran animasi harus selesai minimal sekali selama splash');
+      const List<double> layers = <double>[2.5, 2.9, 3.4, 4.2, 4.6, 5.0];
+      expect(layers.toSet().length, layers.length,
+          reason: 'setiap lapis animasi harus punya durasi berbeda');
+      expect(layers.every((double d) => d > 0 && d < 10), isTrue,
+          reason: 'semua lapis lebih pendek dari splash agar berulang');
     });
 
     test('splash tetap berakhir di form login', () async {

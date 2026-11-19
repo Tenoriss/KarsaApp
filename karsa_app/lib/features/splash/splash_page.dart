@@ -17,26 +17,24 @@ class SplashPage extends StatefulWidget {
 class _SplashPageState extends State<SplashPage>
     with SingleTickerProviderStateMixin {
   Timer? _timer;
-  Timer? _ticker;
   bool _scheduled = false;
 
-  /// Animasi logo: detak skala, cahaya yang berdenyut, cincin yang mengembang,
-  /// dan kilau yang menyapu logo satu kali tiap putaran.
-  late final AnimationController _logoController;
+  /// Satu controller untuk seluruh splash.
+  ///
+  /// Animasi logo tidak memakai satu pola berulang: tiap lapis (melayang,
+  /// detak, aura, dua cincin, sapuan cahaya) punya ritme sendiri yang
+  /// dihitung dari nilai controller ini. Controller juga menggerakkan progress
+  /// bar, jadi tidak perlu timer per detik dan tidak ada angka yang ditampilkan.
+  late final AnimationController _splashController;
 
   @override
   void initState() {
     super.initState();
-    _logoController = AnimationController(
+    _splashController = AnimationController(
       vsync: this,
-      duration: AppConstants.splashLogoCycle,
-    )..repeat();
+      duration: AppConstants.splashDuration,
+    )..forward();
   }
-
-  /// Sisa detik yang ditampilkan. Splash sengaja lama (lihat
-  /// [AppConstants.splashDuration]), jadi pengguna diberi hitungan mundur agar
-  /// tahu aplikasi sedang menyiapkan, bukan macet.
-  int _secondsLeft = AppConstants.splashDuration.inSeconds;
 
   void _maybeSchedule(AppState state) {
     if (_scheduled || !state.loaded) return;
@@ -46,30 +44,13 @@ class _SplashPageState extends State<SplashPage>
         state.finishSplash();
       }
     });
-    _ticker = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      setState(() {
-        _secondsLeft = (_secondsLeft - 1).clamp(0, 999);
-      });
-    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    _ticker?.cancel();
-    _logoController.dispose();
+    _splashController.dispose();
     super.dispose();
-  }
-
-  /// 0..1 untuk progress bar.
-  double get _progress {
-    final total = AppConstants.splashDuration.inSeconds;
-    if (total <= 0) return 1;
-    return ((total - _secondsLeft) / total).clamp(0.0, 1.0);
   }
 
   @override
@@ -107,13 +88,12 @@ class _SplashPageState extends State<SplashPage>
                 alignment: Alignment.bottomCenter,
                 child: AspectRatio(
                   aspectRatio: 654 / 1048,
-                  child: _AnimatedKarsaLogo(controller: _logoController),
+                  child: _AnimatedKarsaLogo(controller: _splashController),
                 ),
               ),
             ),
             Positioned(
-              // Dinaikkan agar tidak menabrak hitungan mundur di dasar layar.
-              bottom: 52,
+              bottom: 30,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
                 decoration: ClayStyles.soft(
@@ -155,7 +135,8 @@ class _SplashPageState extends State<SplashPage>
                 ),
               ),
             ),
-            // Progress bar tipis di dasar layar.
+            // Progress bar tipis di dasar layar. Angka hitungan mundur sengaja
+            // tidak ditampilkan (permintaan pemilik produk).
             Positioned(
               bottom: 8,
               child: Container(
@@ -166,29 +147,20 @@ class _SplashPageState extends State<SplashPage>
                   borderRadius: BorderRadius.circular(999),
                 ),
                 alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  widthFactor: _progress,
-                  child: Container(
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFB1445D), // rose KARSA
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            // Hitungan mundur di pojok kanan bawah.
-            Positioned(
-              right: 16,
-              bottom: 18,
-              child: Text(
-                'Masuk dalam $_secondsLeft detik',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0x9E203E5A),
-                  letterSpacing: 0.2,
+                child: AnimatedBuilder(
+                  animation: _splashController,
+                  builder: (BuildContext context, Widget? _) {
+                    return FractionallySizedBox(
+                      widthFactor: _splashController.value.clamp(0.0, 1.0),
+                      child: Container(
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFB1445D), // rose KARSA
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -203,21 +175,28 @@ class _SplashPageState extends State<SplashPage>
 ///
 /// Background splash-art sudah dibersihkan dari logo tercetak, jadi logo ini
 /// mengisi area yang sama dan boleh beranimasi tanpa membuat dua logo tampil.
+///
+/// Animasi terdiri dari beberapa lapis dengan ritme berbeda supaya gerakannya
+/// variatif, bukan satu pola yang berulang terus:
+///   1. melayang naik-turun + sedikit miring   (3,4 detik)
+///   2. detak skala dengan kurva tidak simetris (2,5 detik)
+///   3. aura putih menguat-melemah              (4,2 detik)
+///   4. dua cincin mengembang, fase berbeda     (2,9 & 4,6 detik)
+///   5. sapuan cahaya yang lewat sesekali       (5,0 detik)
 class _AnimatedKarsaLogo extends StatelessWidget {
   const _AnimatedKarsaLogo({required this.controller});
 
   final AnimationController controller;
 
   /// Rasio isi logo setelah tepi transparannya dipotong (298x275 px).
-  static const double _logoAspect = 298 / 275; // isi logo 298x275 px
+  static const double _logoAspect = 298 / 275;
 
   /// Posisi logo KARSA yang tercetak di ilustrasi asli (splash-art.png,
   /// 654x1048): x 202..405, y 105..298 -- tengah (303.5, 201.5).
   ///
-  /// Ukurannya dinaikkan ke ~40% lebar ilustrasi (aslinya 31%): pada layar
+  /// Ukurannya dinaikkan ke 40% lebar ilustrasi (aslinya 31%): pada layar
   /// ponsel ukuran asli terlalu kecil untuk animasi, sementara 72% (percobaan
-  /// pertama) terlalu besar dan menutupi awan. 40% masih terasa satu keluarga
-  /// dengan logo di ilustrasi aslinya.
+  /// pertama) terlalu besar dan menutupi awan.
   static const double _artAspect = 654 / 1048;
   static const double _logoWidthRatio = 0.40;
   static const double _logoCenterXRatio = 303.5 / 654; // 0.4641
@@ -253,44 +232,10 @@ class _AnimatedKarsaLogo extends StatelessWidget {
               top: centerY - logoH / 2,
               width: logoW,
               height: logoH,
-              child: AnimatedBuilder(
-                animation: controller,
-                builder: (BuildContext context, Widget? child) {
-                  final double t = controller.value; // 0..1
-                  // Detak: skala 0.97 -> 1.03, halus (sin, bukan patah-patah).
-                  final double pulse = 1 + 0.03 * math.sin(t * 2 * math.pi);
-                  // Cahaya di belakang logo ikut berdenyut.
-                  final double glow = 0.30 + 0.16 * math.sin(t * 2 * math.pi - 0.6);
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: <Widget>[
-                      // Aura lembut: logo terasa "menyala" di langit.
-                      Transform.scale(
-                        scale: pulse * 1.06,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: RadialGradient(
-                              colors: <Color>[
-                                Colors.white.withValues(alpha: glow),
-                                Colors.white.withValues(alpha: 0),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Cincin yang mengembang lalu memudar, tiap putaran.
-                      _ExpandingRing(progress: t, diameter: logoW * 0.92),
-                      // Logo itu sendiri, dengan detak.
-                      Transform.scale(scale: pulse, child: child),
-                    ],
-                  );
-                },
-                child: Image.asset(
-                  AppConstants.assetLoginLogo,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.high,
-                ),
+              child: _LogoAnimation(
+                controller: controller,
+                logoW: logoW,
+                logoH: logoH,
               ),
             ),
           ],
@@ -300,21 +245,154 @@ class _AnimatedKarsaLogo extends StatelessWidget {
   }
 }
 
-/// Cincin tipis yang mengembang dari dalam logo lalu memudar.
-class _ExpandingRing extends StatelessWidget {
-  const _ExpandingRing({required this.progress, required this.diameter});
+/// Isi animasi logo: semua lapis digambar di sini.
+class _LogoAnimation extends StatelessWidget {
+  const _LogoAnimation({
+    required this.controller,
+    required this.logoW,
+    required this.logoH,
+  });
 
-  final double progress;
-  final double diameter;
+  final AnimationController controller;
+  final double logoW;
+  final double logoH;
 
   @override
   Widget build(BuildContext context) {
-    // Hanya tampil di 55% awal putaran, sisanya istirahat.
-    final double raw = (progress / 0.55).clamp(0.0, 1.0);
-    if (progress > 0.55) return const SizedBox.shrink();
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (BuildContext context, Widget? child) {
+        // Waktu global splash 0..1, dipakai bersama progress bar.
+        final double seconds =
+            controller.value * AppConstants.splashDuration.inSeconds;
+
+        // Lapis 1: melayang naik-turun + sedikit miring (3,4 detik).
+        final double floatPhase = (seconds / 3.4) % 1.0;
+        final double floatY =
+            -0.022 * math.sin(floatPhase * 2 * math.pi) * logoH;
+        final double tilt = 0.012 * math.sin(floatPhase * 2 * math.pi + 0.7);
+
+        // Lapis 2: detak skala, puncak tidak di tengah (2,5 detik).
+        final double pulsePhase = (seconds / 2.5) % 1.0;
+        final double pulse = 0.985 + 0.05 * _bell(pulsePhase, 0.45, 0.5);
+
+        // Lapis 3: aura putih menguat-melemah (4,2 detik).
+        final double haloPhase = (seconds / 4.2) % 1.0;
+        final double glow = (0.30 + 0.34 * _bell(haloPhase, 0.40, 0.55))
+            .clamp(0.0, 1.0);
+
+        return Transform.translate(
+          offset: Offset(0, floatY),
+          child: Transform.rotate(
+            angle: tilt,
+            child: Stack(
+              alignment: Alignment.center,
+              children: <Widget>[
+                // Aura lembut: logo terasa "menyala" di langit.
+                Opacity(
+                  opacity: glow,
+                  child: Container(
+                    width: logoW * 1.28,
+                    height: logoW * 1.28,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: <Color>[
+                          Color(0x66FFFFFF),
+                          Color(0x1AFFFFFF),
+                          Color(0x00FFFFFF),
+                        ],
+                        stops: <double>[0.0, 0.42, 0.72],
+                      ),
+                    ),
+                  ),
+                ),
+                // Dua cincin dengan ritme & fase berbeda.
+                _ExpandingRing(
+                  seconds: seconds,
+                  cycle: 2.9,
+                  delay: 0.0,
+                  diameter: logoW,
+                  maxScale: 1.75,
+                  baseOpacity: 0.6,
+                  strokeWidth: 2.5,
+                ),
+                _ExpandingRing(
+                  seconds: seconds,
+                  cycle: 4.6,
+                  delay: 1.7,
+                  diameter: logoW * 0.78,
+                  maxScale: 1.9,
+                  baseOpacity: 0.45,
+                  strokeWidth: 2,
+                ),
+                // Sapuan cahaya yang lewat sesekali (5 detik).
+                _LogoShine(
+                  seconds: seconds,
+                  cycle: 5.0,
+                  width: logoW,
+                  height: logoH,
+                ),
+                // Logo itu sendiri, dengan detak.
+                Transform.scale(scale: pulse, child: child),
+              ],
+            ),
+          ),
+        );
+      },
+      child: Image.asset(
+        AppConstants.assetLoginLogo,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+      ),
+    );
+  }
+}
+
+/// Kurva "lonceng" 0..1: naik ke puncak di [peak], lalu turun lagi.
+///
+/// Dipakai agar detak dan aura punya ritme yang tidak simetris (tidak terasa
+/// seperti animasi bolak-balik yang kaku).
+double _bell(double phase, double peak, double sharpness) {
+  final double d = (phase - peak).abs();
+  final double window = d / sharpness.clamp(0.01, 1.0);
+  if (window >= 1) return 0;
+  final double x = 1 - window;
+  return x * x * (3 - 2 * x); // smoothstep
+}
+
+/// Cincin tipis yang mengembang dari dalam logo lalu memudar.
+///
+/// [cycle] menentukan lama satu putaran (detik) dan [delay] menggeser fasenya,
+/// jadi dua cincin bisa bergerak dengan ritme berbeda.
+class _ExpandingRing extends StatelessWidget {
+  const _ExpandingRing({
+    required this.seconds,
+    required this.cycle,
+    required this.delay,
+    required this.diameter,
+    required this.maxScale,
+    required this.baseOpacity,
+    required this.strokeWidth,
+  });
+
+  final double seconds;
+  final double cycle;
+  final double delay;
+  final double diameter;
+  final double maxScale;
+  final double baseOpacity;
+  final double strokeWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final double phase = ((seconds + delay) / cycle) % 1.0;
+    // Tampil di 62% awal putaran, sisanya istirahat.
+    if (phase > 0.62) return const SizedBox.shrink();
+    final double raw = (phase / 0.62).clamp(0.0, 1.0);
     final double eased = Curves.easeOutCubic.transform(raw);
-    final double size = diameter * (0.55 + 0.75 * eased);
-    final double opacity = (1 - eased) * 0.55;
+    final double size = diameter * (0.55 + (maxScale - 0.55) * eased);
+    final double opacity = (1 - eased) * baseOpacity;
     return IgnorePointer(
       child: Container(
         width: size,
@@ -323,7 +401,63 @@ class _ExpandingRing extends StatelessWidget {
           shape: BoxShape.circle,
           border: Border.all(
             color: const Color(0xFFFFFFFF).withValues(alpha: opacity),
-            width: 2.5,
+            width: strokeWidth,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Sorot cahaya yang menyapu logo sesekali, bukan terus-menerus.
+///
+/// Muncul di 55%..90% setiap putaran [cycle], bergerak dari kanan ke kiri.
+class _LogoShine extends StatelessWidget {
+  const _LogoShine({
+    required this.seconds,
+    required this.cycle,
+    required this.width,
+    required this.height,
+  });
+
+  final double seconds;
+  final double cycle;
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final double phase = (seconds / cycle) % 1.0;
+    if (phase < 0.55 || phase > 0.90) return const SizedBox.shrink();
+    final double local = ((phase - 0.55) / 0.35).clamp(0.0, 1.0);
+    // Puncak kecerahan di tengah sapuan (segitiga 0 -> 0.55 -> 0).
+    final double opacity = (1 - (local - 0.5).abs() * 2) * 0.55;
+    final double dx = width * (1.2 - 2.4 * local);
+    return IgnorePointer(
+      child: ClipOval(
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: Transform.translate(
+            offset: Offset(dx, 0),
+            child: Transform.rotate(
+              angle: -0.42,
+              child: Container(
+                width: width * 0.34,
+                height: height * 1.6,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: <Color>[
+                      const Color(0x00FFFFFF),
+                      const Color(0xFFFFFFFF).withValues(alpha: opacity),
+                      const Color(0x00FFFFFF),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),

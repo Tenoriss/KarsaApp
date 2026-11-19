@@ -410,16 +410,20 @@ if (splashTimer) {
     'splash auto-advances straight to the login form after ' + (SPLASH_MS_EXPECTED / 1000) + ' detik');
 }
 
-// Splash panjang harus terasa hidup: ada hitungan mundur dan progress bar.
+// Splash 10 detik harus terasa hidup, tapi TANPA teks hitungan mundur:
+// permintaan pemilik produk adalah menghapus "Masuk dalam N detik".
 preview.go('splash');
 const splashText = viewport.textContent || '';
 ok(splashText.indexOf('Menyiapkan pengalaman belajar') >= 0,
   'splash tetap menampilkan pesan penyiapan');
-ok(/Masuk dalam \d+ detik/.test(splashText),
-  'splash menampilkan hitungan mundur agar tidak terasa macet, dapat: ' +
-  (splashText.match(/Masuk dalam [^.]*/) || ['-'])[0]);
+ok(!/Masuk dalam \d+ detik/.test(splashText),
+  'teks hitungan mundur "Masuk dalam N detik" sudah dihapus');
+ok(!/\d+\s*detik/i.test(splashText),
+  'splash tidak menampilkan sisa waktu dalam detik sama sekali');
+ok(!viewport.querySelectorAll('.splash-countdown')[0],
+  'elemen .splash-countdown tidak lagi dirender');
 ok(!!viewport.querySelectorAll('.splash-progress')[0],
-  'splash punya progress bar');
+  'splash punya progress bar sebagai penanda kemajuan');
 // Logo beranimasi + background tetap ada.
 const splashArtImg = viewport.querySelectorAll('.splash-art')[0];
 ok(!!splashArtImg, 'background splash (ilustrasi) tetap ditampilkan');
@@ -433,6 +437,41 @@ if (logoImg) {
 }
 ok(!!viewport.querySelectorAll('.splash-logo-ring')[0],
   'logo punya cincin animasi (.splash-logo-ring)');
+
+// ---- Animasi harus VARIATIF, bukan satu pola berulang ----
+const splashCssEarly = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+ok(!!viewport.querySelectorAll('.splash-logo-ring-alt')[0],
+  'ada cincin kedua dengan ritme berbeda (.splash-logo-ring-alt)');
+ok(!!viewport.querySelectorAll('.splash-logo-halo')[0],
+  'ada lapis aura (.splash-logo-halo)');
+ok(!!viewport.querySelectorAll('.splash-logo-float')[0],
+  'logo dibungkus lapis melayang (.splash-logo-float)');
+ok(!!viewport.querySelectorAll('.splash-logo-rays')[0],
+  'ada lapis sapuan cahaya (.splash-logo-rays)');
+
+// Kumpulkan durasi tiap animasi: harus BERBEDA satu sama lain.
+const durations = [...splashCssEarly.matchAll(
+  /animation:\s*([a-z-]+)\s+([\d.]+)s/g)].map((m) => ({ name: m[1], secs: Number(m[2]) }));
+const logoAnims = durations.filter((d) =>
+  ['karsa-logo-pulse', 'karsa-logo-float', 'karsa-logo-halo',
+   'karsa-logo-ring', 'karsa-logo-ring-alt', 'karsa-logo-sweep'].indexOf(d.name) >= 0);
+ok(logoAnims.length >= 5,
+  'ada minimal 5 lapis animasi logo, dapat ' + logoAnims.length);
+const uniqueDurations = [...new Set(logoAnims.map((d) => d.secs))];
+ok(uniqueDurations.length === logoAnims.length,
+  'setiap lapis punya durasi berbeda (tidak serempak): ' +
+  logoAnims.map((d) => d.name.replace('karsa-logo-', '') + '=' + d.secs + 's').join(', '));
+ok(uniqueDurations.every((d) => d > 0 && d < 10),
+  'tiap putaran animasi lebih pendek dari splash, jadi berulang beberapa kali');
+// Fase tidak boleh kembar: gabungan durasi berbeda -> pola tidak pernah
+// kembali ke kondisi awal yang sama selama splash 10 detik.
+const combos = new Set();
+for (let i = 0; i < 100; i += 1) {
+  const t = i / 10;
+  combos.add(logoAnims.map((d) => (t % d.secs).toFixed(3)).join('|'));
+}
+ok(combos.size >= 95,
+  'kombinasi fase antar lapis unik di hampir semua waktu (' + combos.size + '/100)');
 
 // Penempatan logo: jsdom tidak punya layout engine, jadi ukuran ilustrasi
 // dipalsukan untuk menguji perhitungannya (logika sama dengan Flutter).
@@ -498,20 +537,30 @@ ok(/prefers-reduced-motion[\s\S]{0,220}splash-logo/.test(splashCss),
 ok(/@keyframes\s+karsa-logo-pulse[\s\S]{0,200}scale\(0\.97\)/.test(splashCss),
   'detak logo memakai skala (bukan hanya opacity)');
 
-const countdownBefore = (splashText.match(/Masuk dalam (\d+)/) || [])[1];
-// Tik detik berikutnya harus mengurangi angka.
+// Mock DOM menyimpan style lewat setAttribute('style', ...).
+const widthOf = (el) => {
+  if (!el) return null;
+  const v = String(el.getAttribute('style') || '');
+  const m = v.match(/([\d.]+)%/);
+  return m ? Number(m[1]) : null;
+};
+const widthBefore = widthOf(viewport.querySelectorAll('.splash-progress-fill')[0]);
+// Tik detik berikutnya harus memajukan progress bar (tanpa mengubah teks apa pun).
 const tick = timers.find((t) => t.ms === 1000);
 ok(!!tick, 'splash menjadwalkan pembaruan tiap detik');
 if (tick) {
   const logoBefore = viewport.querySelectorAll('.splash-logo')[0];
+  const textBefore = viewport.textContent;
   tick.fn();
-  const after = (viewport.textContent.match(/Masuk dalam (\d+)/) || [])[1];
-  ok(Number(after) < Number(countdownBefore),
-    'hitungan mundur berkurang tiap detik (' + countdownBefore + ' -> ' + after + ')');
+  const widthAfter = widthOf(viewport.querySelectorAll('.splash-progress-fill')[0]);
+  ok(widthBefore !== null && widthAfter !== null && widthAfter > widthBefore,
+    'progress bar bertambah tiap detik (' + widthBefore + '% -> ' + widthAfter + '%)');
+  ok(viewport.textContent === textBefore,
+    'tik per detik tidak mengubah teks apa pun (tidak ada hitungan mundur)');
   // Node logo harus tetap sama setelah tik: kalau diganti, animasi CSS
   // ter-restart dan logo terlihat berkedip tiap detik.
   ok(viewport.querySelectorAll('.splash-logo')[0] === logoBefore,
-    'tik hitungan mundur tidak membangun ulang logo (animasi tidak restart)');
+    'tik per detik tidak membangun ulang logo (animasi tidak restart)');
 }
 
 /* ------------------------------------------------------------------ *

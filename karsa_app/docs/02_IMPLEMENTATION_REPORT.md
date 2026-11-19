@@ -161,8 +161,7 @@ label 10px.
 ### 4.2 Autentikasi
 
 Splash tampil **10 detik** (`AppConstants.splashDuration`) dengan logo
-beranimasi (detak + aura + cincin, putaran 2,5 detik), hitungan mundur, dan
-progress bar. Background ilustrasi tetap; logo tercetak dihapus dari aset dan
+beranimasi (animasi 6 lapis dengan ritme berbeda: melayang 3,4 d · detak 2,5 d · aura 4,2 d · cincin 2,9 d & 4,6 d · sapuan cahaya 5 d), dan progress bar. Teks hitungan mundur tidak ditampilkan. Background ilustrasi tetap; logo tercetak dihapus dari aset dan
 diganti logo transparan beranimasi pada posisi yang sama.
 Alur: `SplashPage` (10 detik) → `LoginPage` (**satu form untuk kelima peran**)
 → `MainShell` sesuai peran yang terdeteksi. `WelcomePage` (pilih peran) masih

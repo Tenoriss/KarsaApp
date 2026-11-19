@@ -1214,23 +1214,27 @@
 
   function renderSplash() {
     // Splash 10 detik: hitungan mundur + progress bar supaya tidak terasa macet.
-    var remaining = typeof state.splashRemaining === 'number'
-      ? state.splashRemaining
-      : Math.ceil(SPLASH_MS / 1000);
     var progress = Math.min(100, Math.max(0,
-      ((SPLASH_MS / 1000) - remaining) / (SPLASH_MS / 1000) * 100));
+      ((SPLASH_MS / 1000) - remaining()) / (SPLASH_MS / 1000) * 100));
     return el('div', { class: 'splash-stage' }, [
       el('img', { class: 'splash-art', src: ASSETS.splashArt, alt: 'Ilustrasi KARSA' }),
       // Logo KARSA beranimasi, menempati area logo yang sudah dibersihkan
       // dari ilustrasi (x 95..566, y 88..348 dari 654x1048).
       el('div', { class: 'splash-art-box' }, [
         el('div', { class: 'splash-logo-wrap' }, [
+          // Beberapa lapis animasi dengan ritme berbeda supaya gerakannya
+          // variatif, bukan satu pola yang berulang terus.
+          el('span', { class: 'splash-logo-halo' }),
           el('span', { class: 'splash-logo-ring' }),
-          el('img', {
-            class: 'splash-logo',
-            src: ASSETS.loginLogo,
-            alt: 'Logo KARSA'
-          })
+          el('span', { class: 'splash-logo-ring splash-logo-ring-alt' }),
+          el('span', { class: 'splash-logo-rays' }),
+          el('span', { class: 'splash-logo-float' }, [
+            el('img', {
+              class: 'splash-logo',
+              src: ASSETS.loginLogo,
+              alt: 'Logo KARSA'
+            })
+          ])
         ])
       ]),
       el('div', { class: 'splash-pill' }, [
@@ -1243,12 +1247,7 @@
       ]),
       el('div', { class: 'splash-progress', 'aria-hidden': 'true' }, [
         el('div', { class: 'splash-progress-fill', style: 'width:' + progress + '%' })
-      ]),
-      el('p', {
-        class: 'splash-countdown',
-        'aria-live': 'polite',
-        text: 'Masuk dalam ' + remaining + ' detik'
-      })
+      ])
     ]);
   }
 
@@ -6375,16 +6374,19 @@
 
   /// Perbarui hitungan mundur & progress bar tanpa membangun ulang splash.
   /// Mengembalikan true bila splash sudah ada di DOM dan berhasil diperbarui.
+  /// Sisa detik splash. Angkanya tidak ditampilkan ke pengguna (hanya dipakai
+  /// progress bar); permintaan pemilik produk: teks hitungan mundur dihapus.
+  function remaining() {
+    return typeof state.splashRemaining === 'number'
+      ? state.splashRemaining
+      : Math.ceil(SPLASH_MS / 1000);
+  }
+
   function patchSplash(viewport) {
     var stage = viewport.querySelectorAll('.splash-stage')[0];
     if (!stage) return false;
-    var remaining = typeof state.splashRemaining === 'number'
-      ? state.splashRemaining
-      : Math.ceil(SPLASH_MS / 1000);
     var progress = Math.min(100, Math.max(0,
-      ((SPLASH_MS / 1000) - remaining) / (SPLASH_MS / 1000) * 100));
-    var label = stage.querySelectorAll('.splash-countdown')[0];
-    if (label) label.textContent = 'Masuk dalam ' + remaining + ' detik';
+      ((SPLASH_MS / 1000) - remaining()) / (SPLASH_MS / 1000) * 100));
     var fill = stage.querySelectorAll('.splash-progress-fill')[0];
     if (fill) fill.setAttribute('style', 'width:' + progress + '%');
     return true;

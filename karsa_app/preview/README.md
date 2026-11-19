@@ -303,11 +303,14 @@ node karsa_app/preview/test_preview.js
 
 Harness memakai **mock DOM** (tanpa browser) dan memverifikasi:
 41 layar ter-render tanpa error, splash **10000 ms** (10 detik sesuai permintaan
-terakhir) yang menampilkan **logo beranimasi** (`.splash-logo` +
-`.splash-logo-ring`, keyframes `karsa-logo-pulse` / `karsa-logo-ring`) di atas
-background ilustrasi yang tetap ada, hitungan mundur *"Masuk dalam N detik"*
-dan progress bar yang benar-benar bertambah, serta memastikan tik hitungan
-mundur **tidak** membangun ulang node logo (animasi tidak restart), dan
+terakhir) yang menampilkan **logo beranimasi 6 lapis dengan ritme berbeda**
+(melayang 3,4 d · detak 2,5 d · aura 4,2 d · cincin 2,9 d & 4,6 d · sapuan
+cahaya 5 d; keyframes `karsa-logo-pulse` / `karsa-logo-float` /
+`karsa-logo-halo` / `karsa-logo-ring` / `karsa-logo-ring-alt` /
+`karsa-logo-sweep`) di atas background ilustrasi yang tetap ada, progress bar
+yang benar-benar bertambah, **tidak adanya teks hitungan mundur** (tidak ada
+teks "detik" apa pun), serta memastikan tik per detik **tidak** membangun
+ulang node logo (animasi tidak restart) dan tidak mengubah teks, dan
 `layoutSplashLogo()` menaruh logo pada posisi logo aslinya di dalam kotak
 ilustrasi (diuji dengan layout palsu: layar ponsel 390x844 dan layar lebar
 1024x600, karena jsdom tidak punya layout engine) sebelum membuka form login
@@ -325,7 +328,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **717 pemeriksaan**.
+Total **728 pemeriksaan**.
 
 ## Membuka preview tanpa panel Live Preview
 
@@ -350,8 +353,8 @@ tombol unduh untuk berkas tersebut.
 
 ## Alur login terbaru
 
-Splash (**10 detik**, logo beranimasi + hitungan mundur + progress bar) →
-**satu form login** → dashboard sesuai peran. Tidak ada lagi
+Splash (**10 detik**, logo beranimasi 6 lapis + progress bar, tanpa teks
+hitungan mundur) → **satu form login** → dashboard sesuai peran. Tidak ada lagi
 layar pilih peran di jalur utama.
 
 | Langkah | Perilaku |
