@@ -2119,6 +2119,78 @@ ok(!!lightRose && !!darkRose && lightRose[1].trim() !== darkRose[1].trim(),
 });
 
 /* ------------------------------------------------------------------ *
+ * 10d. Role orang tua: warna & angka
+ * ------------------------------------------------------------------ */
+/* Warna keras di layar orang tua adalah bug mode gelap yang berulang:
+   #F8EDF0 hampir putih, sementara --ink di mode gelap juga hampir putih
+   (#F3EAF0) -> kontras 1.03:1, teks praktis hilang. Semua latar harus
+   memakai token tema. */
+preview.state.role = 'orangtua';
+preview.state.dark = false;
+preview.state.parentClass = 'Kelas 1';
+preview.state.studentName = 'Dimas Nugroho';
+
+const ortuScreens = ['ortu-beranda', 'ortu-tugas', 'ortu-latihan', 'ortu-profil'];
+const orangTuaHardColors = [];
+ortuScreens.forEach((sc) => {
+  preview.go(sc);
+  viewport.querySelectorAll('[style]').forEach((node) => {
+    const st = node.getAttribute('style') || '';
+    const hex = st.match(/#[0-9A-Fa-f]{3,8}/g);
+    // item-tile boleh berwarna (ditimpa !important di mode gelap) dan tileColor
+    // sudah diuji terpisah; yang dilarang adalah latar kartu/permukaan keras.
+    if (!hex) return;
+    const cls = node.getAttribute('class') || '';
+    if (cls.indexOf('item-tile') >= 0 || cls.indexOf('stat-icon-circle') >= 0 ||
+        cls.indexOf('greeting-avatar') >= 0) return;
+    orangTuaHardColors.push(sc + ' .' + cls.split(' ')[0] + ' -> ' + hex.join(','));
+  });
+});
+eq(orangTuaHardColors.length, 0,
+  'orang tua: tidak ada warna keras di latar (aman mode gelap), ketemu: ' +
+  orangTuaHardColors.join(' | '));
+
+// Kartu "Perjalanan belajar" harus memakai token, bukan #F8EDF0.
+preview.go('ortu-beranda');
+const progressCard = Array.from(viewport.querySelectorAll('.karsa-card'))
+  .filter((c) => (c.textContent || '').indexOf('Perjalanan belajar') >= 0)[0];
+ok(!!progressCard, 'orang tua: kartu Perjalanan belajar ada');
+ok(!!progressCard && (progressCard.getAttribute('style') || '').indexOf('--surface-progress') >= 0,
+  'orang tua: kartu Perjalanan belajar memakai token tema (bukan warna keras)');
+
+// Angka "tugas selesai" hanya menghitung kelas anak.
+const resultsIds = Object.keys(preview.results());
+const tasksAll = preview.tasks();
+const childDone = tasksAll.filter((t) => t.className === 'Kelas 1' && preview.results()[t.id]).length;
+ok(resultsIds.length > childDone,
+  'orang tua: ada hasil kelas lain di data demo (prasyarat uji), total=' + resultsIds.length +
+  ' kelas anak=' + childDone);
+preview.go('ortu-profil');
+const meter = (viewport.textContent || '').match(/(\d+) tugas dan 0 latihan selesai/);
+ok(!!meter, 'orang tua: profil menampilkan ringkasan tugas');
+eq(meter ? Number(meter[1]) : -1, childDone,
+  'orang tua: "tugas selesai" hanya menghitung kelas anak (bukan seluruh RESULTS)');
+
+// Saat belum ada yang selesai, jangan memuji "terus bertumbuh".
+if (childDone === 0) {
+  ok((viewport.textContent || '').indexOf('Ayo mulai perjalanannya') >= 0,
+    'orang tua: tanpa progres, kartu memakai ajakan memulai (bukan pujian palsu)');
+}
+
+// Tema bisa diganti dari beranda orang tua (dan tetap tersimpan).
+preview.state.dark = false;
+preview.go('ortu-beranda');
+const themeBtn = Array.from(viewport.querySelectorAll('button'))
+  .filter((b) => /mode (gelap|terang)/i.test(b.getAttribute('aria-label') || ''))[0];
+ok(!!themeBtn, 'orang tua: tombol tema ada di beranda');
+if (themeBtn) {
+  themeBtn.click();
+  ok(preview.state.dark === true, 'orang tua: tombol tema mengaktifkan mode gelap');
+  preview.state.dark = false;
+  preview.render();
+}
+
+/* ------------------------------------------------------------------ *
  * 11. Tata letak kuis mengikuti rancangan (warna tetap)
  * ------------------------------------------------------------------ */
 preview.state.role = 'siswa';

@@ -3249,6 +3249,15 @@
   }
 
   /* ---------------- Orang tua ---------------- */
+  /* Hasil tugas yang benar-benar milik kelas anak. RESULTS menyimpan hasil
+     semua kelas (termasuk demo kelas lain), jadi tidak boleh dipakai apa adanya
+     di layar orang tua. */
+  function completedTasksForChild() {
+    return TASKS.filter(function (t) {
+      return t.className === state.parentClass && !!RESULTS[t.id];
+    }).length;
+  }
+
   function renderOrtuBeranda() {
     var active = activeTasks();
     var remaining = visiblePractices().length;
@@ -3289,7 +3298,7 @@
         ]),
         el('span', { style: 'font-size:30px', text: '🌟' }),
         el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('chevron-forward', 20)])
-      ], { backgroundColor: '#F8EDF0', onTap: function () { openProgress(); } }),
+      ], { backgroundColor: 'var(--surface-progress)', onTap: function () { openProgress(); } }),
       wideStatCard({
         icon: 'book', label: 'Materi', value: String(classMaterials),
         desc: 'Lihat materi untuk kelasmu', color: 'var(--blue)', onTap: function () { go('materi'); }
@@ -3471,10 +3480,17 @@
       personalInfoCard(false),
       el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Perjalanan Belajarku' }),
       clayCard([
-        el('p', { class: 't-item-title', style: 'margin:0', text: 'Terus bertumbuh! 🌱' }),
+        el('p', {
+          class: 't-item-title', style: 'margin:0',
+          // Jangan memuji "terus bertumbuh" saat belum ada yang selesai.
+          text: completedTasksForChild() ? 'Terus bertumbuh! 🌱' : 'Ayo mulai perjalanannya! 🚀'
+        }),
         el('p', {
           class: 't-muted', style: 'margin:4px 0 0 0',
-          text: Object.keys(RESULTS).length + ' tugas dan 0 latihan selesai.'
+          // Hitung hanya tugas kelas anak. Sebelumnya memakai seluruh RESULTS,
+          // sehingga hasil milik kelas lain ikut terhitung (mis. 18 tugas
+          // padahal anak di Kelas 1 belum menyelesaikan satu pun).
+          text: completedTasksForChild() + ' tugas dan 0 latihan selesai.'
         })
       ]),
       el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Nilai kelas' }),

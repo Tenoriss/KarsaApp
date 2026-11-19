@@ -14,6 +14,7 @@ import '../../data/curriculum_data.dart';
 import '../../providers/app_state.dart';
 import '../../shared/widgets/media_image.dart';
 import '../../shared/widgets/greeting_header.dart';
+import '../../core/theme/dark_color_mapper.dart';
 
 class ParentHomeTab extends StatelessWidget {
   const ParentHomeTab({super.key});
@@ -98,7 +99,13 @@ class ParentHomeTab extends StatelessWidget {
         ),
         ClayCard(
           onTap: () => state.setScreen('progress'),
-          backgroundColor: const Color(0xFFF8EDF0),
+          // Dulu warna keras #F8EDF0. Di mode gelap teks memakai --ink yang
+          // nyaris putih, jadi teks putih di atas latar hampir putih
+          // (kontras 1.03:1). Pakai mapper supaya ikut tema.
+          backgroundColor: DarkColorMapper.surface(
+            const Color(0xFFF8EDF0),
+            isDark: c.isDark,
+          ),
           padding: const EdgeInsets.all(16),
           margin: const EdgeInsets.only(top: 3, bottom: 12),
           child: Row(
