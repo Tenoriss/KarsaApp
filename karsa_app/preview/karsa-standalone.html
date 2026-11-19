@@ -398,7 +398,7 @@ body.is-splash {
    Animasi logo KARSA
    Beberapa lapis bergerak dengan ritme BERBEDA (2.5s / 2.9s / 3.4s /
    4.2s / 5s) supaya gerakannya variatif dan tidak terasa seperti satu pola
-   yang berulang. Selama 10 detik splash, tiap lapis menyelesaikan jumlah
+   yang berulang. Selama 6 detik splash, tiap lapis menyelesaikan jumlah
    putaran berbeda sehingga tidak pernah "bertemu" di fase yang sama.
    ------------------------------------------------------------------ */
 
@@ -436,7 +436,7 @@ body.is-splash {
     rgba(255, 255, 255, 0.55) 0%,
     rgba(255, 255, 255, 0.22) 42%,
     rgba(255, 255, 255, 0) 70%);
-  animation: karsa-logo-halo 4.2s ease-in-out infinite;
+  animation: karsa-logo-halo 3.1s ease-in-out infinite;
 }
 
 /* Lapis 3: dua cincin mengembang, fase & kecepatan berbeda. */
@@ -457,8 +457,8 @@ body.is-splash {
   margin: -24% 0 0 -24%;
   border-width: 2px;
   border-color: rgba(255, 255, 255, 0.42);
-  animation: karsa-logo-ring-alt 4.6s ease-out infinite;
-  animation-delay: -1.7s;
+  animation: karsa-logo-ring-alt 3.7s ease-out infinite;
+  animation-delay: -1.4s;
 }
 
 /* Lapis 4: sorot cahaya yang menyapu logo sesekali (bukan terus-menerus). */
@@ -474,7 +474,7 @@ body.is-splash {
   -webkit-mask-image: radial-gradient(circle at 50% 46%, #000 52%, transparent 74%);
   mask-image: radial-gradient(circle at 50% 46%, #000 52%, transparent 74%);
   pointer-events: none;
-  animation: karsa-logo-sweep 5s ease-in-out infinite;
+  animation: karsa-logo-sweep 3.3s ease-in-out infinite;
 }
 
 @keyframes karsa-logo-pulse {
@@ -4685,11 +4685,11 @@ window.KARSA_CURRICULUM.exercisesFor = function (subject, religion) {
    * ------------------------------------------------------------------ */
   /* Lama splash tampil sebelum form login. Cermin
      AppConstants.splashDuration di Flutter; tes membaca angka ini. */
-  // Permintaan pemilik produk: splash 10 detik, logo beranimasi.
-  var SPLASH_MS = 10000;
+  // Permintaan pemilik produk: splash 5-7 detik (dipakai 6), logo beranimasi.
+  var SPLASH_MS = 6000;
 
   function renderSplash() {
-    // Splash 10 detik: hitungan mundur + progress bar supaya tidak terasa macet.
+    // Splash 6 detik: progress bar sebagai penanda kemajuan (tanpa teks).
     var progress = Math.min(100, Math.max(0,
       ((SPLASH_MS / 1000) - remaining()) / (SPLASH_MS / 1000) * 100));
     return el('div', { class: 'splash-stage' }, [

@@ -180,9 +180,12 @@ class _SplashPageState extends State<SplashPage>
 /// variatif, bukan satu pola yang berulang terus:
 ///   1. melayang naik-turun + sedikit miring   (3,4 detik)
 ///   2. detak skala dengan kurva tidak simetris (2,5 detik)
-///   3. aura putih menguat-melemah              (4,2 detik)
-///   4. dua cincin mengembang, fase berbeda     (2,9 & 4,6 detik)
-///   5. sapuan cahaya yang lewat sesekali       (5,0 detik)
+///   3. aura putih menguat-melemah              (3,1 detik)
+///   4. dua cincin mengembang, fase berbeda     (2,9 & 3,7 detik)
+///   5. sapuan cahaya yang lewat sesekali       (3,3 detik)
+///
+/// Semua putaran lebih pendek dari splash (6 detik), jadi tidak ada lapis yang
+/// terpotong di tengah gerakan.
 class _AnimatedKarsaLogo extends StatelessWidget {
   const _AnimatedKarsaLogo({required this.controller});
 
@@ -276,8 +279,8 @@ class _LogoAnimation extends StatelessWidget {
         final double pulsePhase = (seconds / 2.5) % 1.0;
         final double pulse = 0.985 + 0.05 * _bell(pulsePhase, 0.45, 0.5);
 
-        // Lapis 3: aura putih menguat-melemah (4,2 detik).
-        final double haloPhase = (seconds / 4.2) % 1.0;
+        // Lapis 3: aura putih menguat-melemah (3,1 detik).
+        final double haloPhase = (seconds / 3.1) % 1.0;
         final double glow = (0.30 + 0.34 * _bell(haloPhase, 0.40, 0.55))
             .clamp(0.0, 1.0);
 
@@ -319,8 +322,8 @@ class _LogoAnimation extends StatelessWidget {
                 ),
                 _ExpandingRing(
                   seconds: seconds,
-                  cycle: 4.6,
-                  delay: 1.7,
+                  cycle: 3.7,
+                  delay: 1.4,
                   diameter: logoW * 0.78,
                   maxScale: 1.9,
                   baseOpacity: 0.45,
@@ -329,7 +332,7 @@ class _LogoAnimation extends StatelessWidget {
                 // Sapuan cahaya yang lewat sesekali (5 detik).
                 _LogoShine(
                   seconds: seconds,
-                  cycle: 5.0,
+                  cycle: 3.3,
                   width: logoW,
                   height: logoH,
                 ),

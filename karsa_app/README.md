@@ -227,7 +227,7 @@ dikunci ke orientasi potret.
 ```bash
 python3 karsa_app/preview/serve.py --host 0.0.0.0 --port 8000
 curl http://127.0.0.1:8000/healthz
-node karsa_app/preview/test_preview.js    # 728 pemeriksaan, mock DOM
+node karsa_app/preview/test_preview.js    # 729 pemeriksaan, mock DOM
 ```
 
 ---
@@ -247,7 +247,7 @@ node karsa_app/preview/test_preview.js    # 728 pemeriksaan, mock DOM
 
 | Area | Detail |
 | --- | --- |
-| Identitas | Splash (#A2D7FB + ilustrasi asli, 10 detik, logo beranimasi), logo & teks SD Karitas Purwokerto, banner siswa & guru |
+| Identitas | Splash (#A2D7FB + ilustrasi asli, 6 detik, logo beranimasi), logo & teks SD Karitas Purwokerto, banner siswa & guru |
 | Autentikasi | Satu form login untuk 5 peran (peran dideteksi dari NIP/NISN + kata sandi + tombol mata), "Ingat saya" yang menyimpan identitas tanpa kata sandi, lupa kata sandi, logout, validasi dengan pesan galat yang sama |
 | Dashboard | 5 dashboard berbeda sesuai peran (tanpa menyatukan menjadi halaman generik) |
 | **Operator sekolah** | 6 tab (Beranda, Siswa, Kelas, Materi, Media, Profil) + halaman tugas, pengumuman, agenda, nilai, dan form siswa/kelas/akun/materi. CRUD siswa, kelas dinamis, akun guru & wali, tugas, pengumuman, agenda, materi, nilai 0–100, logo/banner sekolah, serta data pribadi operator. Semua tersimpan di `@karsa-demo-v1`, dengan validasi terlihat dan perlindungan kelas terakhir |
@@ -279,8 +279,8 @@ node karsa_app/preview/test_preview.js    # 728 pemeriksaan, mock DOM
   null-check `.isEmpty` secara statis, sementara
   `node karsa_app/preview/test_preview.js` menjalankan 728 pemeriksaan alur.
 
-**Splash 10 detik dengan logo beranimasi.** Sesuai permintaan terakhir, layar
-splash tampil **10 detik** sebelum form login. Durasi tunggal ada di
+**Splash 6 detik dengan logo beranimasi.** Sesuai permintaan terakhir
+(rentang 5-7 detik), layar splash tampil **6 detik** sebelum form login. Durasi tunggal ada di
 `AppConstants.splashDuration` (`Duration(seconds: 10)`); preview memakai angka
 yang sama (`SPLASH_MS = 10000`).
 
@@ -300,15 +300,15 @@ ilustrasi tidak selebar layar, jadi logo harus ikut ilustrasi. Flutter:
 mengukur ukuran nyata lalu menaruh logo dalam piksel (diperbarui saat resize).
 Animasinya **6 lapis dengan ritme berbeda** (permintaan: lebih variatif) —
 melayang naik-turun + miring 3,4 dtk, detak skala dengan kurva tidak simetris
-2,5 dtk, aura putih menguat-melemah 4,2 dtk, dua cincin mengembang 2,9 dtk &
-4,6 dtk (fase digeser), dan sapuan cahaya yang lewat sesekali 5 dtk. Karena
+2,5 dtk, aura putih menguat-melemah 3,1 dtk, dua cincin mengembang 2,9 dtk &
+3,7 dtk (fase digeser), dan sapuan cahaya yang lewat sesekali 3,3 dtk. Karena
 durasi tiap lapis berbeda, kombinasinya tidak pernah kembali ke kondisi awal
-selama 10 detik: 100 dari 100 sampel waktu menghasilkan fase unik. Ada
+selama 6 detik: 120 dari 120 sampel waktu menghasilkan fase unik. Ada
 `prefers-reduced-motion` untuk yang tidak suka gerak.
 
 Teks hitungan mundur *"Masuk dalam N detik"* **tidak ditampilkan lagi**
 (permintaan pemilik produk); kemajuan ditunjukkan oleh progress bar tipis di
-dasar layar, dan durasi tetap 10 detik.
+dasar layar, dan durasi tetap 6 detik (di dalam rentang 5-7 detik).
 
 Preview memakai `patchSplash()`: saat splash sudah tampil, tik per detik hanya
 memperbarui lebar progress bar, **tidak** membangun ulang DOM. Render ulang

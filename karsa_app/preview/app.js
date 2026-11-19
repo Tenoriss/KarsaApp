@@ -1209,11 +1209,11 @@
    * ------------------------------------------------------------------ */
   /* Lama splash tampil sebelum form login. Cermin
      AppConstants.splashDuration di Flutter; tes membaca angka ini. */
-  // Permintaan pemilik produk: splash 10 detik, logo beranimasi.
-  var SPLASH_MS = 10000;
+  // Permintaan pemilik produk: splash 5-7 detik (dipakai 6), logo beranimasi.
+  var SPLASH_MS = 6000;
 
   function renderSplash() {
-    // Splash 10 detik: hitungan mundur + progress bar supaya tidak terasa macet.
+    // Splash 6 detik: progress bar sebagai penanda kemajuan (tanpa teks).
     var progress = Math.min(100, Math.max(0,
       ((SPLASH_MS / 1000) - remaining()) / (SPLASH_MS / 1000) * 100));
     return el('div', { class: 'splash-stage' }, [

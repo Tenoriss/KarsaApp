@@ -4,20 +4,24 @@ import 'package:karsa_app/core/constants/app_constants.dart';
 import 'package:karsa_app/models/user_role.dart';
 import 'package:karsa_app/providers/app_state.dart';
 
-/// Splash tampil 10 detik dengan logo beranimasi sebelum form login.
+/// Splash tampil 6 detik dengan logo beranimasi sebelum form login.
 ///
-/// Permintaan pemilik produk (terbaru): 10 detik, bukan 15-20 detik lagi.
+/// Permintaan pemilik produk (terbaru): 5-7 detik. Dipakai 6 detik.
 /// Tes ini menjaga agar durasinya tidak diam-diam berubah, dan memastikan
 /// splash tetap berakhir di form login.
 void main() {
   group('Durasi splash', () {
-    test('durasi splash tepat 10 detik', () {
+    test('durasi splash berada di rentang 5-7 detik', () {
       final seconds = AppConstants.splashDuration.inSeconds;
-      expect(seconds, 10, reason: 'permintaan terakhir: 10 detik, dapat $seconds');
-      expect(AppConstants.splashDuration.inMilliseconds, 10000);
+      expect(seconds, greaterThanOrEqualTo(5),
+          reason: 'splash minimal 5 detik, dapat $seconds');
+      expect(seconds, lessThanOrEqualTo(7),
+          reason: 'splash maksimal 7 detik, dapat $seconds');
+      expect(seconds, 6, reason: 'dipakai titik tengah rentang: 6 detik');
     });
 
-    test('durasi splash bukan nilai lama (18 detik / 2,3 detik)', () {
+    test('durasi splash bukan nilai lama (10 / 18 detik / 2,3 detik)', () {
+      expect(AppConstants.splashDuration.inSeconds, isNot(10));
       expect(AppConstants.splashDuration.inSeconds, isNot(18));
       expect(AppConstants.splashDuration.inMilliseconds, isNot(2300));
     });
@@ -28,16 +32,18 @@ void main() {
       // putaran tunggal lagi, jadi yang diuji: splash lebih panjang dari
       // setiap putaran (animasi berulang beberapa kali) dan durasinya masuk
       // akal untuk splash 10 detik.
-      expect(AppConstants.splashDuration.inSeconds, 10);
+      expect(AppConstants.splashDuration.inSeconds, 6);
       final cycle = AppConstants.splashLogoCycle.inMilliseconds;
       expect(cycle, greaterThan(0));
       expect(cycle, lessThanOrEqualTo(AppConstants.splashDuration.inMilliseconds),
           reason: 'satu putaran animasi harus selesai minimal sekali selama splash');
-      const List<double> layers = <double>[2.5, 2.9, 3.4, 4.2, 4.6, 5.0];
+      // Durasi tiap lapis animasi (detik), sama dengan implementasi Flutter.
+      const List<double> layers = <double>[2.5, 2.9, 3.1, 3.3, 3.4, 3.7];
       expect(layers.toSet().length, layers.length,
           reason: 'setiap lapis animasi harus punya durasi berbeda');
-      expect(layers.every((double d) => d > 0 && d < 10), isTrue,
-          reason: 'semua lapis lebih pendek dari splash agar berulang');
+      final double splashSeconds = AppConstants.splashDuration.inSeconds.toDouble();
+      expect(layers.every((double d) => d > 0 && d <= splashSeconds), isTrue,
+          reason: 'semua lapis tidak lebih lama dari splash agar tidak terpotong');
     });
 
     test('splash tetap berakhir di form login', () async {

@@ -102,7 +102,8 @@ Yang dipverifikasi:
   keluar; beranda tidak lagi merender kolom profil penuh dan hanya menyisakan
   pintasan ke tab tersebut;
 * alias `#wali-rekap` → `wali-recap`;
-* splash menjadwalkan timer **10000 ms (10 detik)** sesuai permintaan terakhir,
+* splash menjadwalkan timer **6000 ms (6 detik, dalam rentang 5-7 detik)**
+  sesuai permintaan terakhir,
   lalu otomatis pindah ke **form login tunggal**; logo KARSA beranimasi
   (`karsa-logo-pulse` + `karsa-logo-ring`) di atas background yang tetap ada,
   progress bar bertambah tiap detik tanpa teks hitungan mundur (teks
@@ -258,7 +259,7 @@ login dengan identitas masih terisi.
 
 | # | Langkah | Hasil yang diharapkan |
 | --- | --- | --- |
-| P1 | Buka `http://localhost:8000` | Splash tampil 10 detik: background ilustrasi sekolah, logo KARSA beranimasi variatif (melayang, detak, aura, dua cincin, sapuan cahaya), progress bar bertambah tanpa teks hitungan mundur, lalu pindah otomatis ke form login tunggal |
+| P1 | Buka `http://localhost:8000` | Splash tampil 6 detik: background ilustrasi sekolah, logo KARSA beranimasi variatif (melayang, detak, aura, dua cincin, sapuan cahaya), progress bar bertambah tanpa teks hitungan mundur, lalu pindah otomatis ke form login tunggal |
 | P2 | Ganti layar lewat dropdown | Semua 40 layar terbuka tanpa error konsol |
 | P3 | Login dengan 5 akun demo | Masuk ke beranda peran yang sesuai |
 | P4 | Login dengan data salah | Galat tampil, tetap di layar login |

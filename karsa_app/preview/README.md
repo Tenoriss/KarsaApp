@@ -302,10 +302,10 @@ node karsa_app/preview/test_preview.js
 ```
 
 Harness memakai **mock DOM** (tanpa browser) dan memverifikasi:
-41 layar ter-render tanpa error, splash **10000 ms** (10 detik sesuai permintaan
-terakhir) yang menampilkan **logo beranimasi 6 lapis dengan ritme berbeda**
-(melayang 3,4 d · detak 2,5 d · aura 4,2 d · cincin 2,9 d & 4,6 d · sapuan
-cahaya 5 d; keyframes `karsa-logo-pulse` / `karsa-logo-float` /
+41 layar ter-render tanpa error, splash **6000 ms** (6 detik, di dalam rentang
+5-7 detik yang diminta) yang menampilkan **logo beranimasi 6 lapis dengan ritme
+berbeda** (melayang 3,4 d · detak 2,5 d · aura 3,1 d · cincin 2,9 d & 3,7 d ·
+sapuan cahaya 3,3 d; keyframes `karsa-logo-pulse` / `karsa-logo-float` /
 `karsa-logo-halo` / `karsa-logo-ring` / `karsa-logo-ring-alt` /
 `karsa-logo-sweep`) di atas background ilustrasi yang tetap ada, progress bar
 yang benar-benar bertambah, **tidak adanya teks hitungan mundur** (tidak ada
@@ -353,7 +353,7 @@ tombol unduh untuk berkas tersebut.
 
 ## Alur login terbaru
 
-Splash (**10 detik**, logo beranimasi 6 lapis + progress bar, tanpa teks
+Splash (**6 detik**, logo beranimasi 6 lapis + progress bar, tanpa teks
 hitungan mundur) → **satu form login** → dashboard sesuai peran. Tidak ada lagi
 layar pilih peran di jalur utama.
 

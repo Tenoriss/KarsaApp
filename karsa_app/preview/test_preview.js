@@ -394,15 +394,16 @@ try {
 }
 
 /* ------------------------------------------------------------------ *
- * 3. Splash 10 detik dengan logo beranimasi, lalu masuk ke form login
+ * 3. Splash 5-7 detik dengan logo beranimasi, lalu masuk ke form login
  * ------------------------------------------------------------------ */
-// Durasi splash menjadi satu angka acuan. Tes menjaga agar nilainya tetap
-// 10 detik sesuai permintaan terakhir (bukan 18 detik, bukan 2 detik).
-const SPLASH_MS_EXPECTED = 10000;
+// Permintaan terakhir: durasi splash 5-7 detik. Dipakai 6 detik (tengah
+// rentang). Tes menjaga agar nilainya tetap di dalam rentang itu.
+const SPLASH_MS_EXPECTED = 6000;
 const splashTimer = timers.find((t) => t.ms === SPLASH_MS_EXPECTED);
 ok(!!splashTimer, 'splash schedules a ' + SPLASH_MS_EXPECTED + ' ms timer');
-ok(SPLASH_MS_EXPECTED === 10000,
-  'durasi splash 10 detik sesuai permintaan, dapat ' + (SPLASH_MS_EXPECTED / 1000) + ' detik');
+ok(SPLASH_MS_EXPECTED >= 5000 && SPLASH_MS_EXPECTED <= 7000,
+  'durasi splash berada di rentang 5-7 detik, dapat ' +
+  (SPLASH_MS_EXPECTED / 1000) + ' detik');
 if (splashTimer) {
   preview.go('splash');
   splashTimer.fn();
@@ -410,7 +411,7 @@ if (splashTimer) {
     'splash auto-advances straight to the login form after ' + (SPLASH_MS_EXPECTED / 1000) + ' detik');
 }
 
-// Splash 10 detik harus terasa hidup, tapi TANPA teks hitungan mundur:
+// Splash 6 detik harus terasa hidup, tapi TANPA teks hitungan mundur:
 // permintaan pemilik produk adalah menghapus "Masuk dalam N detik".
 preview.go('splash');
 const splashText = viewport.textContent || '';
@@ -461,10 +462,14 @@ const uniqueDurations = [...new Set(logoAnims.map((d) => d.secs))];
 ok(uniqueDurations.length === logoAnims.length,
   'setiap lapis punya durasi berbeda (tidak serempak): ' +
   logoAnims.map((d) => d.name.replace('karsa-logo-', '') + '=' + d.secs + 's').join(', '));
-ok(uniqueDurations.every((d) => d > 0 && d < 10),
-  'tiap putaran animasi lebih pendek dari splash, jadi berulang beberapa kali');
+const splashSecs = SPLASH_MS_EXPECTED / 1000;
+ok(uniqueDurations.every((d) => d > 0 && d <= splashSecs),
+  'tiap putaran animasi (' + uniqueDurations.join('s, ') + 's) tidak lebih lama ' +
+  'dari splash ' + splashSecs + ' detik, jadi tidak terpotong di tengah');
+ok(uniqueDurations.every((d) => d < splashSecs),
+  'setiap lapis menyelesaikan minimal satu putaran penuh selama splash');
 // Fase tidak boleh kembar: gabungan durasi berbeda -> pola tidak pernah
-// kembali ke kondisi awal yang sama selama splash 10 detik.
+// kembali ke kondisi awal yang sama selama splash 6 detik.
 const combos = new Set();
 for (let i = 0; i < 100; i += 1) {
   const t = i / 10;
