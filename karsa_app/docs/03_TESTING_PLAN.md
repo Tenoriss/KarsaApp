@@ -102,6 +102,9 @@ Yang dipverifikasi:
   keluar; beranda tidak lagi merender kolom profil penuh dan hanya menyisakan
   pintasan ke tab tersebut;
 * alias `#wali-rekap` → `wali-recap`;
+* musik splash (`assets/audio/splash-logo.wav`) berbunyi dengan volume 0,75,
+  tetap aman bila browser memblokir autoplay, dan dihentikan saat splash
+  berakhir; durasi berkasnya ~6 detik sama dengan splash
 * splash menjadwalkan timer **6000 ms (6 detik, dalam rentang 5-7 detik)**
   sesuai permintaan terakhir,
   lalu otomatis pindah ke **form login tunggal**; logo KARSA beranimasi

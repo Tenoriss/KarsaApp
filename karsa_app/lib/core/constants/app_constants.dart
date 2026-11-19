@@ -61,6 +61,15 @@ class AppConstants {
   static const String assetLoginLogo = 'assets/images/karsa-login-logo.png';
   static const String assetSchoolLogo = 'assets/images/logo-sd-karitas.png';
   static const String assetSplashArt = 'assets/images/splash-art.png';
+
+  /// Musik singkat yang mengiringi animasi logo di splash.
+  ///
+  /// Dibuat khusus untuk KARSA: arpeggio lonceng lembut yang satu nadanya
+  /// berbunyi tepat setiap kali logo berdenyut (lihat [splashLogoCycle]),
+  /// panjangnya sama dengan [splashDuration] dan meluruh sendiri di akhir.
+  /// Path ini relatif terhadap `assets/` karena audioplayers menambahkan
+  /// prefix `assets/` sendiri.
+  static const String splashAudio = 'audio/splash-logo.wav';
   static const String assetStudentBanner = 'assets/images/student-banner.png';
   static const String assetTeacherBanner = 'assets/images/teacher-banner.png';
 }

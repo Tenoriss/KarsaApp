@@ -227,7 +227,7 @@ dikunci ke orientasi potret.
 ```bash
 python3 karsa_app/preview/serve.py --host 0.0.0.0 --port 8000
 curl http://127.0.0.1:8000/healthz
-node karsa_app/preview/test_preview.js    # 729 pemeriksaan, mock DOM
+node karsa_app/preview/test_preview.js    # 750 pemeriksaan, mock DOM
 ```
 
 ---
@@ -247,7 +247,7 @@ node karsa_app/preview/test_preview.js    # 729 pemeriksaan, mock DOM
 
 | Area | Detail |
 | --- | --- |
-| Identitas | Splash (#A2D7FB + ilustrasi asli, 6 detik, logo beranimasi), logo & teks SD Karitas Purwokerto, banner siswa & guru |
+| Identitas | Splash (#A2D7FB + ilustrasi asli, 6 detik, logo beranimasi + musik), logo & teks SD Karitas Purwokerto, banner siswa & guru |
 | Autentikasi | Satu form login untuk 5 peran (peran dideteksi dari NIP/NISN + kata sandi + tombol mata), "Ingat saya" yang menyimpan identitas tanpa kata sandi, lupa kata sandi, logout, validasi dengan pesan galat yang sama |
 | Dashboard | 5 dashboard berbeda sesuai peran (tanpa menyatukan menjadi halaman generik) |
 | **Operator sekolah** | 6 tab (Beranda, Siswa, Kelas, Materi, Media, Profil) + halaman tugas, pengumuman, agenda, nilai, dan form siswa/kelas/akun/materi. CRUD siswa, kelas dinamis, akun guru & wali, tugas, pengumuman, agenda, materi, nilai 0–100, logo/banner sekolah, serta data pribadi operator. Semua tersimpan di `@karsa-demo-v1`, dengan validasi terlihat dan perlindungan kelas terakhir |
@@ -309,6 +309,17 @@ selama 6 detik: 120 dari 120 sampel waktu menghasilkan fase unik. Ada
 Teks hitungan mundur *"Masuk dalam N detik"* **tidak ditampilkan lagi**
 (permintaan pemilik produk); kemajuan ditunjukkan oleh progress bar tipis di
 dasar layar, dan durasi tetap 6 detik (di dalam rentang 5-7 detik).
+
+**Musik splash.** `assets/audio/splash-logo.wav` (6 detik, stereo 44,1 kHz,
+dibuat khusus: arpeggio lonceng C-E-G-C yang satu nadanya berbunyi tiap logo
+berdenyut). Diputar lewat `audioplayers` saat splash tampil, volume 0,75, dan
+**selalu dihentikan** saat splash selesai supaya tidak ada suara tertinggal di
+dashboard. Semua kegagalan (perangkat senyap, aset hilang, plugin tidak
+tersedia) diabaikan agar splash tidak pernah macet karena audio.
+
+Di preview, browser memblokir audio sebelum ada interaksi pengguna. Itu
+ditangani dengan benar: splash tetap berjalan tanpa suara, dan musik dicoba
+lagi pada sentuhan/klik/keyboard pertama (`armSplashAudioRetry`).
 
 Preview memakai `patchSplash()`: saat splash sudah tampil, tik per detik hanya
 memperbarui lebar progress bar, **tidak** membangun ulang DOM. Render ulang

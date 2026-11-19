@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KARSA — pilih musik splash</title>
+<style>
+  :root { --rose:#B1445D; --ink:#203E5A; --muted:#6B7F8A; --sky:#A2D7FB; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; padding: 28px 18px 40px;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: linear-gradient(180deg, var(--sky) 0%, #E8F4FD 55%, #FFFAF7 100%);
+    color: var(--ink); display: flex; justify-content: center;
+  }
+  .wrap { width: 100%; max-width: 560px; }
+  .card {
+    background: #FFFAF7; border: 2px solid #fff; border-radius: 24px;
+    padding: 22px 20px; box-shadow: 0 16px 36px rgba(60,100,140,.16);
+  }
+  h1 { font-size: 19px; margin: 0 0 4px; }
+  p.sub { font-size: 13px; color: var(--muted); margin: 0 0 18px; line-height: 1.5; }
+  .opt {
+    border: 2px solid #EAF3FB; border-radius: 18px; padding: 14px 16px;
+    margin-bottom: 12px; background: #fff;
+  }
+  .opt.sel { border-color: var(--rose); box-shadow: 0 0 0 3px rgba(177,68,93,.12); }
+  .opt h2 { font-size: 15px; margin: 0 0 2px; }
+  .opt p { font-size: 12.5px; color: var(--muted); margin: 0 0 10px; line-height: 1.5; }
+  audio { width: 100%; display: block; }
+  .hint {
+    margin-top: 16px; font-size: 12px; color: var(--muted); line-height: 1.6;
+    background: #fff; border: 1px solid #E4EFF8; border-radius: 14px; padding: 12px 14px;
+  }
+  code { background: #EAF3FB; padding: 1px 5px; border-radius: 5px; font-size: 11.5px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Pilih musik splash</h1>
+      <p class="sub">
+        Ketiganya 6 detik — sama persis dengan durasi splash, jadi musiknya selesai
+        tepat saat masuk halaman login. Klik play untuk mendengarkan.
+      </p>
+
+      <div class="opt">
+        <h2>A · Lembut (marimba)</h2>
+        <p>Arpeggio C-E-G-C, hangat dan tenang. Paling aman untuk sekolah dasar — tidak mengagetkan.</p>
+        <audio controls preload="none" src="./audio-preview/splash-lembut.wav"></audio>
+      </div>
+
+      <div class="opt">
+        <h2>B · Ceria (celesta)</h2>
+        <p>Nada lebih tinggi dengan tempo lebih cepat. Terasa riang dan bersemangat.</p>
+        <audio controls preload="none" src="./audio-preview/splash-ceria.wav"></audio>
+      </div>
+
+      <div class="opt">
+        <h2>C · Kalem (ambient)</h2>
+        <p>Hanya dua nada dengan lapisan pad yang dominan. Paling halus, hampir seperti latar hening.</p>
+        <audio controls preload="none" src="./audio-preview/splash-kalem.wav"></audio>
+      </div>
+
+      <div class="hint">
+        Saat ini aplikasi memakai <code>A · Lembut</code>. Bilang saja mau yang mana,
+        nanti saya ganti dan sesuaikan tesnya. Kalau Anda punya berkas musik sendiri,
+        kirim saja — saya tanam ke <code>assets/audio/splash-logo.wav</code>.
+      </div>
+    </div>
+  </div>
+</body>
+</html>

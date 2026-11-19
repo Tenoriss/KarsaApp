@@ -32,6 +32,12 @@ IMAGES = {
 }
 
 
+# Berkas non-gambar yang juga harus ikut (audio splash).
+SOUNDS = {
+    "./assets/audio/splash-logo.wav": "audio/splash-logo.wav",
+}
+
+
 def data_uri(path: Path, mime: str) -> str:
     return "data:%s;base64,%s" % (mime, base64.b64encode(path.read_bytes()).decode("ascii"))
 
@@ -52,6 +58,10 @@ def build() -> Path:
     # Semua gambar ditanam di app.js.
     for rel, name in IMAGES.items():
         app_js = app_js.replace(rel, data_uri(ASSETS / name, "image/png"))
+
+    # Audio splash juga ditanam supaya berkas mandiri tetap berbunyi.
+    for rel, name in SOUNDS.items():
+        app_js = app_js.replace(rel, data_uri(ASSETS / name, "audio/wav"))
 
     # Favicon ditanam.
     html = html.replace(

@@ -40,6 +40,10 @@ class MockNode {
     this.disabled = false;
     this.hidden = false;
     this.selectionStart = 0;
+    // Properti media (<audio>/<video>) dipakai fitur splash.
+    this.currentTime = 0;
+    this.volume = 1;
+    this.paused = true;
     const self = this;
     this.classList = {
       add(name) {
@@ -439,6 +443,75 @@ if (logoImg) {
 ok(!!viewport.querySelectorAll('.splash-logo-ring')[0],
   'logo punya cincin animasi (.splash-logo-ring)');
 
+// ---- Audio splash ----
+const splashAudioEl = viewport.querySelectorAll('.splash-audio')[0];
+ok(!!splashAudioEl, 'splash menyiapkan elemen audio');
+if (splashAudioEl) {
+  ok(String(splashAudioEl.getAttribute('src')).indexOf('splash-logo.wav') >= 0,
+    'audio memakai berkas splash-logo.wav');
+  ok(splashAudioEl.getAttribute('preload') === 'auto',
+    'audio dimuat lebih awal (preload=auto) supaya tidak telat berbunyi');
+  ok(splashAudioEl.getAttribute('aria-hidden') === 'true',
+    'elemen audio disembunyikan dari pembaca layar');
+}
+
+// Audio asli harus ada & panjangnya sama dengan durasi splash (6 detik).
+const audioPath = path.join(__dirname, '..', 'assets', 'audio', 'splash-logo.wav');
+ok(fs.existsSync(audioPath), 'berkas audio splash-logo.wav ada');
+if (fs.existsSync(audioPath)) {
+  const head = fs.readFileSync(audioPath).subarray(0, 44);
+  ok(head.subarray(0, 4).toString() === 'RIFF' && head.subarray(8, 12).toString() === 'WAVE',
+    'berkas audio berformat WAV yang sah');
+  const channels = head.readUInt16LE(22);
+  const rate = head.readUInt32LE(24);
+  const bits = head.readUInt16LE(34);
+  const dataBytes = head.readUInt32LE(40);
+  const seconds = dataBytes / (rate * channels * (bits / 8));
+  ok(seconds > 5.5 && seconds < 6.5,
+    'durasi audio sama dengan splash (~6 detik), dapat ' + seconds.toFixed(2) + ' detik');
+  ok(rate >= 44100 && channels === 2,
+    'kualitas audio layak (stereo, ' + rate + ' Hz)');
+}
+
+ok(!!splashAudioEl, 'elemen audio splash ada di DOM');
+
+// Putar: kalau berhasil, status 'diputar'.
+const mediaCalls = [];
+const audioTestable = !!splashAudioEl && typeof splashAudioEl === 'object';
+if (audioTestable) {
+splashAudioEl.play = function () {
+  mediaCalls.push('play');
+  this.paused = false;
+  return { then() { return { catch() {} }; } };
+};
+splashAudioEl.pause = function () {
+  mediaCalls.push('pause');
+  this.paused = true;
+};
+preview.go('splash');
+ok(preview.playSplashAudio() === 'diputar', 'playSplashAudio memutar audio');
+ok(mediaCalls.indexOf('play') >= 0, 'elemen audio benar-benar dipanggil play()');
+ok(splashAudioEl.volume === 0.75, 'volume audio wajar (0.75), tidak mengagetkan');
+
+// Autoplay DIBLOKIR browser: splash tidak boleh rusak, harus dicoba lagi nanti.
+splashAudioEl.play = () => {
+  const err = new Error('NotAllowedError');
+  return { then() { return { catch(cb) { cb(err); } }; } };
+};
+const blockedResult = preview.playSplashAudio();
+ok(blockedResult === 'diputar' || blockedResult === 'diblokir',
+  'autoplay yang diblokir ditangani, bukan dilempar sebagai error');
+ok(preview.state.screen === 'splash',
+  'splash tetap berjalan walau audio diblokir browser');
+
+// Hentikan saat meninggalkan splash.
+splashAudioEl.paused = false;
+splashAudioEl.currentTime = 2.5;
+ok(preview.stopSplashAudio() === true, 'stopSplashAudio menghentikan musik');
+ok(splashAudioEl.paused === true, 'audio benar-benar di-pause');
+ok(splashAudioEl.currentTime === 0, 'posisi audio dikembalikan ke awal (tidak lanjut di layar lain)');
+}
+
 // ---- Animasi harus VARIATIF, bukan satu pola berulang ----
 const splashCssEarly = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
 ok(!!viewport.querySelectorAll('.splash-logo-ring-alt')[0],
@@ -477,6 +550,7 @@ for (let i = 0; i < 100; i += 1) {
 }
 ok(combos.size >= 95,
   'kombinasi fase antar lapis unik di hampir semua waktu (' + combos.size + '/100)');
+
 
 // Penempatan logo: jsdom tidak punya layout engine, jadi ukuran ilustrasi
 // dipalsukan untuk menguji perhitungannya (logika sama dengan Flutter).
@@ -567,6 +641,25 @@ if (tick) {
   ok(viewport.querySelectorAll('.splash-logo')[0] === logoBefore,
     'tik per detik tidak membangun ulang logo (animasi tidak restart)');
 }
+
+// Musik WAJIB berhenti saat splash berakhir. Ambil jadwal timeout splash,
+// jalankan, lalu pastikan pause() benar-benar terjadi sebelum pindah layar.
+if (audioTestable) {
+  mediaCalls.length = 0;
+  splashAudioEl.paused = false;
+  preview.go('splash');
+  const splashTimeoutEnd = timers.filter((t) => t.ms === SPLASH_MS_EXPECTED).pop();
+  ok(!!splashTimeoutEnd, 'timeout splash bisa diuji');
+  if (splashTimeoutEnd) {
+    splashTimeoutEnd.fn();
+    ok(mediaCalls.indexOf('pause') >= 0,
+      'audio benar-benar dihentikan saat splash berakhir (pause dipanggil)');
+    ok(splashAudioEl.paused === true, 'audio tidak terus berbunyi di layar login');
+    eq(preview.state.screen, 'login', 'splash tetap pindah ke login setelah audio dihentikan');
+  }
+}
+
+
 
 /* ------------------------------------------------------------------ *
  * 4. Login flow per role (credentials + error message)

@@ -388,6 +388,15 @@ body.is-splash {
    putaran berbeda sehingga tidak pernah "bertemu" di fase yang sama.
    ------------------------------------------------------------------ */
 
+/* Elemen audio hanya untuk suara, tidak boleh terlihat atau makan ruang. */
+.splash-audio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* Lapis 1: logo melayang naik-turun + sedikit miring. */
 .splash-logo-float {
   position: relative;

@@ -308,7 +308,10 @@ berbeda** (melayang 3,4 d · detak 2,5 d · aura 3,1 d · cincin 2,9 d & 3,7 d �
 sapuan cahaya 3,3 d; keyframes `karsa-logo-pulse` / `karsa-logo-float` /
 `karsa-logo-halo` / `karsa-logo-ring` / `karsa-logo-ring-alt` /
 `karsa-logo-sweep`) di atas background ilustrasi yang tetap ada, progress bar
-yang benar-benar bertambah, **tidak adanya teks hitungan mundur** (tidak ada
+yang benar-benar bertambah, **musik splash** (elemen `.splash-audio`, berkas
+WAV 6 detik yang sah, diputar dengan volume 0,75, tetap aman saat autoplay
+diblokir browser, dan benar-benar dihentikan saat splash berakhir),
+**tidak adanya teks hitungan mundur** (tidak ada
 teks "detik" apa pun), serta memastikan tik per detik **tidak** membangun
 ulang node logo (animasi tidak restart) dan tidak mengubah teks, dan
 `layoutSplashLogo()` menaruh logo pada posisi logo aslinya di dalam kotak
@@ -329,6 +332,13 @@ perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
 Total **728 pemeriksaan**.
+
+## Memilih musik splash
+
+`audio-preview.html` berisi tiga calon musik splash (lembut / ceria / kalem)
+dengan pemutar audio, untuk didengarkan sebelum dipilih. Yang dipakai aplikasi
+saat ini: **lembut** (`assets/audio/splash-logo.wav`). Setelah memilih, ganti
+berkas di `assets/audio/` lalu jalankan `python3 karsa_app/tool/build_standalone.py`.
 
 ## Membuka preview tanpa panel Live Preview
 

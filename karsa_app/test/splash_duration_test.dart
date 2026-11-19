@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:karsa_app/core/constants/app_constants.dart';
@@ -44,6 +46,21 @@ void main() {
       final double splashSeconds = AppConstants.splashDuration.inSeconds.toDouble();
       expect(layers.every((double d) => d > 0 && d <= splashSeconds), isTrue,
           reason: 'semua lapis tidak lebih lama dari splash agar tidak terpotong');
+    });
+
+    test('splash punya musik pengiring', () {
+      // Aset audio harus terdaftar dan panjangnya sama dengan splash, supaya
+      // musiknya selesai tepat saat splash berakhir (tidak terpotong).
+      expect(AppConstants.splashAudio, 'audio/splash-logo.wav');
+      final File audio = File('assets/${AppConstants.splashAudio}');
+      expect(audio.existsSync(), isTrue,
+          reason: 'berkas audio splash harus ada di assets/');
+      final int bytes = audio.lengthSync();
+      // 16-bit stereo 44.1 kHz: ~176.400 byte per detik.
+      final double seconds = bytes / (44100 * 2 * 2);
+      expect(seconds, closeTo(6.0, 0.6),
+          reason: 'durasi audio harus sepanjang splash 6 detik, dapat '
+              '${seconds.toStringAsFixed(2)} detik');
     });
 
     test('splash tetap berakhir di form login', () async {

@@ -161,7 +161,7 @@ label 10px.
 ### 4.2 Autentikasi
 
 Splash tampil **6 detik** (`AppConstants.splashDuration`, rentang 5-7 detik) dengan logo
-beranimasi (animasi 6 lapis dengan ritme berbeda: melayang 3,4 d · detak 2,5 d · aura 3,1 d · cincin 2,9 d & 3,7 d · sapuan cahaya 3,3 d), dan progress bar. Teks hitungan mundur tidak ditampilkan. Background ilustrasi tetap; logo tercetak dihapus dari aset dan
+beranimasi, **dengan musik pengiring** `assets/audio/splash-logo.wav` (6 detik, arpeggio lonceng; dihentikan otomatis saat splash selesai). Animasi 6 lapis dengan ritme berbeda: melayang 3,4 d · detak 2,5 d · aura 3,1 d · cincin 2,9 d & 3,7 d · sapuan cahaya 3,3 d), dan progress bar. Teks hitungan mundur tidak ditampilkan. Background ilustrasi tetap; logo tercetak dihapus dari aset dan
 diganti logo transparan beranimasi pada posisi yang sama.
 Alur: `SplashPage` (6 detik) → `LoginPage` (**satu form untuk kelima peran**)
 → `MainShell` sesuai peran yang terdeteksi. `WelcomePage` (pilih peran) masih

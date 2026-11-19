@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
@@ -27,6 +28,9 @@ class _SplashPageState extends State<SplashPage>
   /// bar, jadi tidak perlu timer per detik dan tidak ada angka yang ditampilkan.
   late final AnimationController _splashController;
 
+  /// Pemutar musik splash. Dibuat sekali, dibuang saat splash selesai.
+  final AudioPlayer _audio = AudioPlayer();
+
   @override
   void initState() {
     super.initState();
@@ -34,6 +38,23 @@ class _SplashPageState extends State<SplashPage>
       vsync: this,
       duration: AppConstants.splashDuration,
     )..forward();
+    _playSplashAudio();
+  }
+
+  /// Putar musik singkat yang mengiringi animasi logo.
+  ///
+  /// Tidak pernah boleh mengganggu splash: semua kegagalan (perangkat senyap,
+  /// aset hilang, plugin tidak tersedia) hanya diabaikan, dan splash tetap
+  /// berjalan sesuai durasi. Musik juga berhenti sendiri ketika halaman ini
+  /// dibuang, jadi tidak ada suara yang tertinggal di dashboard.
+  Future<void> _playSplashAudio() async {
+    try {
+      await _audio.setReleaseMode(ReleaseMode.stop);
+      await _audio.setVolume(0.75);
+      await _audio.play(AssetSource(AppConstants.splashAudio));
+    } catch (_) {
+      // Diam saja: audio adalah pelengkap, bukan syarat splash berjalan.
+    }
   }
 
   void _maybeSchedule(AppState state) {
@@ -50,6 +71,9 @@ class _SplashPageState extends State<SplashPage>
   void dispose() {
     _timer?.cancel();
     _splashController.dispose();
+    // Hentikan musik segera saat splash selesai, jangan biarkan tertinggal.
+    _audio.stop().catchError((Object _) {});
+    _audio.dispose().catchError((Object _) {});
     super.dispose();
   }
 

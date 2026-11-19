@@ -112,6 +112,7 @@
     loginLogo: './assets/images/karsa-login-logo.png',
     schoolLogo: './assets/images/logo-sd-karitas.png',
     splashArt: './assets/images/splash-art.png',
+    splashAudio: './assets/audio/splash-logo.wav',
     studentBanner: './assets/images/student-banner.png',
     teacherBanner: './assets/images/teacher-banner.png'
   };
@@ -1217,6 +1218,15 @@
     var progress = Math.min(100, Math.max(0,
       ((SPLASH_MS / 1000) - remaining()) / (SPLASH_MS / 1000) * 100));
     return el('div', { class: 'splash-stage' }, [
+      // Musik splash: satu nada per denyut logo. Tidak ada kontrol karena ini
+      // hanya iringan singkat; kalau browser memblokir autoplay, splash tetap
+      // berjalan tanpa suara dan audio baru diputar pada sentuhan pertama.
+      el('audio', {
+        class: 'splash-audio',
+        src: ASSETS.splashAudio,
+        preload: 'auto',
+        'aria-hidden': 'true'
+      }),
       el('img', { class: 'splash-art', src: ASSETS.splashArt, alt: 'Ilustrasi KARSA' }),
       // Logo KARSA beranimasi, menempati area logo yang sudah dibersihkan
       // dari ilustrasi (x 95..566, y 88..348 dari 654x1048).
@@ -6372,6 +6382,70 @@
     return true;
   }
 
+  /* ------------------------------------------------------------------ *
+   * Audio splash
+   * ------------------------------------------------------------------ */
+
+  /// Putar musik splash pada elemen <audio> yang ada di splash.
+  ///
+  /// Browser modern memblokir audio sebelum ada interaksi pengguna. Itu bukan
+  /// kesalahan: splash tetap berjalan tanpanya, dan kita mencoba lagi pada
+  /// sentuhan/klik/keyboard pertama.
+  function splashAudioEl() {
+    var host = (window.document || document);
+    var root = (typeof host.getElementById === 'function'
+      ? host.getElementById('app-viewport') : null) || host;
+    if (!root || typeof root.querySelectorAll !== 'function') return null;
+    return root.querySelectorAll('.splash-audio')[0] || null;
+  }
+
+  function playSplashAudio() {
+    var audio = splashAudioEl();
+    if (!audio || typeof audio.play !== 'function') return 'tidak-ada';
+    try {
+      if (typeof audio.currentTime === 'number') audio.currentTime = 0;
+      audio.volume = 0.75;
+      var maybe = audio.play();
+      if (maybe && typeof maybe.then === 'function') {
+        maybe.then(function () {
+          state.splashAudioBlocked = false;
+        }).catch(function () {
+          state.splashAudioBlocked = true;   // autoplay diblokir
+        });
+      }
+      return 'diputar';
+    } catch (e) {
+      state.splashAudioBlocked = true;
+      return 'diblokir';
+    }
+  }
+
+  /// Hentikan musik splash (dipanggil saat meninggalkan splash).
+  function stopSplashAudio() {
+    var audio = splashAudioEl();
+    if (!audio) return false;
+    try {
+      if (typeof audio.pause === 'function') audio.pause();
+      if (typeof audio.currentTime === 'number') audio.currentTime = 0;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Setelah interaksi pertama, coba putar lagi bila autoplay tadi diblokir.
+  function armSplashAudioRetry() {
+    var events = ['pointerdown', 'touchstart', 'keydown'];
+    function retry() {
+      if (state.screen !== 'splash') return;
+      if (!state.splashAudioBlocked) return;
+      playSplashAudio();
+    }
+    events.forEach(function (ev) {
+      window.addEventListener(ev, retry, true);
+    });
+  }
+
   /// Perbarui hitungan mundur & progress bar tanpa membangun ulang splash.
   /// Mengembalikan true bila splash sudah ada di DOM dan berhasil diperbarui.
   /// Sisa detik splash. Angkanya tidak ditampilkan ke pengguna (hanya dipakai
@@ -6447,6 +6521,8 @@
       state.screen = 'splash';
       state.splashRemaining = Math.ceil(SPLASH_MS / 1000);
       render();
+      playSplashAudio();
+      armSplashAudioRetry();
       // Hitung mundur per detik agar splash panjang tetap terasa hidup.
       var splashTick = window.setInterval(function () {
         if (state.screen !== 'splash') {
@@ -6458,6 +6534,8 @@
       }, 1000);
       window.setTimeout(function () {
         window.clearInterval(splashTick);
+        // Musik splash berhenti sebelum pindah layar.
+        stopSplashAudio();
         // Splash langsung ke form login: tidak ada lagi layar pilih peran.
         if (state.screen === 'splash') go('login');
       }, SPLASH_MS);
@@ -6473,6 +6551,7 @@
     window.addEventListener('hashchange', function () {
       var value = (window.location.hash || '').replace('#', '');
       var target = value ? resolveScreen(value) : null;
+      if (target && state.screen === 'splash') stopSplashAudio();
       if (target && target !== state.screen) {
         var def = screenDef(target);
         state.screen = target;
@@ -6495,6 +6574,8 @@
   window.KARSA_PREVIEW = {
     state: state,
     layoutSplashLogo: layoutSplashLogo,
+    playSplashAudio: playSplashAudio,
+    stopSplashAudio: stopSplashAudio,
     screens: SCREENS.map(function (s) { return s.id; }),
     go: go,
     toggleTheme: toggleTheme,
