@@ -227,7 +227,7 @@ dikunci ke orientasi potret.
 ```bash
 python3 karsa_app/preview/serve.py --host 0.0.0.0 --port 8000
 curl http://127.0.0.1:8000/healthz
-node karsa_app/preview/test_preview.js    # 750 pemeriksaan, mock DOM
+node karsa_app/preview/test_preview.js    # 768 pemeriksaan, mock DOM
 ```
 
 ---

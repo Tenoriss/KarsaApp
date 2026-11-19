@@ -40,7 +40,8 @@ curl http://127.0.0.1:8000/healthz
 | `index.html` | Kerangka halaman: viewport, bottom nav, dan sheet modal — tanpa bar pengembang di atas. |
 | `styles.css` | Token claymorphism, palet terang/gelap, tipografi, dan komponen (1:1 dengan `lib/core/theme/*`). |
 | `app.js` | Seluruh logika pratinjau: state, 41 layar, interaksi, router hash. |
-| `curriculum-data.js` | **Berkas hasil generate** — bank soal, bank esai, info mata pelajaran, daftar agama, dan peta glif Ionicons. |
+| `curriculum-data.js` | **Berkas hasil generate** — bank soal, bank esai, info mata pelajaran, daftar agama, dan peta nama ikon Ionicons. |
+| `icon-paths.js` | **Berkas hasil generate** — 30 ikon Ionicons sebagai SVG inline. Dimuat sebelum `app.js`. |
 | `serve.py` | Server statis tanpa cache + `/healthz`. |
 | `test_preview.js` | Harness verifikasi (mock DOM) — `node test_preview.js`. |
 
@@ -69,8 +70,14 @@ node karsa_app/tool/generate_preview_data.js
   `var(--muted)`). Jangan menulis warna latar terang langsung di `style=`
   karena nilainya tidak ikut berubah saat mode gelap — itu yang dulu membuat
   kartu profil operator berlatar terang dengan teks terang (kontras ~1:1).
-* **Tanpa CDN**: seluruh aset (logo, banner, splash art, font ikon) berasal dari
+* **Tanpa CDN**: seluruh aset (logo, banner, splash art) berasal dari
   `karsa_app/assets/`.
+* **Ikon = SVG inline, bukan glyph font.** `icon()` merender `<svg>` dari
+  `icon-paths.js`; warnanya ikut `currentColor`. Glyph *Private Use Area*
+  (U+F100–U+F8FF) tidak punya fallback font sistem: begitu `Ionicons.ttf` gagal
+  dimuat (dibuka dari disk, iframe tanpa jaringan, font diblokir), ikonnya
+  hilang tanpa jejak dan tombol ikon tampak kosong — itu penyebab keluhan
+  "tombol mode terang hilang". Jangan kembali merender glyph sebagai teks.
 
 ---
 
@@ -351,12 +358,14 @@ Untuk membuka aplikasi di luar panel tersebut:
 
 ```bash
 python3 karsa_app/tool/build_standalone.py
-# -> karsa_app/preview/karsa-standalone.html (~2,9 MB)
+# -> karsa_app/preview/karsa-standalone.html (~3,8 MB)
 ```
 
-Berkas itu menanam CSS, `app.js`, `curriculum-data.js`, enam gambar, dan font
-Ionicons sebagai data URI, jadi bisa dibuka **langsung dari disk** (klik dua
-kali) tanpa server. `standalone-download.html` adalah halaman pembuka berisi
+Berkas itu menanam CSS, `app.js`, `curriculum-data.js`, `icon-paths.js`, enam
+gambar, dan musik splash sebagai data URI, jadi bisa dibuka **langsung dari
+disk** (klik dua kali) tanpa server. `Ionicons.ttf` **tidak** ikut ditanam
+karena ikon sudah SVG inline; pakai `--with-font` bila memang ingin
+menyertakannya (±520 KB tambahan). `standalone-download.html` adalah halaman pembuka berisi
 tombol unduh untuk berkas tersebut.
 
 ---

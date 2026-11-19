@@ -438,6 +438,22 @@ HTML. Kode React Native di root repository tetap tidak disentuh.
    sehingga catatan "bukan push notification" tetap jujur.
 7. **Pratinjau bukan aplikasi.** HTML preview hanya memvisualkan alur, token,
    dan isi soal; tidak menggantikan aplikasi Flutter.
+8. **Ikon pratinjau: SVG inline, bukan glyph font.** Mula-mula ikon dirender
+   sebagai glyph *Private Use Area* (U+F100–U+F8FF) dari `Ionicons.ttf`.
+   Glyph PUA **tidak punya fallback font sistem**, jadi ketika font gagal
+   dimuat — dibuka langsung dari disk, di dalam iframe tanpa jaringan, atau
+   font diblokir — ikon menghilang tanpa jejak dan tombol ikon tampak sebagai
+   lingkaran kosong. Dua keluhan nyata muncul dari sini: tombol mode terang
+   terlihat "hilang". Perbaikan: `preview/icon-paths.js` (dibangun oleh
+   `tool/build_icons.py` dari paket `ionicons@7.4.0`) menampung 30 ikon sebagai
+   `<svg>` inline dengan `currentColor`. Karena itu `Ionicons.ttf` tidak lagi
+   ditanam di berkas standalone (hemat ±520 KB; `--with-font` bila diperlukan).
+9. **Tepi tombol ikon harus kontras.** `--line` (#EFDFD9) hanya 1,25:1 di latar
+   halaman (#FFFAF7); permukaan tombolnya sendiri (#FFFDFB) bahkan 1,02:1 —
+   praktis tak terlihat. Ditambahkan token `--control-border` (#A07A6E terang,
+   #7A6976 gelap) yang mencapai ≥3:1, ambang WCAG untuk batas komponen
+   antarmuka. Tombol tema juga memakai permukaan `--surface-rose` agar tidak
+   menyatu dengan latar.
 
 ---
 

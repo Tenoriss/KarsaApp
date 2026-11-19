@@ -15,6 +15,9 @@
   --bg: #FFFAF7;
   --card: #FFFDFB;
   --blue: #6E9CC3;
+  /* Batas komponen interaktif (tombol ikon). --line terlalu pucat untuk
+     memisahkan tombol dari latar: 1,25:1. Token ini mencapai >= 3:1. */
+  --control-border: #A07A6E;
 
   --outer-bg: #F4EDE9;
   --nav-bg: #FFFAF8;
@@ -73,6 +76,8 @@
   --bg: #211D27;
   --card: #302832;
   --blue: #85B2D1;
+  /* Di latar gelap tombol butuh tepi yang lebih terang, bukan lebih gelap. */
+  --control-border: #7A6976;
 
   --outer-bg: #493640;
   --nav-bg: #332D36;
@@ -151,6 +156,15 @@ body.is-splash {
   align-items: center;
   justify-content: center;
   user-select: none;
+  /* Ikon kini SVG inline: ukuran diatur lewat width/height inline, dan
+     warnanya ikut `currentColor` dari elemen induk. */
+  flex: 0 0 auto;
+}
+
+.ion svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* Mobile-first App Shell: 100dvh di ponsel, kolom 480px di layar lebar.
@@ -659,7 +673,9 @@ body.is-splash {
   width: 42px;
   height: 42px;
   border-radius: 21px;
-  border: 1px solid var(--line);
+  /* Tepi lebih tegas: --line lama (#EFDFD9) hanya 1,25:1 di latar halaman,
+     sehingga tombol praktis menyatu dengan latar di mode terang. */
+  border: 1.5px solid var(--control-border);
   background-color: var(--card);
   box-shadow: var(--clay-soft-shadow);
   color: var(--rose);
@@ -668,6 +684,21 @@ body.is-splash {
   justify-content: center;
   position: relative;
   flex-shrink: 0;
+  /* Area sentuh nyaman (target >= 44px) tanpa mengubah bentuk visualnya. */
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Tombol tema: permukaan berwarna rose muda supaya tidak menyatu dengan
+   latar terang. Di mode gelap warnanya ikut token yang sesuai. */
+.round-icon-btn.theme-toggle {
+  background-color: var(--surface-rose);
+  border-color: var(--control-border);
+}
+
+[data-theme='dark'] .round-icon-btn.theme-toggle {
+  background-color: var(--surface-rose);
+  border-color: var(--control-border);
 }
 
 .notif-dot {

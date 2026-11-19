@@ -14,7 +14,9 @@ Pemakaian:
 
 from __future__ import annotations
 
+import argparse
 import base64
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,18 +44,25 @@ def data_uri(path: Path, mime: str) -> str:
     return "data:%s;base64,%s" % (mime, base64.b64encode(path.read_bytes()).decode("ascii"))
 
 
-def build() -> Path:
+def build(with_font: bool = False) -> Path:
     html = (PREVIEW / "index.html").read_text(encoding="utf-8")
     css = (PREVIEW / "styles.css").read_text(encoding="utf-8")
     app_js = (PREVIEW / "app.js").read_text(encoding="utf-8")
     curriculum = (PREVIEW / "curriculum-data.js").read_text(encoding="utf-8")
+    icons = (PREVIEW / "icon-paths.js").read_text(encoding="utf-8")
 
-    # Font ikon ditanam di CSS.
-    css = css.replace(
-        "url('./assets/fonts/Ionicons.ttf')",
-        "url('%s')" % data_uri(ASSETS / "fonts" / "Ionicons.ttf", "font/ttf"),
-        1,
-    )
+    # Ikon kini SVG inline (preview/icon-paths.js), jadi Ionicons.ttf tidak
+    # lagi dibutuhkan untuk menampilkan ikon. Menanamnya hanya menambah ~520 KB
+    # pada berkas hasil. Default: JANGAN ditanam, dan @font-face-nya dibuang
+    # supaya berkas mandiri tidak merujuk apa pun yang tidak ada.
+    if with_font:
+        css = css.replace(
+            "url('./assets/fonts/Ionicons.ttf')",
+            "url('%s')" % data_uri(ASSETS / "fonts" / "Ionicons.ttf", "font/ttf"),
+            1,
+        )
+    else:
+        css = re.sub(r"@font-face\s*\{[^}]*\}\s*", "", css, count=1)
 
     # Semua gambar ditanam di app.js.
     for rel, name in IMAGES.items():
@@ -77,8 +86,11 @@ def build() -> Path:
         1,
     )
     html = html.replace(
-        '<script src="./curriculum-data.js"></script>\n  <script src="./app.js"></script>',
-        "<script>\n%s\n</script>\n  <script>\n%s\n</script>" % (curriculum, app_js),
+        '<script src="./curriculum-data.js"></script>\n'
+        '  <script src="./icon-paths.js"></script>\n'
+        '  <script src="./app.js"></script>',
+        "<script>\n%s\n</script>\n  <script>\n%s\n</script>\n  <script>\n%s\n</script>"
+        % (curriculum, icons, app_js),
         1,
     )
 
@@ -92,5 +104,17 @@ def build() -> Path:
     return out
 
 
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Bangun HTML mandiri dari preview KARSA.")
+    parser.add_argument(
+        "--with-font",
+        action="store_true",
+        help="ikut tanam Ionicons.ttf (tidak perlu: ikon sudah SVG inline)",
+    )
+    args = parser.parse_args()
+    build(with_font=args.with_font)
+    return 0
+
+
 if __name__ == "__main__":
-    build()
+    raise SystemExit(main())

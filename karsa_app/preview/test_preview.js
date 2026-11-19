@@ -35,6 +35,7 @@ class MockNode {
     this.style = {};
     this.dataset = {};
     this._text = '';
+    this._html = '';
     this.value = '';
     this.checked = false;
     this.disabled = false;
@@ -136,8 +137,15 @@ class MockNode {
     return this.childNodes.map((c) => c.textContent).join('');
   }
 
-  set innerHTML(value) { this.textContent = value; }
-  get innerHTML() { return this.textContent; }
+  // `innerHTML` menyimpan MARKUP, bukan teks. Di DOM sungguhan textContent
+  // tidak pernah memuat markup — kalau di sini disamakan, isi <svg> bocor ke
+  // textContent dan label tab terbaca sebagai path SVG. Simpan terpisah.
+  set innerHTML(value) {
+    this.childNodes = [];
+    this._text = '';
+    this._html = value === null || value === undefined ? '' : String(value);
+  }
+  get innerHTML() { return this._html || this.textContent; }
 
   get id() { return this.attributes.id || ''; }
   set id(value) { this.attributes.id = value; }
@@ -3031,6 +3039,148 @@ ok(htmlText.indexOf('http://') < 0 && htmlText.indexOf('https://') < 0, 'index.h
 /* ------------------------------------------------------------------ *
  * Report
  * ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ *
+ * 14. Ikon adalah SVG inline, bukan glyph font PUA
+ * ------------------------------------------------------------------ */
+// Bug yang dilaporkan: "tombol mode terang hilang kalau sedang di mode
+// terang". Akarnya dua lapis:
+//   1. ikon berupa glyph Private Use Area dari Ionicons.ttf. Glyph PUA tidak
+//      punya fallback font sistem; kalau font gagal dimuat, ikonnya hilang
+//      tanpa jejak (tombol jadi lingkaran kosong), dan
+//   2. permukaan tombol (#FFFDFB) praktis sama dengan latar halaman
+//      (#FFFAF7) - kontras 1,02:1 - jadi tombolnya menyatu dengan latar.
+// Tes ini mengunci keduanya.
+
+// 14a. Setiap ikon dirender sebagai <svg>, bukan teks glyph.
+const iconsSource = fs.readFileSync(path.join(previewDir, 'icon-paths.js'), 'utf8');
+ok(iconsSource.indexOf('window.KARSA_ICONS') >= 0,
+  'icon-paths.js exposes the inline SVG icon map');
+
+// Buka beranda siswa supaya header sapaan (pemilik tombol tema) terender.
+preview.state.role = 'siswa';
+preview.state.tab = 'Beranda';
+preview.go('siswa-beranda');
+const themeBtnForIcons = viewport.querySelectorAll('.round-icon-btn')
+  .filter((n) => {
+    const label = n.getAttribute('aria-label') || '';
+    return label.indexOf('mode gelap') >= 0 || label.indexOf('mode terang') >= 0;
+  })[0];
+ok(!!themeBtnForIcons, 'the theme button exists on the dashboard');
+if (themeBtnForIcons) {
+  // Lihat elemen ikon di dalam tombol (di DOM nyata innerHTML tombol ikut
+  // memuat markup anak, tapi mock ini menyimpannya per-elemen).
+  const iconNode = themeBtnForIcons.querySelector('.ion') || themeBtnForIcons;
+  const inner = iconNode.innerHTML || '';
+  ok(inner.toLowerCase().indexOf('<svg') >= 0,
+    'the theme button renders an inline <svg> icon');
+  ok(inner.indexOf('<path') >= 0 || inner.indexOf('<circle') >= 0,
+    'the theme icon SVG actually contains drawing geometry');
+  // Glyph PUA lama berkisar U+F100-U+F8FF. Pastikan tidak ada lagi.
+  const puaInButton = /[\uF100-\uF8FF]/.test(inner);
+  ok(!puaInButton, 'the theme button no longer depends on a Private Use Area glyph');
+}
+
+// 14a-2. Tab navigasi bawah juga memakai SVG, bukan glyph font.
+// Ini sempat lolos: tab merender glyph langsung (`text: ICONS[...]`) sehingga
+// tetap buta tanpa font meski tombol lain sudah SVG.
+// Navigasi bawah hidup di elemen #bottom-nav, DI LUAR viewport layar.
+const navIconNodes = bottomNav.querySelectorAll('.ion');
+ok(navIconNodes.length > 0, 'the bottom nav renders icon nodes');
+const navWithoutSvg = navIconNodes.filter((n) => {
+  const markup = n.innerHTML || '';
+  return markup.toLowerCase().indexOf('<svg') < 0;
+});
+eq(navWithoutSvg.length, 0,
+  'every bottom-nav icon renders inline SVG, none fall back to glyphs');
+
+// Ikon di dalam layar (header sapaan dsb.) juga tidak boleh ada yang glyph.
+const screenIconNodes = viewport.querySelectorAll('.ion');
+const screenWithoutSvg = screenIconNodes.filter((n) => {
+  const markup = n.innerHTML || '';
+  return markup.toLowerCase().indexOf('<svg') < 0;
+});
+eq(screenWithoutSvg.length, 0,
+  'every icon inside the screen renders inline SVG, none fall back to glyphs');
+
+// 14b. Ikon tetap tampil TANPA Ionicons.ttf.
+// Inti perbaikan: kalau font tidak dimuat, ikon SVG tetap tergambar.
+const iconNames = Object.keys(sandbox.window.KARSA_ICONS || {});
+ok(iconNames.length >= 30,
+  'the inline SVG map carries every icon the app uses (' + iconNames.length + ' found)');
+const emptyIcons = iconNames.filter((name) => {
+  const markup = String(sandbox.window.KARSA_ICONS[name] || '').trim();
+  return markup.length === 0;
+});
+eq(emptyIcons.length, 0,
+  'no icon in the inline map is empty (would render as an invisible button)');
+
+// Setiap kunci ikon di curriculum-data.js punya padanan SVG. Kalau tidak,
+// icon() jatuh ke glyph font lama dan bug ini kembali.
+const curriculumIcons = sandbox.window.KARSA_CURRICULUM.icons || {};
+const missingSvg = Object.keys(curriculumIcons)
+  .filter((name) => !sandbox.window.KARSA_ICONS[name]);
+eq(missingSvg.length, 0,
+  'every icon name in curriculum-data.js has an inline SVG (' +
+  (missingSvg.length ? 'missing: ' + missingSvg.join(', ') : 'all present') + ')');
+
+// 14c. Tepi tombol ikon benar-benar terlihat di KEDUA tema.
+// Ambang WCAG untuk batas komponen antarmuka (bukan teks) adalah 3:1.
+function iconRelLum(hex) {
+  const h = String(hex).replace('#', '');
+  const parts = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+  const lin = parts.map((c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)));
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+}
+function iconContrast(a, b) {
+  const la = iconRelLum(a);
+  const lb = iconRelLum(b);
+  const hi = Math.max(la, lb);
+  const lo = Math.min(la, lb);
+  return (hi + 0.05) / (lo + 0.05);
+}
+function iconToken(block, token) {
+  const match = block.match(new RegExp('--' + token + ':\\s*(#[0-9A-Fa-f]{6})'));
+  return match ? match[1] : null;
+}
+const lightThemeBlock = (cssText.match(/:root\s*\{([\s\S]*?)\}/) || [])[1] || '';
+const darkThemeBlock = (cssText.match(/\[data-theme='dark'\]\s*\{([\s\S]*?)\}/) || [])[1] || '';
+
+const lightBorder = iconToken(lightThemeBlock, 'control-border');
+const lightBg = iconToken(lightThemeBlock, 'bg');
+ok(!!lightBorder, 'light theme defines a --control-border token');
+ok(!!lightBg, 'light theme defines a --bg token');
+if (lightBorder && lightBg) {
+  const ratio = iconContrast(lightBorder, lightBg);
+  ok(ratio >= 3,
+    'light theme: the icon button border reaches 3:1 against the page (' +
+    ratio.toFixed(2) + ':1)');
+}
+
+const darkBorder = iconToken(darkThemeBlock, 'control-border');
+const darkBg = iconToken(darkThemeBlock, 'bg');
+if (darkBorder && darkBg) {
+  const ratio = iconContrast(darkBorder, darkBg);
+  ok(ratio >= 3,
+    'dark theme: the icon button border reaches 3:1 against the page (' +
+    ratio.toFixed(2) + ':1)');
+}
+
+// Tombol tema punya permukaan sendiri, jadi tidak menyatu dengan latar.
+ok(/\.round-icon-btn\.theme-toggle\s*\{/.test(cssText),
+  'the theme toggle has its own surface rule');
+ok(cssText.indexOf('var(--control-border)') >= 0,
+  'the icon button border uses the visible --control-border token');
+
+// 14d. Berkas standalone juga membawa ikon inline (tanpa font eksternal).
+const standaloneIcons = fs.existsSync(path.join(previewDir, 'karsa-standalone.html'))
+  ? fs.readFileSync(path.join(previewDir, 'karsa-standalone.html'), 'utf8')
+  : '';
+if (standaloneIcons) {
+  ok(standaloneIcons.indexOf('KARSA_ICONS') >= 0,
+    'the standalone build carries the inline icon map');
+}
+
 console.log('Checks passed: ' + passed);
 if (failures.length) {
   console.log('FAILURES (' + failures.length + '):');

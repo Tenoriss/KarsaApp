@@ -10,6 +10,7 @@
    * ------------------------------------------------------------------ */
   var CURR = window.KARSA_CURRICULUM;
   var ICONS = CURR.icons || {};
+  var PATHS = window.KARSA_ICONS || null;
 
   var ACCOUNTS = {
     operator: { id: '19870003', password: 'operator123', label: 'Operator sekolah', emoji: '🗂️' },
@@ -176,14 +177,32 @@
     return append(node, children);
   }
 
+  // Ikon = SVG inline (icon-paths.js), BUKAN glyph font lagi.
+  //
+  // Dulu ikon berupa glyph Private Use Area dari Ionicons.ttf. Glyph PUA tak
+  // punya fallback font sistem, jadi begitu font gagal dimuat (dibuka dari
+  // disk, iframe tanpa jaringan, font diblokir) ikonnya hilang tanpa jejak —
+  // tombol mode terang tampak kosong/"hilang". SVG selalu tampil dan
+  // mewarisi `currentColor`, sehingga warnanya benar di kedua tema.
   function icon(name, size) {
-    var glyph = ICONS[name] || '';
-    return el('span', {
+    var px = size || 20;
+    var markup = PATHS ? PATHS[name] : '';
+    var node = el('span', {
       class: 'ion',
-      style: 'font-size:' + (size || 20) + 'px',
-      text: glyph,
+      style: 'width:' + px + 'px;height:' + px + 'px',
       'aria-hidden': 'true'
     });
+    if (markup) {
+      // Markup berasal dari berkas kami sendiri (ionicons resmi, MIT).
+      node.innerHTML = '<svg viewBox="0 0 512 512" width="' + px + '" height="' + px +
+        '" focusable="false">' + markup + '</svg>';
+    } else {
+      // Jaring pengaman: kalau nama ikon tak dikenal, jangan tinggalkan
+      // kotak kosong yang tak terlihat — pakai glyph font lama bila ada.
+      node.textContent = ICONS[name] || '';
+      node.setAttribute('style', 'font-size:' + px + 'px');
+    }
+    return node;
   }
 
   function clear(node) {
@@ -609,8 +628,11 @@
       el('p', { class: 't-name', text: opts.userName }),
       el('p', { class: 't-small', style: 'margin-top:2px', text: opts.subtitle })
     ]));
+    // Tombol tema: memakai `round-icon-btn` + `theme-toggle` supaya
+    // permukaannya terwarnai (bukan kartu putih di latar putih) dan tetap
+    // terlihat jelas di kedua tema.
     children.push(el('button', {
-      class: 'round-icon-btn pressable',
+      class: 'round-icon-btn theme-toggle pressable',
       type: 'button',
       'aria-label': opts.dark ? 'Aktifkan mode terang' : 'Aktifkan mode gelap',
       onclick: function () { toggleTheme(); }
@@ -6251,7 +6273,9 @@
           go(navScreenFor(role, tab));
         }
       }, [
-        el('span', { class: 'ion', text: ICONS[NAV_ICONS[tab]] || '' }),
+        // Lewat icon() supaya ikon tab juga SVG inline (bukan glyph font),
+        // dengan ukuran seragam seperti sebelumnya.
+        icon(NAV_ICONS[tab], 18),
         el('span', { text: tab })
       ]));
     });
