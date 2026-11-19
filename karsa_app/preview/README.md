@@ -307,8 +307,11 @@ terakhir) yang menampilkan **logo beranimasi** (`.splash-logo` +
 `.splash-logo-ring`, keyframes `karsa-logo-pulse` / `karsa-logo-ring`) di atas
 background ilustrasi yang tetap ada, hitungan mundur *"Masuk dalam N detik"*
 dan progress bar yang benar-benar bertambah, serta memastikan tik hitungan
-mundur **tidak** membangun ulang node logo (animasi tidak restart) sebelum
-membuka form login tunggal, deteksi peran dari NIP/NISN (kelima akun masuk lewat form
+mundur **tidak** membangun ulang node logo (animasi tidak restart), dan
+`layoutSplashLogo()` menaruh logo pada posisi logo aslinya di dalam kotak
+ilustrasi (diuji dengan layout palsu: layar ponsel 390x844 dan layar lebar
+1024x600, karena jsdom tidak punya layout engine) sebelum membuka form login
+tunggal, deteksi peran dari NIP/NISN (kelima akun masuk lewat form
 yang sama, termasuk pesan galat per kolom kosong), "Ingat saya" yang menyimpan
 identitas tanpa kata sandi, navigasi bawah, filter chip/segmen/pencarian,
 pemilihan status kehadiran, pergantian tips, alur kuis → hasil, adaptasi agama,
@@ -322,7 +325,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **709 pemeriksaan**.
+Total **717 pemeriksaan**.
 
 ---
 

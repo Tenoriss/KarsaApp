@@ -227,7 +227,7 @@ dikunci ke orientasi potret.
 ```bash
 python3 karsa_app/preview/serve.py --host 0.0.0.0 --port 8000
 curl http://127.0.0.1:8000/healthz
-node karsa_app/preview/test_preview.js    # 709 pemeriksaan, mock DOM
+node karsa_app/preview/test_preview.js    # 717 pemeriksaan, mock DOM
 ```
 
 ---
@@ -277,7 +277,7 @@ node karsa_app/preview/test_preview.js    # 709 pemeriksaan, mock DOM
   133 berkas Dart,
   impor, aset, inisialisasi field `final`, argumen bernama `Image()`, dan
   null-check `.isEmpty` secara statis, sementara
-  `node karsa_app/preview/test_preview.js` menjalankan 709 pemeriksaan alur.
+  `node karsa_app/preview/test_preview.js` menjalankan 717 pemeriksaan alur.
 
 **Splash 10 detik dengan logo beranimasi.** Sesuai permintaan terakhir, layar
 splash tampil **10 detik** sebelum form login. Durasi tunggal ada di
@@ -285,9 +285,19 @@ splash tampil **10 detik** sebelum form login. Durasi tunggal ada di
 yang sama (`SPLASH_MS = 10000`).
 
 Background ilustrasi sekolah **tetap** dipakai. Logo KARSA pada ilustrasi asli
-dihapus dari `splash-art.png` (diisi langit sekitarnya, area di luar logo
-identik piksel), lalu diganti logo transparan `karsa-login-logo.png` yang
-dianimasikan di posisi yang persis sama -- jadi tetap satu logo, bukan dua.
+dihapus dari `splash-art.png` (inpainting: diisi langit sekitarnya, area di luar
+logo identik piksel, nol sisa logo), lalu diganti logo transparan
+`karsa-login-logo.png` yang dianimasikan pada posisi logo aslinya -- jadi tetap
+satu logo, bukan dua. Geometri logo asli diukur dari ilustrasi: x 202..405,
+y 105..298 dari 654x1048, tengah (46,41% ; 19,23%).
+
+Ukuran logo animasi dinaikkan ke **40% lebar ilustrasi** (aslinya 31%): pada
+layar ponsel ukuran asli terlalu kecil untuk animasi, sedangkan 72% (percobaan
+pertama) terlalu besar dan menutupi awan. Posisi dihitung dari **kotak
+ilustrasi** (contain + rata bawah), bukan dari layar -- di layar lebar
+ilustrasi tidak selebar layar, jadi logo harus ikut ilustrasi. Flutter:
+`LayoutBuilder` di `_AnimatedKarsaLogo`; preview: `layoutSplashLogo()` yang
+mengukur ukuran nyata lalu menaruh logo dalam piksel (diperbarui saat resize).
 Animasinya: detak skala 0.97-1.03, aura putih berdenyut, dan cincin yang
 mengembang lalu memudar, satu putaran **2,5 detik** (`AppConstants.splashLogoCycle`,
 habis dibagi 10 detik sehingga berakhir rapi). Hitungan mundur *"Masuk dalam N

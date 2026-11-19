@@ -348,16 +348,32 @@ body.is-splash {
   display: block;
 }
 
-/* Logo KARSA beranimasi, mengisi area logo yang dibersihkan dari ilustrasi:
-   x 95..566 (lebar 471/654) dan y 88..348 (tengah 208/1048). */
+/* Logo KARSA beranimasi, duduk persis di atas area logo yang dibersihkan dari
+   ilustrasi. Ilustrasi memakai object-fit: contain selebar layar, jadi ukuran
+   logo dihitung relatif terhadap lebar ilustrasi (= lebar layar) dan posisinya
+   relatif terhadap tinggi ilustrasi (aspek 654/1048, rata bawah).
+   Ukuran asli logo tercetak: 204x193 px dari 654x1048. */
+/* Wadah berukuran ilustrasi (aspek 654/1048, rata bawah, contain), jadi
+   persentase di dalamnya selalu jatuh di titik yang sama pada gambar. */
+.splash-art-box {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  height: 100%;
+  aspect-ratio: 654 / 1048;
+  max-width: 100%;
+  pointer-events: none;
+}
+
 .splash-logo-wrap {
   position: absolute;
-  left: 50.5%;
-  top: 20.8%;
-  width: 72%;
-  max-width: 320px;
+  left: 46.41%;
+  top: 19.23%;
+  /* 40% lebar ilustrasi: cukup besar untuk animasi, tidak menutupi awan. */
+  width: 40%;
   transform: translate(-50%, -50%);
-  aspect-ratio: 305 / 290;
+  aspect-ratio: 298 / 275; /* isi logo 298x275 px */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -409,7 +425,7 @@ body.is-splash {
 
 .splash-pill {
   position: absolute;
-  bottom: 42px;
+  bottom: 54px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255, 250, 247, 0.9);

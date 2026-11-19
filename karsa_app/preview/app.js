@@ -1223,13 +1223,15 @@
       el('img', { class: 'splash-art', src: ASSETS.splashArt, alt: 'Ilustrasi KARSA' }),
       // Logo KARSA beranimasi, menempati area logo yang sudah dibersihkan
       // dari ilustrasi (x 95..566, y 88..348 dari 654x1048).
-      el('div', { class: 'splash-logo-wrap', 'aria-hidden': 'true' }, [
-        el('span', { class: 'splash-logo-ring' }),
-        el('img', {
-          class: 'splash-logo',
-          src: ASSETS.loginLogo,
-          alt: 'Logo KARSA'
-        })
+      el('div', { class: 'splash-art-box' }, [
+        el('div', { class: 'splash-logo-wrap' }, [
+          el('span', { class: 'splash-logo-ring' }),
+          el('img', {
+            class: 'splash-logo',
+            src: ASSETS.loginLogo,
+            alt: 'Logo KARSA'
+          })
+        ])
       ]),
       el('div', { class: 'splash-pill' }, [
         el('div', { class: 'splash-dots' }, [
@@ -6313,6 +6315,64 @@
     return def.render();
   }
 
+  /// Letakkan logo beranimasi tepat di atas logo yang dihapus dari ilustrasi.
+  ///
+  /// Ilustrasi digambar dengan object-fit: contain + rata bawah, jadi kotak
+  /// gambarnya belum tentu sama dengan kotak elemen <img>. Ukuran nyatanya
+  /// diukur lalu logo ditempatkan dalam piksel -- logikanya sama dengan
+  /// `_AnimatedKarsaLogo` di Flutter (LayoutBuilder + AspectRatio).
+  ///
+  /// Posisi logo tercetak di ilustrasi (654x1048): x 202..405, y 105..298.
+  var SPLASH_ART_ASPECT = 654 / 1048;
+  var SPLASH_LOGO_ASPECT = 298 / 275;
+  var SPLASH_LOGO_W = 0.40;           // 40% lebar ilustrasi
+  var SPLASH_LOGO_CX = 303.5 / 654;   // 0.4641
+  var SPLASH_LOGO_CY = 201.5 / 1048;  // 0.1923
+
+  function layoutSplashLogo() {
+    var host = window.document || document;
+    var root = (typeof host.getElementById === 'function'
+      ? host.getElementById('app-viewport') : null) || host;
+    var stage = root.querySelectorAll('.splash-stage')[0];
+    if (!stage) return false;
+    var art = stage.querySelectorAll('.splash-art')[0];
+    var wrap = stage.querySelectorAll('.splash-logo-wrap')[0];
+    var artBox = stage.querySelectorAll('.splash-art-box')[0];
+    if (!art || !wrap) return false;
+    if (typeof stage.getBoundingClientRect !== 'function') return false;
+    var sr = stage.getBoundingClientRect();
+    // Kalau .splash-art-box ada (browser sungguhan), kotak ilustrasi sudah
+    // dihitung CSS: cukup pakai kotaknya. Kalau tidak, hitung sendiri dari
+    // ukuran <img> (object-fit: contain, rata bawah).
+    var br = (artBox && typeof artBox.getBoundingClientRect === 'function')
+      ? artBox.getBoundingClientRect() : null;
+    var ar = art.getBoundingClientRect();
+    if (!sr || !ar || !(sr.width > 0) || !(sr.height > 0)) return false;
+    if (!(ar.width > 0) || !(ar.height > 0)) return false;
+
+    var boxW, boxH, left, top;
+    if (br && br.width > 0 && br.height > 0) {
+      boxW = br.width;
+      boxH = br.height;
+      left = br.left - sr.left;
+      top = br.top - sr.top;
+    } else {
+      // kotak gambar sebenarnya di dalam <img> (contain + rata bawah)
+      boxW = Math.min(ar.width, ar.height * SPLASH_ART_ASPECT);
+      boxH = boxW / SPLASH_ART_ASPECT;
+      left = (ar.left - sr.left) + (ar.width - boxW) / 2;
+      top = (ar.top - sr.top) + (ar.height - boxH);
+    }
+
+    var w = boxW * SPLASH_LOGO_W;
+    var h = w / SPLASH_LOGO_ASPECT;
+    wrap.style.left = (left + boxW * SPLASH_LOGO_CX) + 'px';
+    wrap.style.top = (top + boxH * SPLASH_LOGO_CY) + 'px';
+    wrap.style.width = w + 'px';
+    wrap.style.height = h + 'px';
+    return true;
+  }
+
   /// Perbarui hitungan mundur & progress bar tanpa membangun ulang splash.
   /// Mengembalikan true bila splash sudah ada di DOM dan berhasil diperbarui.
   function patchSplash(viewport) {
@@ -6340,10 +6400,12 @@
     if (isSplash && patchSplash(viewport)) {
       document.getElementById('app-shell').classList.toggle('splash-mode', true);
       document.body.classList.toggle('is-splash', true);
+      layoutSplashLogo();
       return;
     }
     clear(viewport);
     viewport.appendChild(renderScreen());
+    if (isSplash) layoutSplashLogo();
     document.getElementById('app-shell').classList.toggle('splash-mode', isSplash);
     document.body.classList.toggle('is-splash', isSplash);
     var def = screenDef(state.screen);
@@ -6399,6 +6461,13 @@
       }, SPLASH_MS);
     }
 
+    window.addEventListener('resize', function () {
+      if (state.screen === 'splash') layoutSplashLogo();
+    });
+    window.addEventListener('load', function () {
+      if (state.screen === 'splash') layoutSplashLogo();
+    });
+
     window.addEventListener('hashchange', function () {
       var value = (window.location.hash || '').replace('#', '');
       var target = value ? resolveScreen(value) : null;
@@ -6423,6 +6492,7 @@
   /* Expose a tiny surface for automated verification (mock DOM tests). */
   window.KARSA_PREVIEW = {
     state: state,
+    layoutSplashLogo: layoutSplashLogo,
     screens: SCREENS.map(function (s) { return s.id; }),
     go: go,
     toggleTheme: toggleTheme,

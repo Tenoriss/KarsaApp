@@ -433,6 +433,56 @@ if (logoImg) {
 }
 ok(!!viewport.querySelectorAll('.splash-logo-ring')[0],
   'logo punya cincin animasi (.splash-logo-ring)');
+
+// Penempatan logo: jsdom tidak punya layout engine, jadi ukuran ilustrasi
+// dipalsukan untuk menguji perhitungannya (logika sama dengan Flutter).
+const logoStageEl = viewport.querySelectorAll('.splash-stage')[0];
+const splashArtEl = viewport.querySelectorAll('.splash-art')[0];
+const logoWrapEl = viewport.querySelectorAll('.splash-logo-wrap')[0];
+if (logoStageEl && splashArtEl && logoWrapEl) {
+  const fake = (el, r) => { el.getBoundingClientRect = () => r; };
+  // layar ponsel 390x844: ilustrasi memenuhi lebar, rata bawah
+  fake(logoStageEl, { left: 0, top: 0, width: 390, height: 844 });
+  fake(splashArtEl, { left: 0, top: 0, width: 390, height: 844 });
+  const placed = preview.layoutSplashLogo();
+  ok(placed === true, 'layoutSplashLogo berhasil menghitung posisi logo');
+  ok(logoWrapEl.style.width === '156px',
+    'lebar logo 40% dari lebar ilustrasi (156px dari 390), dapat ' + logoWrapEl.style.width);
+  ok(logoWrapEl.style.height === '143.91946308724832px' ||
+     String(logoWrapEl.style.height).indexOf('143.9') === 0,
+    'tinggi logo mengikuti rasio isi logo 298x275, dapat ' + logoWrapEl.style.height);
+  // Tengah logo harus di x 46,41% dan y 19,23% DARI ILUSTRASI. Di layar
+  // ponsel ilustrasi lebih pendek dari layar (contain + rata bawah), jadi
+  // posisi Y bukan 19,23% tinggi layar -- hitung dari kotak ilustrasinya.
+  const artH390 = 390 / (654 / 1048);
+  const cx = parseFloat(logoWrapEl.style.left);
+  const cy = parseFloat(logoWrapEl.style.top);
+  ok(Math.abs(cx - 390 * (303.5 / 654)) < 0.6,
+    'logo berada di tengah x logo aslinya, dapat ' + cx.toFixed(1) + 'px');
+  const expectCy390 = (844 - artH390) + artH390 * (201.5 / 1048);
+  ok(Math.abs(cy - expectCy390) < 0.6,
+    'logo berada di tengah y logo aslinya (di dalam ilustrasi), dapat ' +
+    cy.toFixed(1) + 'px, harusnya ' + expectCy390.toFixed(1) + 'px');
+  // dan tidak boleh memakai 19,23% tinggi layar (bug sebelum ini)
+  ok(Math.abs(cy - 844 * (201.5 / 1048)) > 10,
+    'posisi Y tidak dihitung dari tinggi layar (melainkan dari ilustrasi)');
+
+  // layar lebar (tablet landscape): ilustrasi contain -> ada ruang kiri/kanan,
+  // logo harus tetap menempel pada ilustrasi, bukan pada layar.
+  fake(logoStageEl, { left: 0, top: 0, width: 1024, height: 600 });
+  fake(splashArtEl, { left: 0, top: 0, width: 1024, height: 600 });
+  preview.layoutSplashLogo();
+  const boxW = Math.min(1024, 600 * (654 / 1048)); // 374.35...
+  const expectCx = (1024 - boxW) / 2 + boxW * (303.5 / 654);
+  const gotCx = parseFloat(logoWrapEl.style.left);
+  ok(Math.abs(gotCx - expectCx) < 0.6,
+    'di layar lebar logo ikut ilustrasi (contain), bukan layar: ' +
+    gotCx.toFixed(1) + ' vs ' + expectCx.toFixed(1));
+  const expectCy = 600 - boxW / (654 / 1048) + (boxW / (654 / 1048)) * (201.5 / 1048);
+  const gotCy = parseFloat(logoWrapEl.style.top);
+  ok(Math.abs(gotCy - expectCy) < 0.6,
+    'di layar lebar posisi tegak logo juga mengikuti ilustrasi');
+}
 // Background yang dipakai tidak lagi memuat logo tercetak, supaya logo
 // beranimasi tidak bertumpuk dengan logo statis.
 const splashCss = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');

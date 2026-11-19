@@ -113,7 +113,7 @@ class _SplashPageState extends State<SplashPage>
             ),
             Positioned(
               // Dinaikkan agar tidak menabrak hitungan mundur di dasar layar.
-              bottom: 40,
+              bottom: 52,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
                 decoration: ClayStyles.soft(
@@ -208,22 +208,43 @@ class _AnimatedKarsaLogo extends StatelessWidget {
 
   final AnimationController controller;
 
-  /// Rasio lebar:tinggi logo (305x290 px) supaya tidak gepeng.
-  static const double _logoAspect = 305 / 290;
+  /// Rasio isi logo setelah tepi transparannya dipotong (298x275 px).
+  static const double _logoAspect = 298 / 275; // isi logo 298x275 px
+
+  /// Posisi logo KARSA yang tercetak di ilustrasi asli (splash-art.png,
+  /// 654x1048): x 202..405, y 105..298 -- tengah (303.5, 201.5).
+  ///
+  /// Ukurannya dinaikkan ke ~40% lebar ilustrasi (aslinya 31%): pada layar
+  /// ponsel ukuran asli terlalu kecil untuk animasi, sementara 72% (percobaan
+  /// pertama) terlalu besar dan menutupi awan. 40% masih terasa satu keluarga
+  /// dengan logo di ilustrasi aslinya.
+  static const double _artAspect = 654 / 1048;
+  static const double _logoWidthRatio = 0.40;
+  static const double _logoCenterXRatio = 303.5 / 654; // 0.4641
+  static const double _logoCenterYRatio = 201.5 / 1048; // 0.1923
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints c) {
-        // Posisi & ukuran mengikuti logo yang dihapus dari splash-art:
-        // x 95..566 (lebar 471) dari 654, y 88..348 (tinggi 260) dari 1048.
-        final double artW = c.maxWidth;
+        // Ilustrasi digambar dengan BoxFit.contain di dalam kotak ini, jadi
+        // hitung dulu kotak ilustrasi yang sebenarnya agar logo tetap menempel
+        // pada posisinya di ilustrasi (juga di tablet/layar lebar).
+        final double artW = c.maxWidth.clamp(0.0, double.infinity);
         final double artH = c.maxHeight;
-        final double logoW = artW * (471 / 654);
+        double boxW = artW;
+        double boxH = artW / _artAspect;
+        if (boxH > artH) {
+          boxH = artH;
+          boxW = artH * _artAspect;
+        }
+        final double left = (artW - boxW) / 2;
+        final double top = (artH - boxH); // rata bawah (Alignment.bottomCenter)
+
+        final double logoW = boxW * _logoWidthRatio;
         final double logoH = logoW / _logoAspect;
-        // Titik tengah logo lama: ((95+566)/2)/654 = 0.505, ((88+348)/2)/1048 = 0.208
-        final double centerX = artW * 0.505;
-        final double centerY = artH * 0.208;
+        final double centerX = left + boxW * _logoCenterXRatio;
+        final double centerY = top + boxH * _logoCenterYRatio;
 
         return Stack(
           children: <Widget>[
