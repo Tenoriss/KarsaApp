@@ -2150,6 +2150,25 @@ if (essayBack) {
     'back from the essay goes to the task list of the active role');
 }
 
+// Skenario yang dilaporkan: role kosong (mis. halaman dimuat ulang tepat di
+// layar kuis). Dulu ini menghasilkan "undefinedberanda" -> go() menolak
+// diam-diam dan tombol kembali benar-benar mati.
+preview.state.role = null;
+preview.state.studentClass = 'Kelas 5';
+const reloadTask = preview.tasks().filter((t) => t.className === 'Kelas 5')[0]
+  || preview.tasks()[0];
+preview.startQuiz(reloadTask);
+eq(preview.state.screen, 'kuis', 'quiz opens even without a role');
+const nullRoleBack = viewport.querySelectorAll('.back-chevron')[0];
+ok(!!nullRoleBack, 'the back button exists without a role');
+if (nullRoleBack) {
+  nullRoleBack.click();
+  ok(preview.state.screen !== 'kuis',
+    'back works even when the role is missing (was a dead button)');
+  ok(preview.state.screen.indexOf('tugas') >= 0 || preview.state.screen === 'welcome',
+    'it lands on a real registered screen: ' + preview.state.screen);
+}
+
 // Setiap layar yang punya tombol kembali harus benar-benar pindah layar.
 const deadBacks = [];
 ['kuis', 'esai', 'hasil-kuis'].forEach((id) => {

@@ -272,11 +272,30 @@
   }
 
   /// Layar daftar tugas yang sesuai dengan role yang sedang aktif.
+  ///
+  /// Harus selalu mengembalikan layar yang benar-benar terdaftar: bila role
+  /// kosong (mis. halaman dimuat ulang tepat di layar kuis), versi lama
+  /// menghasilkan "undefinedberanda" sehingga `go()` menolak diam-diam dan
+  /// tombol kembali tampak mati.
   function tasksScreenForRole() {
-    if (state.role === 'guru') return 'guru-tugas';
-    if (state.role === 'siswa') return 'siswa-tugas';
-    if (state.role === 'orangtua') return 'ortu-tugas';
-    return ROLE_SCREEN_PREFIX[state.role] + 'beranda';
+    // Bila role hilang (reload di layar kuis), tebak dari tugas yang terbuka:
+    // ini tugas yang tampil di kelas siswa/orang tua, atau tugas guru sendiri.
+    var role = state.role;
+    if (!role) {
+      var task = state.quiz && state.quiz.task;
+      if (task) {
+        if (task.className === state.studentClass) role = 'siswa';
+        else if (task.className === state.parentClass) role = 'orangtua';
+        else role = 'guru';
+      }
+    }
+    if (role === 'guru') return 'guru-tugas';
+    if (role === 'siswa') return 'siswa-tugas';
+    if (role === 'orangtua') return 'ortu-tugas';
+    if (role === 'wali') return 'wali-beranda';
+    if (role === 'operator') return 'operator-beranda';
+    // Role tidak diketahui: kembali ke pemilihan peran, bukan menebak.
+    return 'welcome';
   }
 
   function quizBankFor(subject) {
@@ -5367,8 +5386,11 @@
       // role yang sedang aktif (guru/siswa/orang tua), dan keluar dari kuis.
       pageHeader(quiz.task.subject + ' · ' + quiz.task.title, 'Soal ' + (quiz.index + 1) + ' dari ' + quiz.bank.length,
         function () {
+          // Pulihkan role dari konteks kuis bila halaman dimuat ulang tepat
+          // di layar ini, lalu kembali ke daftar tugas role tersebut.
+          var backTo = tasksScreenForRole();
           state.quiz = null;
-          go(tasksScreenForRole());
+          go(backTo);
         }),
       el('div', { class: 'quiz-progress' }, [
         el('div', { class: 'quiz-progress-fill', style: 'width:' + (ratio * 100) + '%' })
