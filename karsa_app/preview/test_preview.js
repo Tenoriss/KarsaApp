@@ -317,11 +317,11 @@ const EXPECTED_SCREENS = [
   'operator-beranda', 'operator-siswa', 'operator-kelas', 'operator-materi', 'operator-profil',
   'operator-media', 'operator-tugas', 'operator-pengumuman',
   'operator-agenda', 'operator-nilai',
-  'materi', 'notifikasi', 'kuis', 'esai', 'hasil-kuis'
+  'materi', 'notifikasi', 'kuis', 'esai', 'hasil-kuis', 'hasil-latihan'
 ];
 
-eq(preview.screens.length, 41, 'screen registry contains 41 screens');
-eq(EXPECTED_SCREENS.length, 41, 'the expected screen list has 41 entries');
+eq(preview.screens.length, 42, 'screen registry contains 42 screens');
+eq(EXPECTED_SCREENS.length, 42, 'the expected screen list has 42 entries');
 EXPECTED_SCREENS.forEach((id) => {
   ok(preview.screens.indexOf(id) >= 0, 'screen "' + id + '" is registered');
 });
@@ -2241,6 +2241,108 @@ const quizCss = fs.readFileSync(path.join(previewDir, 'styles.css'), 'utf8');
 ok(quizCss.indexOf('.quiz-feedback') >= 0, 'quiz feedback styles are defined');
 ok(quizCss.indexOf('--surface-quiz-feedback') >= 0,
   'feedback surface uses a theme token (dark mode safe)');
+
+/* ------------------------------------------------------------------ *
+ * 10e. Latihan dua metode (pilihan ganda + esai)
+ * ------------------------------------------------------------------ */
+preview.state.role = 'siswa';
+preview.state.dark = false;
+preview.state.parentClass = 'Kelas 5';
+preview.state.studentName = 'Dimas Nugroho';
+preview.go('siswa-beranda');
+
+const practice = preview.visiblePractices()[0];
+ok(!!practice, 'ada latihan untuk siswa');
+
+// Sheet detail latihan menawarkan dua metode.
+preview.openPractice(practice);
+let sheetText = sheetPanel.textContent || '';
+ok(sheetText.indexOf('Pilih metode latihan') >= 0,
+  'detail latihan menawarkan pilihan metode');
+ok(sheetText.indexOf('Pilihan ganda') >= 0 && sheetText.indexOf('Esai') >= 0,
+  'detail latihan punya metode pilihan ganda dan esai');
+ok(sheetText.indexOf('dinilai otomatis') >= 0,
+  'pilihan ganda latihan diberi label dinilai otomatis');
+ok(sheetText.indexOf('tidak dinilai otomatis') >= 0,
+  'esai diberi label tidak dinilai otomatis');
+preview.closeSheet();
+
+// Pilihan ganda latihan: memakai layar kuis, skor masuk PRACTICE_RESULTS.
+preview.startPracticeQuiz(practice);
+eq(preview.state.screen, 'kuis', 'pilihan ganda latihan membuka layar kuis');
+eq(preview.state.quiz.practice && preview.state.quiz.practice.id, practice.id,
+  'kuis latihan membawa konteks latihan');
+ok(!!preview.state.quiz.bank.length, 'kuis latihan punya bank soal');
+const pgCount = preview.state.quiz.bank.length;
+ok(pgCount >= 4, 'latihan pilihan ganda punya minimal 4 soal, dapat ' + pgCount);
+// Judul memakai mapel latihan, bukan tugas.
+ok((viewport.textContent || '').indexOf(practice.subject) >= 0,
+  'header kuis latihan menampilkan mapel latihan');
+
+// Jawab semua soal dengan benar.
+const resultsBefore = Object.keys(preview.results()).length;
+for (let i = 0; i < pgCount; i += 1) {
+  const bank = preview.state.quiz.bank;
+  const correctIndex = bank[preview.state.quiz.index].answerIndex;
+  viewport.querySelectorAll('.choice-btn')[correctIndex].click();
+  const btn = () => Array.from(viewport.querySelectorAll('button'))
+    .filter((b) => /Periksa jawaban|Soal berikutnya|Lihat hasil/.test(b.textContent || ''))[0];
+  btn().click(); // periksa
+  btn().click(); // lanjut / selesai
+}
+eq(preview.state.screen, 'hasil-latihan', 'selesai PG latihan membuka hasil latihan');
+const pracRes = preview.practiceResults()[practice.id] || null;
+ok(!!pracRes, 'skor latihan tersimpan di PRACTICE_RESULTS, bukan RESULTS tugas');
+if (pracRes) {
+  eq(pracRes.score, pgCount, 'semua benar memberi nilai penuh');
+  eq(pracRes.total, pgCount, 'total soal tercatat');
+  ok(viewport.textContent.indexOf(String(pracRes.score)) >= 0,
+    'layar hasil menampilkan skor');
+} else {
+  ok(false, 'semua benar memberi nilai penuh');
+  ok(false, 'total soal tercatat');
+  ok(false, 'layar hasil menampilkan skor');
+}
+eq(Object.keys(preview.results()).length, resultsBefore,
+  'skor latihan tidak menambah hasil tugas');
+eq(preview.practiceDone()[practice.id], true,
+  'latihan bertanda selesai setelah PG');
+
+// Esai latihan tetap berjalan dan mencatat selesai tanpa skor.
+const practice2 = preview.visiblePractices()[1] || practice;
+preview.openPractice(practice2);
+const essayBtn = sheetPanel.querySelectorAll('.method-card')
+  .filter((c) => (c.textContent || '').indexOf('Esai') >= 0)[0];
+ok(!!essayBtn, 'kartu metode esai bisa diklik');
+if (essayBtn) {
+  essayBtn.click();
+  // Esai latihan tampil di sheet, bukan layar esai tugas.
+  ok((sheetPanel.textContent || '').indexOf('Soal 1 dari') >= 0,
+    'esai latihan langsung menampilkan soal pertama');
+  ok((sheetPanel.textContent || '').indexOf('tanpa batas waktu') >= 0,
+    'esai latihan menyebut tanpa batas waktu');
+
+  // Kerjakan seluruh soal esai latihan.
+  let guard = 0;
+  while ((sheetPanel.textContent || '').indexOf('Hasil latihan') < 0 && guard < 30) {
+    guard += 1;
+    const textarea = sheetPanel.querySelectorAll('textarea')[0];
+    if (!textarea) break;
+    textarea.value = 'Jawaban esai nomor ' + guard + ' yang cukup panjang.';
+    textarea.dispatch('input', { target: textarea });
+    const next = sheetPanel.querySelectorAll('button')
+      .filter((b) => /Soal berikutnya|Selesai/.test(b.textContent || ''))[0];
+    if (!next) break;
+    next.click();
+  }
+  ok((sheetPanel.textContent || '').indexOf('Hasil latihan') >= 0,
+    'esai latihan berakhir di ringkasan hasil');
+  eq(preview.practiceDone()[practice2.id], true,
+    'esai latihan menandai selesai');
+  eq(preview.practiceResults()[practice2.id], undefined,
+    'esai latihan tidak menyimpan skor (tidak dinilai otomatis)');
+  preview.closeSheet();
+}
 
 /* ------------------------------------------------------------------ *
  * 11a. Tombol kembali pada kuis & esai benar-benar berpindah layar

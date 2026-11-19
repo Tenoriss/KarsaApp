@@ -76,6 +76,10 @@ class AppState extends ChangeNotifier {
   /// disimpan.
   bool _essayForTask = false;
 
+  /// Kuis pilihan ganda sedang dijalankan untuk sebuah **latihan**, bukan
+  /// tugas. Skornya disimpan di `practiceResults`, bukan `results`.
+  bool _quizForPractice = false;
+
   /// Jawaban esai yang sedang diketik, satu entri per soal.
   List<String> _essayDrafts = <String>[];
   bool _showExample = false;
@@ -220,6 +224,16 @@ class AppState extends ChangeNotifier {
   String get essay => _essay;
 
   bool get essayForTask => _essayForTask;
+
+  /// True saat layar kuis menampilkan soal milik latihan.
+  bool get quizForPractice => _quizForPractice;
+
+  /// Skor pilihan ganda latihan yang sedang dibuka (null bila belum dikerjakan).
+  TaskResult? get selectedPracticeResult {
+    final practice = _selectedPractice;
+    if (practice == null) return null;
+    return _data.practiceResults[practice.id];
+  }
 
   /// Jawaban esai tersimpan untuk tugas yang sedang dibuka.
   List<String> get savedEssayAnswers {
@@ -1422,6 +1436,11 @@ class AppState extends ChangeNotifier {
   }
 
   void setScreen(String nextScreen) {
+    // Meninggalkan layar kuis membatalkan konteks latihan. Tanpa ini, kuis
+    // tugas berikutnya bisa memakai bank soal latihan yang ditinggalkan.
+    if (nextScreen != 'quiz' && nextScreen != 'practiceResult') {
+      _quizForPractice = false;
+    }
     _screen = nextScreen;
     notifyListeners();
   }
@@ -1649,6 +1668,13 @@ class AppState extends ChangeNotifier {
   }
 
   List<QuizQuestion> get currentQuizBank {
+    // Latihan memakai bank soal mapelnya sendiri. Tanpa cabang ini, kuis
+    // latihan akan meminjam soal tugas terakhir yang dibuka.
+    if (_quizForPractice) {
+      final subject = _selectedPractice?.subject ?? _draftSubject;
+      return CurriculumData.questionsFor(subject, _data.religion);
+    }
+
     // Tugas yang soalnya dibuat asisten memakai soalnya sendiri; tanpa ini
     // soal hasil asisten tidak pernah tampil saat siswa mengerjakan kuis.
     final task = _selectedTask;
@@ -1676,8 +1702,23 @@ class AppState extends ChangeNotifier {
   }
 
   void startQuiz() {
-    // Mulai pilihan ganda: pastikan konteks esai tugas tidak tertinggal.
+    // Mulai pilihan ganda untuk sebuah tugas.
     _essayForTask = false;
+    _quizForPractice = false;
+    _questionIndex = 0;
+    _choiceIndex = null;
+    _checked = false;
+    _answers = <int>[];
+    _screen = 'quiz';
+    notifyListeners();
+  }
+
+  /// Memulai **pilihan ganda** dari sebuah latihan. Skornya disimpan terpisah
+  /// dari tugas supaya nilai tugas tidak tercampur nilai latihan.
+  void startPracticeQuiz() {
+    if (_selectedPractice == null) return;
+    _essayForTask = false;
+    _quizForPractice = true;
     _questionIndex = 0;
     _choiceIndex = null;
     _checked = false;
@@ -1714,7 +1755,12 @@ class AppState extends ChangeNotifier {
   }
 
   void checkOrAdvanceQuiz() {
-    if (_choiceIndex == null || _selectedTask == null) return;
+    // Latihan tidak punya `_selectedTask`, jadi syaratnya harus mengikuti
+    // konteks: latihan butuh `_selectedPractice`, tugas butuh `_selectedTask`.
+    if (_choiceIndex == null) return;
+    if (_quizForPractice ? _selectedPractice == null : _selectedTask == null) {
+      return;
+    }
     if (!_checked) {
       _checked = true;
       notifyListeners();
@@ -1730,6 +1776,47 @@ class AppState extends ChangeNotifier {
       for (int i = 0; i < bank.length && i < nextAnswers.length; i++) {
         if (nextAnswers[i] == bank[i].answerIndex) score++;
       }
+
+      // === Kuis latihan: simpan skor terpisah, jangan sentuh nilai tugas ===
+      if (_quizForPractice) {
+        final practice = _selectedPractice!;
+        final notif = _buildNotification(
+          target: 'teachers',
+          subject: practice.subject,
+          className: _data.childClass,
+          title: '${_data.studentName} menyelesaikan latihan '
+              '${practice.title} · $score/${bank.length}',
+          kind: 'practice',
+          contentId: practice.id,
+        );
+        _quizForPractice = false;
+        _screen = 'practiceResult';
+        _persistData(
+          _data.copyWith(
+            practiceDone: <String, bool>{
+              ..._data.practiceDone,
+              practice.id: true,
+            },
+            practiceResults: <String, TaskResult>{
+              ..._data.practiceResults,
+              practice.id: TaskResult(
+                score: score,
+                total: bank.length,
+                answers: nextAnswers,
+                religion: _data.religion,
+                studentName: _data.studentName,
+                className: _data.childClass,
+              ),
+            },
+            localNotifications: <LocalNotification>[
+              notif,
+              ..._data.localNotifications,
+            ],
+          ),
+        );
+        return;
+      }
+
       final task = _selectedTask!;
       // Pertahankan jawaban esai yang mungkin sudah dikirim siswa lebih dulu;
       // mengerjakan pilihan ganda tidak boleh menghapus bagian esai.
@@ -1850,6 +1937,7 @@ class AppState extends ChangeNotifier {
     _essayForTask = false;
     _questionIndex = 0;
     _essay = '';
+    _essayDrafts = <String>[];
     _showExample = false;
     _screen = 'essay';
     notifyListeners();
@@ -1857,12 +1945,13 @@ class AppState extends ChangeNotifier {
 
   void updateEssay(String val) {
     _essay = val;
-    if (_essayForTask) {
-      while (_essayDrafts.length <= _questionIndex) {
-        _essayDrafts.add('');
-      }
-      _essayDrafts[_questionIndex] = val;
+    // Simpan per nomor soal, baik untuk esai tugas maupun latihan. Sebelumnya
+    // hanya esai tugas yang menyimpan draft; pada latihan jawaban soal
+    // sebelumnya ikut hilang begitu siswa pindah soal.
+    while (_essayDrafts.length <= _questionIndex) {
+      _essayDrafts.add('');
     }
+    _essayDrafts[_questionIndex] = val;
     notifyListeners();
   }
 
@@ -1909,6 +1998,9 @@ class AppState extends ChangeNotifier {
     } else {
       _questionIndex++;
       _essay = '';
+      // Setiap soal punya contoh jawabannya sendiri. Sebelumnya `_showExample`
+      // tidak pernah kembali false, jadi "Lihat contoh jawaban" hanya muncul di
+      // soal pertama dan soal-soal berikutnya bisa terlewat tanpa contoh.
       _showExample = false;
       notifyListeners();
     }

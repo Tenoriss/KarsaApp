@@ -349,6 +349,13 @@
     RESULTS[t.id] = { score: 7, total: 10, answers: [], demo: true };
   });
 
+  // Skor pilihan ganda latihan, dipisah dari nilai tugas supaya tidak
+  // tercampur (cermin KarsaStoreData.practiceResults).
+  var PRACTICE_RESULTS = {};
+
+  // Latihan yang sudah dikerjakan (esai maupun pilihan ganda).
+  var PRACTICE_DONE = {};
+
   var PRACTICES = SUBJECTS.map(function (subject, i) {
     var id = subject === 'Matematika' ? 'p1'
       : subject === 'Bahasa Indonesia' ? 'p2'
@@ -3421,7 +3428,48 @@
     ]);
   }
 
+  /* Sheet detail latihan: dua metode seperti tugas. */
   function openPractice(practice) {
+    state.practiceResult = practice;
+    var res = PRACTICE_RESULTS[practice.id];
+    var esaiBank = typeof CURR.exercisesFor === 'function'
+      ? CURR.exercisesFor(normalizeSubject(practice.subject), state.religion || '')
+      : (CURR.practiceBank[normalizeSubject(practice.subject)] || []);
+    var pgBank = questionsForPractice(practice.subject);
+
+    openSheet(el('div', {}, [
+      el('div', { class: 'sheet-handle' }),
+      el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 2px 0', text: practice.title }),
+      el('p', { class: 't-muted', style: 'margin-bottom:14px', text: practice.subject + ' · ' + (practice.className || 'Latihan') }),
+      el('p', { class: 't-section', style: 'margin:4px 0 10px 0', text: 'Pilih metode latihan' }),
+      el('div', { class: 'method-card pressable', role: 'button', tabindex: '0',
+        onclick: function () { closeSheet(); startPracticeQuiz(practice); }
+      }, [
+        el('div', { class: 'method-icon', text: '🔠' }),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 't-item-title', style: 'margin:0', text: 'Pilihan ganda' }),
+          el('p', { class: 't-small', style: 'margin:0', text: pgBank.length + ' soal · dinilai otomatis' })
+        ]),
+        el('span', { class: 't-link', text: res && res.score != null ? 'Nilai ' + res.score + '/' + res.total : 'Mulai' })
+      ]),
+      el('div', { class: 'method-card pressable', role: 'button', tabindex: '0',
+        onclick: function () { closeSheet(); startEssayForPractice(practice); }
+      }, [
+        el('div', { class: 'method-icon', text: '✍️' }),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 't-item-title', style: 'margin:0', text: 'Esai' }),
+          el('p', { class: 't-small', style: 'margin:0', text: esaiBank.length + ' soal · tidak dinilai otomatis' })
+        ]),
+        el('span', { class: 't-link', text: PRACTICE_DONE[practice.id] ? 'Selesai' : 'Mulai' })
+      ]),
+      el('p', {
+        class: 't-small', style: 'margin-top:12px',
+        text: 'Kamu boleh mengerjakan salah satu atau keduanya. Esai tidak dinilai otomatis.'
+      })
+    ]));
+  }
+
+  function startEssayForPractice(practice) {
     var bank = typeof CURR.exercisesFor === 'function'
       ? CURR.exercisesFor(normalizeSubject(practice.subject), state.religion || '')
       : (CURR.practiceBank[normalizeSubject(practice.subject)] || []);
@@ -3430,14 +3478,15 @@
 
     function body() {
       if (index >= bank.length) {
+        PRACTICE_DONE[practice.id] = true;
         return el('div', {}, [
           el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0', text: 'Hasil latihan' }),
           el('p', { class: 't-muted', style: 'margin-bottom:14px', text: practice.title + ' · ' + bank.length + ' soal esai selesai' }),
           el('p', { class: 't-result-number', text: answers.filter(function (a) { return a.trim().length > 0; }).length + ' / ' + bank.length }),
           el('button', {
             class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
-            onclick: function () { closeSheet(); render(); }
-          }, ['Tutup'])
+            onclick: function () { closeSheet(); go('hasil-latihan'); }
+          }, ['Lihat hasil'])
         ]);
       }
       var q = bank[index];
@@ -5239,6 +5288,7 @@
     var own = task && task.questions && task.questions.length ? task.questions : null;
     state.quiz = {
       task: task,
+      practice: null,
       bank: own || quizBankFor(task.subject),
       index: 0,
       choice: -1,
@@ -5247,6 +5297,30 @@
       score: 0
     };
     go('kuis');
+  }
+
+  /* Pilihan ganda sebuah latihan (metode 1). Memakai layar kuis yang sama,
+     tetapi skornya disimpan di PRACTICE_RESULTS - bukan di RESULTS tugas. */
+  function startPracticeQuiz(practice) {
+    state.quiz = {
+      task: null,
+      practice: practice,
+      bank: questionsForPractice(practice.subject),
+      index: 0,
+      choice: -1,
+      checked: false,
+      answers: [],
+      score: 0
+    };
+    go('kuis');
+  }
+
+  function questionsForPractice(subject) {
+    var norm = normalizeSubject(subject);
+    if (typeof CURR.questionsFor === 'function') {
+      return CURR.questionsFor(norm, state.religion || '');
+    }
+    return CURR.quizBank[norm] || CURR.quizBank['Matematika'] || [];
   }
 
   /* ------------------------------------------------------------------ *
@@ -5473,7 +5547,12 @@
           onclick: closeQuiz
         }, [icon('chevron-back', 20)]),
         el('div', { style: 'flex:1;min-width:0' }, [
-          el('p', { class: 'quiz-eyebrow', text: quiz.task.subject + ' · ' + quiz.task.title }),
+          el('p', {
+            class: 'quiz-eyebrow',
+            text: quiz.practice
+              ? quiz.practice.subject + ' · ' + quiz.practice.title
+              : quiz.task.subject + ' · ' + quiz.task.title
+          }),
           el('p', { class: 'quiz-step', text: 'Soal ' + (quiz.index + 1) + ' dari ' + quiz.bank.length })
         ]),
         el('button', {
@@ -5499,6 +5578,17 @@
             quiz.checked = true;
             if (quiz.choice === q.answerIndex) quiz.score += 1;
           } else if (isLast) {
+            if (quiz.practice) {
+              // Latihan: skor masuk PRACTICE_RESULTS, status selesai dicatat,
+              // dan nilai tugas tidak tersentuh.
+              PRACTICE_RESULTS[quiz.practice.id] = {
+                score: quiz.score, total: quiz.bank.length, answers: quiz.answers
+              };
+              PRACTICE_DONE[quiz.practice.id] = true;
+              state.quiz = null;
+              go('hasil-latihan');
+              return;
+            }
             RESULTS[quiz.task.id] = {
               score: quiz.score, total: quiz.bank.length, answers: quiz.answers, demo: quiz.task.demo
             };
@@ -5515,6 +5605,52 @@
       }, [checked
         ? (isLast ? 'Lihat hasil' : 'Soal berikutnya')
         : 'Periksa jawaban'])
+    ]);
+  }
+
+  /* Hasil latihan: menampilkan skor pilihan ganda bila latihan dikerjakan
+     lewat metode itu; esai tidak dinilai otomatis sehingga tanpa skor. */
+  function renderHasilLatihan() {
+    var practice = state.practiceResult || null;
+    var res = practice ? PRACTICE_RESULTS[practice.id] : null;
+    var back = function () {
+      state.practiceResult = null;
+      go(tasksScreenForRole());
+    };
+    if (!practice) {
+      return el('div', {}, [pageHeader('Hasil latihan', null, back)]);
+    }
+    var total = res ? res.total : 0;
+    var pct = total ? Math.round((res.score / total) * 100) : 0;
+    return el('div', {}, [
+      pageHeader('Hasil latihan', practice.subject + ' · ' + practice.title, back),
+      el('div', { class: 'clay-soft karsa-card', style: 'text-align:center;padding:26px 18px' }, [
+        el('p', { style: 'font-size:44px;margin:0', text: res ? '🎯' : '🌱' }),
+        el('p', {
+          class: 't-page-title', style: 'margin:8px 0 0 0',
+          text: res ? 'Latihan selesai!' : 'Jawaban esai tersimpan'
+        }),
+        el('p', {
+          class: 't-muted', style: 'margin:6px 0 0 0',
+          text: res
+            ? 'Pilihan ganda langsung dinilai.'
+            : 'Esai tidak dinilai otomatis; jawabanmu tersimpan untuk tugas ini.'
+        })
+      ]),
+      res ? el('div', { class: 'stats-grid', style: 'margin-top:14px' }, [
+        statCard({
+          icon: 'checkmark-circle', label: 'Nilai', value: res.score + '/' + total,
+          desc: pct + '% benar', color: 'var(--rose)', onTap: function () {}
+        }),
+        statCard({
+          icon: 'grid', label: 'Soal', value: String(total),
+          desc: 'pilihan ganda', color: 'var(--blue)', onTap: function () {}
+        })
+      ]) : null,
+      el('button', {
+        class: 'karsa-btn clay-raised pressable', type: 'button',
+        style: 'border:none;cursor:pointer;margin-top:16px', onclick: back
+      }, ['Kembali ke latihan'])
     ]);
   }
 
@@ -5651,7 +5787,8 @@
     { id: 'notifikasi', label: 'Notifikasi', group: 'Umum', render: renderNotifikasi, nav: null },
     { id: 'kuis', label: 'Kuis', group: 'Umum', render: renderQuiz, nav: null },
     { id: 'esai', label: 'Esai', group: 'Umum', render: renderEssay, nav: null },
-    { id: 'hasil-kuis', label: 'Hasil Kuis', group: 'Umum', render: renderHasilKuis, nav: null }
+    { id: 'hasil-kuis', label: 'Hasil Kuis', group: 'Umum', render: renderHasilKuis, nav: null },
+    { id: 'hasil-latihan', label: 'Hasil Latihan', group: 'Umum', render: renderHasilLatihan, nav: null }
   ];
 
   var SCREEN_ALIASES = { 'wali-rekap': 'wali-recap' };
@@ -5867,9 +6004,15 @@
     restoreState: restoreState,
     materials: function () { return MATERIALS; },
     tasks: function () { return TASKS; },
+    visiblePractices: visiblePractices,
     results: function () { return RESULTS; },
     startQuiz: startQuiz,
     startEssayForTask: startEssayForTask,
+    startPracticeQuiz: startPracticeQuiz,
+    openPractice: openPractice,
+    closeSheet: closeSheet,
+    practiceResults: function () { return PRACTICE_RESULTS; },
+    practiceDone: function () { return PRACTICE_DONE; },
     operator: {
       classNames: operatorClassNames,
       classOptions: operatorClassOptions,

@@ -19,6 +19,11 @@ class KarsaStoreData {
   final List<PracticeItem> customPractices;
   final Map<String, TaskResult> results;
   final Map<String, bool> practiceDone;
+
+  /// Skor pilihan ganda per latihan (kunci: id latihan). Skor hanya diisi
+  /// setelah siswa menyelesaikan seluruh soal PG; latihan tetap dianggap
+  /// selesai lewat `practiceDone` walau baru mengerjakan bagian esai.
+  final Map<String, TaskResult> practiceResults;
   final List<AnnouncementItem> announcements;
   final List<String> readAnnouncements;
   final String teacherName;
@@ -75,6 +80,7 @@ class KarsaStoreData {
     required this.customPractices,
     required this.results,
     required this.practiceDone,
+    this.practiceResults = const <String, TaskResult>{},
     required this.announcements,
     required this.readAnnouncements,
     required this.teacherName,
@@ -113,6 +119,7 @@ class KarsaStoreData {
       customPractices: const <PracticeItem>[],
       results: SeedData.demoResults(seed),
       practiceDone: const <String, bool>{},
+      practiceResults: const <String, TaskResult>{},
       announcements: SeedData.initialAnnouncements,
       readAnnouncements: const <String>[],
       teacherName: 'Ibu Sari',
@@ -149,6 +156,7 @@ class KarsaStoreData {
     List<PracticeItem>? customPractices,
     Map<String, TaskResult>? results,
     Map<String, bool>? practiceDone,
+    Map<String, TaskResult>? practiceResults,
     List<AnnouncementItem>? announcements,
     List<String>? readAnnouncements,
     String? teacherName,
@@ -185,6 +193,7 @@ class KarsaStoreData {
       customPractices: customPractices ?? this.customPractices,
       results: results ?? this.results,
       practiceDone: practiceDone ?? this.practiceDone,
+      practiceResults: practiceResults ?? this.practiceResults,
       announcements: announcements ?? this.announcements,
       readAnnouncements: readAnnouncements ?? this.readAnnouncements,
       teacherName: teacherName ?? this.teacherName,
@@ -252,6 +261,17 @@ class KarsaStoreData {
     if (saved['practiceDone'] is Map) {
       (saved['practiceDone'] as Map).forEach((k, v) {
         if (v == true) parsedPracticeDone[k.toString()] = true;
+      });
+    }
+
+    // Skor latihan; data lama tanpa kunci ini tetap valid (peta kosong).
+    final parsedPracticeResults = <String, TaskResult>{};
+    if (saved['practiceResults'] is Map) {
+      (saved['practiceResults'] as Map).forEach((k, v) {
+        if (v is Map) {
+          parsedPracticeResults[k.toString()] =
+              TaskResult.fromJson(v.map((ek, ev) => MapEntry(ek.toString(), ev)));
+        }
       });
     }
 
@@ -387,6 +407,7 @@ class KarsaStoreData {
           : const <PracticeItem>[],
       results: parsedResults,
       practiceDone: parsedPracticeDone,
+      practiceResults: parsedPracticeResults,
       announcements: (saved['announcements'] is List)
           ? (saved['announcements'] as List)
               .whereType<Map>()
@@ -475,6 +496,8 @@ class KarsaStoreData {
       'customPractices': customPractices.map((p) => p.toJson()).toList(),
       'results': results.map((k, v) => MapEntry(k, v.toJson())),
       'practiceDone': practiceDone,
+      'practiceResults':
+          practiceResults.map((k, v) => MapEntry(k, v.toJson())),
       'announcements': announcements.map((a) => a.toJson()).toList(),
       'readAnnouncements': readAnnouncements,
       'teacherName': teacherName,

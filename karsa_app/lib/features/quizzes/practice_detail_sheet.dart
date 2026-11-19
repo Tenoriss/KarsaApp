@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/clay_styles.dart';
 import '../../core/theme/karsa_theme.dart';
-import '../../core/widgets/karsa_button.dart';
+import '../../core/widgets/method_card.dart';
 import '../../core/widgets/page_header.dart';
 import '../../data/curriculum_data.dart';
 import '../../providers/app_state.dart';
@@ -40,17 +40,40 @@ class PracticeDetailSheet extends StatelessWidget {
           alignment: Alignment.center,
           child: Text(meta.icon, style: const TextStyle(fontSize: 48)),
         ),
-        Text('Belajar dengan santai ✨', style: theme.text.section),
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Text(
-            '5 soal esai. Tulis jawabanmu, lalu bandingkan dengan contoh. Latihan tidak dinilai; status selesai tercatat lokal.',
-            style: theme.text.muted.copyWith(height: 23 / 13),
-          ),
+          padding: const EdgeInsets.only(top: 4, bottom: 10),
+          child: Text('Pilih metode latihan', style: theme.text.section),
         ),
-        KarsaButton(
-          title: 'Mulai latihan',
+        // Dua metode seperti tugas: pilihan ganda (dinilai) dan esai
+        // (tidak dinilai otomatis). Siswa boleh mengerjakan keduanya.
+        MethodCard(
+          icon: '🔠',
+          title: 'Pilihan ganda',
+          meta: '${CurriculumData.questionsFor(practice.subject, state.religion).length} soal · dinilai otomatis',
+          badge: state.selectedPracticeResult?.score != null
+              ? 'Nilai ${state.selectedPracticeResult!.score}/${state.selectedPracticeResult!.total}'
+              : null,
+          actionLabel: state.selectedPracticeResult?.score != null
+              ? 'Kerjakan lagi'
+              : 'Mulai',
+          onTap: state.startPracticeQuiz,
+        ),
+        const SizedBox(height: 10),
+        MethodCard(
+          icon: '✍️',
+          title: 'Esai',
+          meta: '${CurriculumData.exercisesFor(practice.subject, state.religion).length} soal · tidak dinilai otomatis',
+          badge: state.data.practiceDone[practice.id] == true ? 'Selesai' : null,
+          actionLabel: 'Mulai',
           onTap: state.startPractice,
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Text(
+            'Kamu boleh mengerjakan salah satu atau keduanya. '
+            'Esai tidak dinilai otomatis; pilihan ganda langsung dapat nilai.',
+            style: theme.text.smallMuted,
+          ),
         ),
       ],
     );

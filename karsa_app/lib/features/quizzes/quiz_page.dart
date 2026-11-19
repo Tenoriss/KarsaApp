@@ -53,7 +53,7 @@ class QuizPage extends StatelessWidget {
             children: <Widget>[
               MotionPressable(
                 semanticsLabel: 'Kembali',
-                onTap: () => state.setScreen('taskDetail'),
+                onTap: () => state.setScreen(_backTarget(state)),
                 child: SizedBox(
                   width: 44,
                   height: 44,
@@ -91,7 +91,7 @@ class QuizPage extends StatelessWidget {
               RoundIconButton(
                 icon: KarsaIcons.close,
                 semanticsLabel: 'Tutup kuis',
-                onTap: () => state.setScreen('taskDetail'),
+                onTap: () => state.setScreen(_backTarget(state)),
               ),
             ],
           ),
@@ -239,3 +239,9 @@ class QuizPage extends StatelessWidget {
     );
   }
 }
+
+/// Kembali dari kuis ke layar asalnya: detail latihan bila kuis ini milik
+/// latihan, atau detail tugas bila milik tugas. Sebelumnya selalu
+/// 'taskDetail', sehingga kuis latihan melempar siswa ke tugas.
+String _backTarget(AppState state) =>
+    state.quizForPractice ? 'practiceDetail' : 'taskDetail';

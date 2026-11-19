@@ -208,6 +208,10 @@ Media** — bukan lagi section yang menempel di ujung beranda.
   muncul sebelum diperiksa; kartu umpan balik hijau/merah setelah diperiksa.
   Warna tetap memakai token yang sudah ada (`--rose`, `--surface-*`,
   `--surface-quiz-feedback`) sehingga aman di mode gelap.
+* **Dua metode latihan** — detail latihan juga menawarkan pilihan ganda
+  (dinilai, skor di `PRACTICE_RESULTS`) dan esai (tidak dinilai otomatis).
+  Skor latihan terpisah dari nilai tugas; layar `hasil-latihan` menampilkan
+  nilainya. Sama seperti tugas, siswa boleh mengerjakan salah satu/keduanya.
 * **Dua metode tugas** — detail tugas menampilkan dua kartu setara:
   **Pilihan ganda** (dinilai otomatis) dan **Esai** (jawaban disimpan, tidak
   dinilai otomatis). Keduanya disimpan di `RESULTS[task.id]` yang sama, jadi
@@ -305,7 +309,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **627 pemeriksaan**.
+Total **652 pemeriksaan**.
 
 ---
 
