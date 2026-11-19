@@ -65,6 +65,10 @@ node karsa_app/tool/generate_preview_data.js
   role** (operator, wali, guru, siswa, orang tua) — juga tersedia di layar
   welcome dan login. Berpindah layar langsung tetap bisa lewat deep link
   `#<layar>`.
+* **Warna selalu lewat token CSS** (`var(--surface-*)`, `var(--ink)`,
+  `var(--muted)`). Jangan menulis warna latar terang langsung di `style=`
+  karena nilainya tidak ikut berubah saat mode gelap — itu yang dulu membuat
+  kartu profil operator berlatar terang dengan teks terang (kontras ~1:1).
 * **Tanpa CDN**: seluruh aset (logo, banner, splash art, font ikon) berasal dari
   `karsa_app/assets/`.
 
@@ -290,7 +294,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **555 pemeriksaan**.
+Total **559 pemeriksaan**.
 
 ---
 

@@ -2140,7 +2140,7 @@
       return el('div', { class: 'clay-soft', style: 'padding:16px;margin-bottom:16px' }, [
         el('div', { style: 'display:flex;align-items:center;gap:12px' }, [
           el('div', {
-            style: 'width:56px;height:56px;border-radius:28px;background:#fff;display:flex;' +
+            style: 'width:56px;height:56px;border-radius:28px;background:var(--surface-input);display:flex;' +
                    'align-items:center;justify-content:center;font-weight:800;font-size:19px;color:var(--rose)'
           }, [initials]),
           el('div', { style: 'flex:1;min-width:0' }, [
@@ -3659,7 +3659,7 @@
       el('div', { style: 'height:8px' }),
       el('div', {
         class: 'clay-soft pressable',
-        style: 'padding:15px;background:#FBEAEC;cursor:pointer',
+        style: 'padding:15px;background:var(--surface-rose);cursor:pointer',
         role: 'button', tabindex: '0',
         'aria-label': 'Buka tab Profil operator',
         onclick: function () { openOperatorProfilTab(); },
@@ -3672,7 +3672,7 @@
       }, [
         el('div', { style: 'display:flex;align-items:center;gap:12px' }, [
           el('div', {
-            style: 'width:42px;height:42px;border-radius:21px;background:#fff;display:flex;' +
+            style: 'width:42px;height:42px;border-radius:21px;background:var(--surface-input);display:flex;' +
                    'align-items:center;justify-content:center;font-weight:800;font-size:15px;color:var(--rose)'
           }, [profileInitials(op)]),
           el('div', { style: 'flex:1;min-width:0' }, [
@@ -3750,10 +3750,10 @@
     return el('div', {}, [
       pageHeader('Profil Operator', 'Identitas kerja dan pengaturan akun'),
       schoolIdentity(false),
-      el('div', { class: 'clay-soft', style: 'padding:18px;margin-bottom:20px;background:#FBEAEC' }, [
+      el('div', { class: 'clay-soft', style: 'padding:18px;margin-bottom:20px;background:var(--surface-rose)' }, [
         el('div', { style: 'display:flex;align-items:center;gap:14px' }, [
           el('div', {
-            style: 'width:62px;height:62px;border-radius:31px;background:#fff;display:flex;' +
+            style: 'width:62px;height:62px;border-radius:31px;background:var(--surface-input);display:flex;' +
                    'align-items:center;justify-content:center;font-weight:800;font-size:22px;color:var(--rose)'
           }, [profileInitials(op)]),
           el('div', { style: 'flex:1;min-width:0' }, [

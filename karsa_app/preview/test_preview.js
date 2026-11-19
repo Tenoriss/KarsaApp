@@ -2071,6 +2071,36 @@ HOMES.forEach((home) => {
 });
 
 /* ------------------------------------------------------------------ *
+ * 10c. Mode gelap: tidak boleh ada latar terang yang ditulis keras
+ * ------------------------------------------------------------------ */
+// Bug yang dilaporkan: kartu profil operator memakai background #FBEAEC
+// (terang) yang tidak ikut berubah di mode gelap, sehingga teks `--ink`
+// (terang) nyaris tak terbaca (kontras ~1:1). Warna permukaan harus memakai
+// token CSS yang punya versi gelap.
+const appSrc = fs.readFileSync(path.join(previewDir, 'app.js'), 'utf8');
+const hardcodedLight = appSrc.match(/background:\s*#(?:FBEAEC|FFF|F2F6F8|FBEAEC)/gi) || [];
+eq(hardcodedLight.length, 0,
+  'no hard-coded light backgrounds inline (they stay light in dark mode)');
+
+// Profil operator memakai token permukaan, bukan warna tetap.
+preview.state.role = 'operator';
+preview.state.tab = 'Profil';
+preview.go('operator-profil');
+const profileCard = viewport.querySelectorAll('.clay-soft')
+  .filter((n) => n.getAttribute('style') &&
+    String(n.getAttribute('style')).indexOf('surface-rose') >= 0)[0];
+ok(!!profileCard, 'the operator profile card uses a theme-aware surface token');
+
+// Token itu memang punya nilai berbeda di mode terang & gelap.
+const cssAll = fs.readFileSync(path.join(previewDir, 'styles.css'), 'utf8');
+const lightRose = cssAll.match(/--surface-rose:\s*([^;]+);/);
+const darkBlock = cssAll.slice(cssAll.indexOf("[data-theme='dark']"));
+const darkRose = darkBlock.match(/--surface-rose:\s*([^;]+);/);
+ok(!!lightRose && !!darkRose, 'surface-rose is defined for both themes');
+ok(!!lightRose && !!darkRose && lightRose[1].trim() !== darkRose[1].trim(),
+  'surface-rose changes between light and dark themes');
+
+/* ------------------------------------------------------------------ *
  * 11. Deep links (hash) resolve
  * ------------------------------------------------------------------ */
 ['#guru-tugas', '#wali-recap', '#wali-rekap', '#ortu-latihan', '#hasil-kuis'].forEach((hash) => {
