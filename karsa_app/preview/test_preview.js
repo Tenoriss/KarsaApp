@@ -2012,6 +2012,43 @@ if (splashImg) ok(String(splashImg.getAttribute('src')).indexOf('splash-art.png'
 ok(viewport.textContent.indexOf('Menyiapkan pengalaman belajar') >= 0, 'splash shows the "Menyiapkan pengalaman belajar" pill');
 
 /* ------------------------------------------------------------------ *
+ * 12b. Bingkai ponsel & bar pengembang yang disembunyikan
+ * ------------------------------------------------------------------ */
+// Tampilan ini khusus mobile: shell dibungkus bezel berukuran ponsel.
+ok(html.indexOf('device-frame') >= 0, 'index.html wraps the shell in a phone frame');
+ok(html.indexOf('device-notch') >= 0, 'the phone frame draws a notch');
+ok(/app-viewport/.test(html), 'the app viewport still lives inside the shell');
+
+// Bar pengembang tidak boleh tampil, tetapi elemennya tetap ada karena
+// app.js memakai #screen-select dan #theme-toggle.
+// Mock DOM tidak membangun ulang markup index.html, jadi kontrak ini dibaca
+// dari sumber HTML-nya.
+const switcherMatch = html.match(/<header class="switcher-bar"([^>]*)>/);
+ok(!!switcherMatch, 'the developer bar still exists in the DOM for the harness');
+ok(!!switcherMatch && /\bhidden\b/.test(switcherMatch[1]),
+  'the developer bar is hidden so screens look like a real app');
+ok(html.indexOf('id="screen-select"') >= 0 && html.indexOf('id="theme-toggle"') >= 0,
+  'screen select and theme toggle stay available to app.js');
+ok(!!screenSelect && !!themeToggle,
+  'the mock still provides screen select and theme toggle');
+
+// CSS harus memuat aturan bingkai + pelepasannya di ponsel asli.
+const cssText = fs.readFileSync(path.join(previewDir, 'styles.css'), 'utf8');
+ok(cssText.indexOf('.device-frame__screen') >= 0, 'styles define the phone screen area');
+ok(/\.switcher-bar\s*\{[^}]*display:\s*none/.test(cssText),
+  'styles hide the developer bar');
+ok(cssText.indexOf('@media (max-width: 560px)') >= 0,
+  'styles drop the frame on real phones');
+ok(cssText.indexOf('844px') >= 0 && cssText.indexOf('390px') >= 0,
+  'the frame uses phone-sized dimensions (390x844)');
+
+// Tema tetap bisa diganti lewat API pratinjau meski tombolnya tersembunyi.
+const themeBefore = preview.state.dark;
+preview.toggleTheme();
+ok(preview.state.dark === !themeBefore, 'the theme can still be toggled programmatically');
+preview.toggleTheme();
+
+/* ------------------------------------------------------------------ *
  * 13. No "Pratinjau" label in the top bar
  * ------------------------------------------------------------------ */
 const topBarText = screenSelect.textContent + ' ' + themeToggle.textContent;

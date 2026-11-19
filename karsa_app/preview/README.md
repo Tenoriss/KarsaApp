@@ -14,6 +14,12 @@ python3 serve.py                       # http://127.0.0.1:8000
 python3 serve.py --host 0.0.0.0 --port 8080   # untuk pratinjau di jaringan
 ```
 
+Karena bar pengembang disembunyikan, berpindah layar secara langsung
+memakai deep link hash — buka `http://127.0.0.1:8000/#<layar>`, misalnya
+`#operator-beranda`, `#wali-beranda`, atau `#kuis`. Alur normal tetap lewat
+aplikasi itu sendiri: login, bottom nav, dan tombol di dalam layar. Perilaku
+ini dipakai juga oleh uji (`test_preview.js` memverifikasi deep link).
+
 Endpoint kesehatan:
 
 ```bash
@@ -54,12 +60,17 @@ node karsa_app/tool/generate_preview_data.js
 
 ## Prinsip tampilan
 
-* **Mobile-first**: shell mengisi `100dvh` pada ponsel, menjadi kolom selebar
-  `480px` (sama dengan `ConstrainedBox(maxWidth: 480)` di Flutter) pada layar
-  lebar, serta memakai `env(safe-area-inset-*)`.
-* **Bukan mock bingkai ponsel**: tidak ada frame perangkat, hanya shell aplikasi.
-* **Bar atas hanya berisi** dropdown pemilih layar + tombol mode gelap.
-  Tidak ada label "Pratinjau".
+* **Khusus mobile**: di desktop, shell aplikasi duduk di dalam **bingkai
+  ponsel** 390×844 (bezel, notch, tombol samping) supaya proporsi dan lipatan
+  konten sama seperti di HP. Bingkai dilepas pada ponsel asli
+  (`max-width: 560px` atau pointer kasar), lalu shell mengisi `100dvh` penuh
+  dengan `env(safe-area-inset-*)`.
+* **Layar pendek** (mis. laptop kecil): tinggi layar menyusut mengikuti
+  viewport agar bingkai tidak terpotong.
+* **Tanpa bar pengembang**: dropdown pemilih layar dan tombol mode gelap
+  disembunyikan supaya layar terlihat seperti aplikasi sungguhan. Elemennya
+  tetap ada di DOM (`#screen-select`, `#theme-toggle`) karena `app.js` dan uji
+  memakainya; tema bisa diganti lewat `KARSA_PREVIEW.toggleTheme()`.
 * **Tanpa CDN**: seluruh aset (logo, banner, splash art, font ikon) berasal dari
   `karsa_app/assets/`.
 
@@ -285,7 +296,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **507 pemeriksaan**.
+Total **519 pemeriksaan**.
 
 ---
 

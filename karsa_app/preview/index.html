@@ -3,20 +3,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#F4EDE9" />
   <title>KARSA — SD Karitas Purwokerto</title>
   <link rel="icon" type="image/png" href="./assets/images/icon.png" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div id="app-shell" class="app-shell">
-    <header class="switcher-bar">
-      <select id="screen-select" class="screen-select" aria-label="Pilih layar"></select>
-      <button id="theme-toggle" type="button" class="switcher-theme-btn pressable" aria-label="Ubah mode terang atau gelap"></button>
-    </header>
-    <main id="app-viewport" class="scroll-viewport"></main>
-    <nav id="bottom-nav" class="bottom-nav" hidden aria-label="Navigasi utama"></nav>
-    <div id="sheet-backdrop" class="sheet-backdrop" hidden>
-      <div id="sheet-panel" class="sheet-panel"></div>
+  <!--
+    Tampilan ini khusus ponsel: shell aplikasi dibungkus bingkai perangkat
+    supaya tata letak terlihat persis seperti di HP saat dibuka di desktop.
+    Di layar ponsel asli, bingkai dilepas dan shell mengisi penuh layar.
+  -->
+  <div id="device-frame" class="device-frame">
+    <div class="device-frame__bezel">
+      <div class="device-frame__sidebar" aria-hidden="true">
+        <span class="device-frame__button device-frame__button--silent"></span>
+        <span class="device-frame__button device-frame__button--volup"></span>
+        <span class="device-frame__button device-frame__button--voldown"></span>
+        <span class="device-frame__button device-frame__button--power"></span>
+      </div>
+      <div class="device-frame__screen">
+        <span class="device-notch" aria-hidden="true"></span>
+        <div id="app-shell" class="app-shell">
+          <!-- Bar pengembang (pemilih layar + mode gelap) sengaja tidak
+               ditampilkan agar layar terlihat seperti aplikasi sungguhan.
+               Keduanya tetap ada di DOM karena app.js dan uji memakainya. -->
+          <header class="switcher-bar" hidden aria-hidden="true">
+            <select id="screen-select" class="screen-select" aria-label="Pilih layar"></select>
+            <button id="theme-toggle" type="button" class="switcher-theme-btn pressable" aria-label="Ubah mode terang atau gelap"></button>
+          </header>
+          <main id="app-viewport" class="scroll-viewport"></main>
+          <nav id="bottom-nav" class="bottom-nav" hidden aria-label="Navigasi utama"></nav>
+          <div id="sheet-backdrop" class="sheet-backdrop" hidden>
+            <div id="sheet-panel" class="sheet-panel"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <script src="./curriculum-data.js"></script>
