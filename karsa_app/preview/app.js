@@ -551,7 +551,7 @@
     return el('div', { class: 'greeting-row' }, children);
   }
 
-  function pageHeader(title, sub, onBack) {
+  function pageHeader(title, sub, onBack, trailing) {
     var children = [];
     if (onBack) {
       children.push(el('button', {
@@ -563,6 +563,7 @@
       el('h1', { class: 't-page-title', text: title }),
       sub ? el('p', { class: 't-muted', style: 'margin-top:4px', text: sub }) : null
     ]));
+    if (trailing) children.push(trailing);
     return el('div', { class: 'page-header' }, children);
   }
 
@@ -3578,7 +3579,11 @@
       : ['Belum ada agenda tersimpan.'];
 
     return el('div', {}, [
-      pageHeader('Operator Sekolah', 'Kelola seluruh isi KARSA'),
+      pageHeader('Operator Sekolah', 'Kelola seluruh isi KARSA', null, el('button', {
+        class: 'round-icon-btn pressable', type: 'button',
+        'aria-label': state.dark ? 'Aktifkan mode terang' : 'Aktifkan mode gelap',
+        onclick: function () { toggleTheme(); }
+      }, [icon(state.dark ? 'sunny-outline' : 'moon-outline', 20)])),
       operatorWelcomeLine(op.name),
       el('div', { class: 'stats-grid' }, [
         operatorStatCard({

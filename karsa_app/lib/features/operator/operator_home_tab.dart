@@ -8,6 +8,7 @@ import '../../core/utils/date_utils.dart';
 import '../../core/widgets/karsa_icons.dart';
 import '../../core/widgets/motion_pressable.dart';
 import '../../core/widgets/page_header.dart';
+import '../../core/widgets/round_icon_button.dart';
 import '../../core/widgets/stat_card.dart';
 import '../../models/class_event.dart';
 import '../../models/media_asset.dart';
@@ -99,9 +100,17 @@ class _OperatorHomeTabState extends State<OperatorHomeTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const PageHeader(
+        PageHeader(
           title: 'Operator Sekolah',
           sub: 'Kelola seluruh isi KARSA',
+          // Beranda operator tidak memakai GreetingHeader, jadi tombol mode
+          // gelap dipasang di sini seperti role lain.
+          trailing: RoundIconButton(
+            icon: c.isDark ? KarsaIcons.sunnyOutline : KarsaIcons.moonOutline,
+            semanticsLabel:
+                c.isDark ? 'Aktifkan mode terang' : 'Aktifkan mode gelap',
+            onTap: state.toggleDarkMode,
+          ),
         ),
         _OperatorWelcomeLine(name: profile.name, theme: theme),
         Row(

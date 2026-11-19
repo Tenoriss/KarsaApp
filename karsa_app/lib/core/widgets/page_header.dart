@@ -8,11 +8,16 @@ class PageHeader extends StatelessWidget {
   final String? sub;
   final VoidCallback? onBack;
 
+  /// Aksi tambahan di kanan judul (mis. tombol mode gelap di beranda operator
+  /// yang tidak memakai GreetingHeader).
+  final Widget? trailing;
+
   const PageHeader({
     super.key,
     required this.title,
     this.sub,
     this.onBack,
+    this.trailing,
   });
 
   @override
@@ -51,6 +56,7 @@ class PageHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (trailing != null) trailing!,
         ],
       ),
     );

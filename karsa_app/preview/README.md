@@ -61,8 +61,10 @@ node karsa_app/tool/generate_preview_data.js
   aplikasi — di HP terasa seperti aplikasi sungguhan.
 * **Tanpa bar pengembang**: tidak ada dropdown pemilih layar maupun tombol
   tema di atas aplikasi. Layar langsung tampil penuh seperti aplikasi asli;
-  mode gelap diganti dari tombol di header sapaan (di dalam layar).
-  Berpindah layar langsung tetap bisa lewat deep link `#<layar>`.
+  mode gelap diganti dari tombol **bulan/matahari di header sapaan kelima
+  role** (operator, wali, guru, siswa, orang tua) — juga tersedia di layar
+  welcome dan login. Berpindah layar langsung tetap bisa lewat deep link
+  `#<layar>`.
 * **Tanpa CDN**: seluruh aset (logo, banner, splash art, font ikon) berasal dari
   `karsa_app/assets/`.
 
@@ -288,7 +290,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **527 pemeriksaan**.
+Total **555 pemeriksaan**.
 
 ---
 

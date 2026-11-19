@@ -2001,6 +2001,76 @@ if (themeBtnInApp) {
 }
 
 /* ------------------------------------------------------------------ *
+ * 10a. Tombol mode gelap di layar welcome & login
+ * ------------------------------------------------------------------ */
+// Ini yang dulu ada di bar pengembang; sekarang dipasang di dalam layar.
+preview.state.role = null;
+preview.go('welcome');
+const welcomeThemeBtn = viewport.querySelectorAll('.round-icon-btn')
+  .filter((n) => (n.getAttribute('aria-label') || '').indexOf('mode gelap') >= 0)[0];
+ok(!!welcomeThemeBtn, 'the welcome screen offers a dark mode button');
+if (welcomeThemeBtn) {
+  welcomeThemeBtn.click();
+  eq(preview.state.dark, true, 'the welcome screen button enables dark mode');
+  const welcomeBack = viewport.querySelectorAll('.round-icon-btn')
+    .filter((n) => (n.getAttribute('aria-label') || '').indexOf('mode terang') >= 0)[0];
+  if (welcomeBack) welcomeBack.click();
+  eq(preview.state.dark, false, 'the welcome screen button disables dark mode again');
+}
+
+['operator', 'wali', 'guru', 'siswa', 'orangtua'].forEach((role) => {
+  preview.state.role = role;
+  preview.go('login-' + (role === 'orangtua' ? 'ortu' : role));
+  const loginBtn = viewport.querySelectorAll('button')
+    .filter((n) => (n.getAttribute('aria-label') || '').indexOf('mode') >= 0)[0];
+  ok(!!loginBtn, role + ' login screen offers a dark mode button');
+});
+
+/* ------------------------------------------------------------------ *
+ * 10b. Setiap role punya tombol mode gelap di berandanya
+ * ------------------------------------------------------------------ */
+// Bar pengembang dihapus, jadi tombol tema harus ada DI DALAM layar tiap
+// role setelah masuk dashboard-nya.
+const HOMES = [
+  { role: 'operator', screen: 'operator-beranda' },
+  { role: 'wali', screen: 'wali-beranda' },
+  { role: 'guru', screen: 'guru-beranda' },
+  { role: 'siswa', screen: 'siswa-beranda' },
+  { role: 'orangtua', screen: 'ortu-beranda' }
+];
+
+HOMES.forEach((home) => {
+  preview.state.role = home.role;
+  preview.state.tab = 'Beranda';
+  preview.go(home.screen);
+  const themeBtn = viewport.querySelectorAll('.round-icon-btn')
+    .filter((n) => {
+      const label = n.getAttribute('aria-label') || '';
+      return label.indexOf('mode gelap') >= 0 || label.indexOf('mode terang') >= 0;
+    })[0];
+  ok(!!themeBtn, home.role + ' dashboard has a theme toggle button');
+
+  // Tombolnya benar-benar bekerja: tema berganti dan atribut ikut berubah.
+  if (themeBtn) {
+    const before = preview.state.dark;
+    themeBtn.click();
+    ok(preview.state.dark === !before,
+      home.role + ' theme button switches the theme');
+    const expectTheme = preview.state.dark ? 'dark' : 'light';
+    eq(doc.documentElement.getAttribute('data-theme'), expectTheme,
+      home.role + ' theme button updates the data-theme attribute');
+    // Kembalikan ke keadaan semula untuk pemeriksaan berikutnya.
+    const backBtn = viewport.querySelectorAll('.round-icon-btn')
+      .filter((n) => {
+        const label = n.getAttribute('aria-label') || '';
+        return label.indexOf('mode gelap') >= 0 || label.indexOf('mode terang') >= 0;
+      })[0];
+    if (backBtn) backBtn.click();
+    eq(preview.state.dark, before, home.role + ' theme can be switched back');
+  }
+});
+
+/* ------------------------------------------------------------------ *
  * 11. Deep links (hash) resolve
  * ------------------------------------------------------------------ */
 ['#guru-tugas', '#wali-recap', '#wali-rekap', '#ortu-latihan', '#hasil-kuis'].forEach((hash) => {
