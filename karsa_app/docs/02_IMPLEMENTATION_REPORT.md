@@ -160,7 +160,9 @@ label 10px.
 
 ### 4.2 Autentikasi
 
-Alur: `SplashPage` (2300 ms) → `LoginPage` (**satu form untuk kelima peran**)
+Splash tampil **18 detik** (`AppConstants.splashDuration`, dalam rentang 15-20
+detik yang diminta) dengan hitungan mundur dan progress bar.
+Alur: `SplashPage` (18 detik) → `LoginPage` (**satu form untuk kelima peran**)
 → `MainShell` sesuai peran yang terdeteksi. `WelcomePage` (pilih peran) masih
 ada di repo tetapi tidak lagi dijangkau dari splash. `ForgotPasswordPage`
 menampilkan informasi akun demo.

@@ -7,6 +7,13 @@ class AppConstants {
   static const String brandLabel = '✿ KARSA';
   static const String waliClass = 'Kelas 1';
 
+  /// Lama splash tampil sebelum masuk ke form login.
+  ///
+  /// Satu sumber kebenaran: dipakai [SplashPage] dan diuji oleh
+  /// `app_state_auth_test.dart` / `preview/test_preview.js`. Ubah di sini bila
+  /// durasinya perlu disesuaikan lagi.
+  static const Duration splashDuration = Duration(seconds: 18);
+
   static const List<String> classes = <String>[
     'Kelas 1',
     'Kelas 2',

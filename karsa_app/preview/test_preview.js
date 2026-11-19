@@ -253,6 +253,7 @@ sheetPanel.setAttribute('id', 'sheet-panel');
 [shell, viewport, bottomNav, screenSelect, themeToggle, sheetBackdrop, sheetPanel].forEach((n) => doc.body.appendChild(n));
 
 const timers = [];
+const intervals = [];
 // Mock localStorage supaya penyimpanan lokal di pratinjau bisa diuji.
 const storageData = {};
 const fakeLocalStorage = {
@@ -267,6 +268,16 @@ const fakeWindow = {
   history: { replaceState() { fakeWindow.location.hash = arguments[2]; } },
   setTimeout(fn, ms) { timers.push({ fn, ms }); return timers.length; },
   clearTimeout() {},
+  // Splash memakai hitungan mundur per detik, jadi mock perlu interval.
+  setInterval(fn, ms) {
+    const id = intervals.length + 1;
+    intervals.push({ id, fn, ms, cleared: false });
+    timers.push({ fn, ms });
+    return id;
+  },
+  clearInterval(id) {
+    intervals.forEach((it) => { if (it.id === id) it.cleared = true; });
+  },
   addEventListener() {},
   localStorage: fakeLocalStorage
 };
@@ -278,6 +289,8 @@ const sandbox = {
   console,
   setTimeout: fakeWindow.setTimeout,
   clearTimeout: fakeWindow.clearTimeout,
+  setInterval: fakeWindow.setInterval,
+  clearInterval: fakeWindow.clearInterval,
   history: fakeWindow.history,
   location: fakeWindow.location,
   Date,
@@ -381,14 +394,41 @@ try {
 }
 
 /* ------------------------------------------------------------------ *
- * 3. Splash auto-advances after 2300 ms
+ * 3. Splash tampil lama (18 detik) lalu masuk ke form login
  * ------------------------------------------------------------------ */
-const splashTimer = timers.find((t) => t.ms === 2300);
-ok(!!splashTimer, 'splash schedules a 2300 ms timer');
+// Durasi splash sengaja panjang dan menjadi satu angka acuan. Tes menjaga
+// agar durasinya tetap 15-20 detik sesuai permintaan, bukan kembali ke 2 detik.
+const SPLASH_MS_EXPECTED = 18000;
+const splashTimer = timers.find((t) => t.ms === SPLASH_MS_EXPECTED);
+ok(!!splashTimer, 'splash schedules an ' + SPLASH_MS_EXPECTED + ' ms timer');
+ok(SPLASH_MS_EXPECTED >= 15000 && SPLASH_MS_EXPECTED <= 20000,
+  'durasi splash berada di rentang 15-20 detik, dapat ' + (SPLASH_MS_EXPECTED / 1000) + ' detik');
 if (splashTimer) {
   preview.go('splash');
   splashTimer.fn();
-  eq(preview.state.screen, 'login', 'splash auto-advances straight to the login form after 2300 ms');
+  eq(preview.state.screen, 'login',
+    'splash auto-advances straight to the login form after ' + (SPLASH_MS_EXPECTED / 1000) + ' detik');
+}
+
+// Splash panjang harus terasa hidup: ada hitungan mundur dan progress bar.
+preview.go('splash');
+const splashText = viewport.textContent || '';
+ok(splashText.indexOf('Menyiapkan pengalaman belajar') >= 0,
+  'splash tetap menampilkan pesan penyiapan');
+ok(/Masuk dalam \d+ detik/.test(splashText),
+  'splash menampilkan hitungan mundur agar tidak terasa macet, dapat: ' +
+  (splashText.match(/Masuk dalam [^.]*/) || ['-'])[0]);
+ok(!!viewport.querySelectorAll('.splash-progress')[0],
+  'splash punya progress bar');
+const countdownBefore = (splashText.match(/Masuk dalam (\d+)/) || [])[1];
+// Tik detik berikutnya harus mengurangi angka.
+const tick = timers.find((t) => t.ms === 1000);
+ok(!!tick, 'splash menjadwalkan pembaruan tiap detik');
+if (tick) {
+  tick.fn();
+  const after = (viewport.textContent.match(/Masuk dalam (\d+)/) || [])[1];
+  ok(Number(after) < Number(countdownBefore),
+    'hitungan mundur berkurang tiap detik (' + countdownBefore + ' -> ' + after + ')');
 }
 
 /* ------------------------------------------------------------------ *

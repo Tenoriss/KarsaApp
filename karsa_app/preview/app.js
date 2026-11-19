@@ -1207,7 +1207,18 @@
   /* ------------------------------------------------------------------ *
    * Screens
    * ------------------------------------------------------------------ */
+  /* Lama splash tampil sebelum form login. Cermin
+     AppConstants.splashDuration di Flutter; tes membaca angka ini. */
+  var SPLASH_MS = 18000;
+
   function renderSplash() {
+    // Splash cukup lama (18 detik), jadi tampilkan hitungan mundur supaya
+    // pengguna tahu aplikasi sedang menyiapkan, bukan macet.
+    var remaining = typeof state.splashRemaining === 'number'
+      ? state.splashRemaining
+      : Math.ceil(SPLASH_MS / 1000);
+    var progress = Math.min(100, Math.max(0,
+      ((SPLASH_MS / 1000) - remaining) / (SPLASH_MS / 1000) * 100));
     return el('div', { class: 'splash-stage' }, [
       el('img', { class: 'splash-art', src: ASSETS.splashArt, alt: 'Ilustrasi KARSA' }),
       el('div', { class: 'splash-pill' }, [
@@ -1217,7 +1228,15 @@
           el('span', { class: 'splash-dot' })
         ]),
         el('div', { class: 'splash-pill-text', text: 'Menyiapkan pengalaman belajar' })
-      ])
+      ]),
+      el('div', { class: 'splash-progress', 'aria-hidden': 'true' }, [
+        el('div', { class: 'splash-progress-fill', style: 'width:' + progress + '%' })
+      ]),
+      el('p', {
+        class: 'splash-countdown',
+        'aria-live': 'polite',
+        text: 'Masuk dalam ' + remaining + ' detik'
+      })
     ]);
   }
 
@@ -6327,11 +6346,22 @@
       render();
     } else {
       state.screen = 'splash';
+      state.splashRemaining = Math.ceil(SPLASH_MS / 1000);
       render();
+      // Hitung mundur per detik agar splash panjang tetap terasa hidup.
+      var splashTick = window.setInterval(function () {
+        if (state.screen !== 'splash') {
+          window.clearInterval(splashTick);
+          return;
+        }
+        state.splashRemaining = Math.max(0, (state.splashRemaining || 1) - 1);
+        render();
+      }, 1000);
       window.setTimeout(function () {
+        window.clearInterval(splashTick);
         // Splash langsung ke form login: tidak ada lagi layar pilih peran.
         if (state.screen === 'splash') go('login');
-      }, 2300);
+      }, SPLASH_MS);
     }
 
     window.addEventListener('hashchange', function () {

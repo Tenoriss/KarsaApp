@@ -227,7 +227,7 @@ dikunci ke orientasi potret.
 ```bash
 python3 karsa_app/preview/serve.py --host 0.0.0.0 --port 8000
 curl http://127.0.0.1:8000/healthz
-node karsa_app/preview/test_preview.js    # 692 pemeriksaan, mock DOM
+node karsa_app/preview/test_preview.js    # 698 pemeriksaan, mock DOM
 ```
 
 ---
@@ -247,7 +247,7 @@ node karsa_app/preview/test_preview.js    # 692 pemeriksaan, mock DOM
 
 | Area | Detail |
 | --- | --- |
-| Identitas | Splash (#A2D7FB + ilustrasi asli, 2300 ms), logo & teks SD Karitas Purwokerto, banner siswa & guru |
+| Identitas | Splash (#A2D7FB + ilustrasi asli, 18 detik + hitungan mundur), logo & teks SD Karitas Purwokerto, banner siswa & guru |
 | Autentikasi | Satu form login untuk 5 peran (peran dideteksi dari NIP/NISN + kata sandi + tombol mata), "Ingat saya" yang menyimpan identitas tanpa kata sandi, lupa kata sandi, logout, validasi dengan pesan galat yang sama |
 | Dashboard | 5 dashboard berbeda sesuai peran (tanpa menyatukan menjadi halaman generik) |
 | **Operator sekolah** | 6 tab (Beranda, Siswa, Kelas, Materi, Media, Profil) + halaman tugas, pengumuman, agenda, nilai, dan form siswa/kelas/akun/materi. CRUD siswa, kelas dinamis, akun guru & wali, tugas, pengumuman, agenda, materi, nilai 0–100, logo/banner sekolah, serta data pribadi operator. Semua tersimpan di `@karsa-demo-v1`, dengan validasi terlihat dan perlindungan kelas terakhir |
@@ -270,14 +270,21 @@ node karsa_app/preview/test_preview.js    # 692 pemeriksaan, mock DOM
 ## Yang belum terverifikasi
 
 * `flutter analyze` dan `flutter test` **belum dijalankan** (SDK tidak ada di
-  lingkungan pembuatan). Tujuh berkas uji sudah siap di `karsa_app/test/`,
+  lingkungan pembuatan). Sepuluh berkas uji sudah siap di `karsa_app/test/`,
   termasuk `operator_crud_test.dart`, `quiz_assistant_test.dart`, dan
   `task_two_methods_test.dart`;
   sebagai gantinya `python3 karsa_app/tool/check_syntax.py` memvalidasi
-  125 berkas Dart,
+  133 berkas Dart,
   impor, aset, inisialisasi field `final`, argumen bernama `Image()`, dan
   null-check `.isEmpty` secara statis, sementara
-  `node karsa_app/preview/test_preview.js` menjalankan 692 pemeriksaan alur.
+  `node karsa_app/preview/test_preview.js` menjalankan 698 pemeriksaan alur.
+
+**Splash 18 detik.** Sesuai permintaan, layar splash tampil **15-20 detik**
+(dipakai: 18 detik) sebelum form login. Durasi tunggal ada di
+`AppConstants.splashDuration`, dan karena 18 detik lama, splash menampilkan
+hitungan mundur *"Masuk dalam N detik"* plus progress bar tipis supaya tidak
+terbaca sebagai macet. Preview memakai angka yang sama (`SPLASH_MS = 18000`)
+dan menampilkan elemen yang sama.
 * Uji visual di perangkat iOS/Android nyata belum dilakukan.
 * Pembukaan berkas ekspor `.xlsx`/`.pdf` di perangkat belum diuji.
 * Perilaku `file_picker` di iOS belum diuji.

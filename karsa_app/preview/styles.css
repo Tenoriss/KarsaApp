@@ -370,6 +370,39 @@ body.is-splash {
   margin-bottom: 4px;
 }
 
+/* Splash panjang (18 detik): progress bar tipis + hitungan mundur supaya
+   pengguna tahu aplikasi sedang menyiapkan, bukan macet. */
+.splash-progress {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 46%;
+  max-width: 220px;
+  height: 5px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+}
+
+.splash-progress-fill {
+  height: 5px;
+  border-radius: 999px;
+  background-color: var(--rose);
+  transition: width 0.9s linear;
+}
+
+.splash-countdown {
+  position: absolute;
+  bottom: 18px;
+  right: 16px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(32, 62, 90, 0.62);
+  letter-spacing: 0.2px;
+}
+
 .splash-dot {
   width: 7px;
   height: 7px;
