@@ -2115,6 +2115,56 @@ ok(!!lightRose && !!darkRose && lightRose[1].trim() !== darkRose[1].trim(),
 });
 
 /* ------------------------------------------------------------------ *
+ * 11a. Tombol kembali pada kuis & esai benar-benar berpindah layar
+ * ------------------------------------------------------------------ */
+// Bug yang dilaporkan: tombol kembali di layar kuis menuju 'kuis' (layar itu
+// sendiri), jadi diklik tidak terjadi apa-apa.
+[
+  { role: 'siswa', screen: 'siswa-tugas' },
+  { role: 'guru', screen: 'guru-tugas' },
+  { role: 'orangtua', screen: 'ortu-tugas' }
+].forEach(({ role, screen }) => {
+  preview.state.role = role;
+  const task = preview.tasks()[0];
+  preview.startQuiz(task);
+  eq(preview.state.screen, 'kuis', role + ': quiz opens');
+  const back = viewport.querySelectorAll('.back-chevron')[0];
+  ok(!!back, role + ': the quiz screen has a back button');
+  if (back) {
+    back.click();
+    eq(preview.state.screen, screen,
+      role + ': back from the quiz goes to the task list, not to the quiz itself');
+    ok(preview.state.quiz === null, role + ': back leaves the quiz session');
+  }
+});
+
+// Esai juga: kembali ke daftar tugas role aktif (dulu selalu 'siswa-tugas').
+preview.state.role = 'guru';
+preview.startEssayForTask(preview.tasks()[0]);
+eq(preview.state.screen, 'esai', 'essay screen opens for a teacher');
+const essayBack = viewport.querySelectorAll('.back-chevron')[0];
+ok(!!essayBack, 'the essay screen has a back button');
+if (essayBack) {
+  essayBack.click();
+  eq(preview.state.screen, 'guru-tugas',
+    'back from the essay goes to the task list of the active role');
+}
+
+// Setiap layar yang punya tombol kembali harus benar-benar pindah layar.
+const deadBacks = [];
+['kuis', 'esai', 'hasil-kuis'].forEach((id) => {
+  preview.state.role = 'siswa';
+  preview.go(id);
+  const before = preview.state.screen;
+  const btn = viewport.querySelectorAll('.back-chevron')[0];
+  if (btn) {
+    btn.click();
+    if (preview.state.screen === before) deadBacks.push(id);
+  }
+});
+eq(deadBacks.length, 0, 'no screen has a dead back button: ' + JSON.stringify(deadBacks));
+
+/* ------------------------------------------------------------------ *
  * 11b. Dua metode tugas: pilihan ganda + esai
  * ------------------------------------------------------------------ */
 // Tugas harus menawarkan kedua metode; esai menyimpan jawaban per tugas dan

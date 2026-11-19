@@ -271,6 +271,14 @@
     return [];
   }
 
+  /// Layar daftar tugas yang sesuai dengan role yang sedang aktif.
+  function tasksScreenForRole() {
+    if (state.role === 'guru') return 'guru-tugas';
+    if (state.role === 'siswa') return 'siswa-tugas';
+    if (state.role === 'orangtua') return 'ortu-tugas';
+    return ROLE_SCREEN_PREFIX[state.role] + 'beranda';
+  }
+
   function quizBankFor(subject) {
     if (typeof CURR.questionsFor === 'function') {
       return CURR.questionsFor(normalizeSubject(subject), state.religion || '');
@@ -5284,7 +5292,8 @@
     return el('div', {}, [
       pageHeader(esai.task.subject + ' · Esai',
         'Soal ' + (esai.index + 1) + ' dari ' + esai.bank.length + ' · esai tugas',
-        function () { go('siswa-tugas'); }),
+        // Kembali ke daftar tugas role aktif, bukan selalu siswa.
+        function () { state.essay = null; go(tasksScreenForRole()); }),
       el('div', { class: 'quiz-progress' }, [
         el('div', { class: 'quiz-progress-fill', style: 'width:' + (ratio * 100) + '%' })
       ]),
@@ -5353,8 +5362,14 @@
     });
 
     return el('div', {}, [
+      // Tombol kembali dulu menuju 'kuis' - layar itu sendiri - sehingga
+      // tidak terjadi apa-apa saat diklik. Sekarang kembali ke daftar tugas
+      // role yang sedang aktif (guru/siswa/orang tua), dan keluar dari kuis.
       pageHeader(quiz.task.subject + ' · ' + quiz.task.title, 'Soal ' + (quiz.index + 1) + ' dari ' + quiz.bank.length,
-        function () { go('kuis'); }),
+        function () {
+          state.quiz = null;
+          go(tasksScreenForRole());
+        }),
       el('div', { class: 'quiz-progress' }, [
         el('div', { class: 'quiz-progress-fill', style: 'width:' + (ratio * 100) + '%' })
       ]),
