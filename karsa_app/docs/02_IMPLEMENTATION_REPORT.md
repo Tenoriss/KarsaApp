@@ -455,6 +455,8 @@ HTML. Kode React Native di root repository tetap tidak disentuh.
    antarmuka. Tombol tema juga memakai permukaan `--surface-rose` agar tidak
    menyatu dengan latar.
 
+   ![Perbandingan tombol tema sebelum dan sesudah](gambar/tombol-tema-sebelum-sesudah.png)
+
 ---
 
 ## 9. Yang **belum** terverifikasi (jujur)
