@@ -264,6 +264,13 @@
     });
   }
 
+  function essayBankFor(subject) {
+    if (typeof CURR.exercisesFor === 'function') {
+      return CURR.exercisesFor(normalizeSubject(subject), state.religion || '');
+    }
+    return [];
+  }
+
   function quizBankFor(subject) {
     if (typeof CURR.questionsFor === 'function') {
       return CURR.questionsFor(normalizeSubject(subject), state.religion || '');
@@ -5112,6 +5119,10 @@
     var own = task && task.questions && task.questions.length ? task.questions : null;
     var bank = own || quizBankFor(task.subject);
     var isAssistant = !!(own && task.questionsSource === 'assistant');
+    var essayBank = essayBankFor(task.subject);
+    var savedResult = RESULTS[task.id];
+    var essayAnswers = (savedResult && savedResult.essayAnswers) || [];
+    var essayDone = essayAnswers.some(function (a) { return String(a).trim(); });
     openSheet(el('div', {}, [
       el('div', { class: 'sheet-handle' }),
       el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0', text: task.title }),
@@ -5120,21 +5131,58 @@
         text: task.subject + ' · ' + task.className + ' · ' + task.minutes + ' menit · ' +
           deadlineCountdown(task.dueAt, NOW)
       }),
-      el('p', { class: 't-item-title', style: 'margin-bottom:8px', text: 'Soal tersedia: ' + bank.length + ' pertanyaan' }),
+      el('p', { class: 't-item-title', style: 'margin-bottom:8px',
+        text: state.role === 'siswa' || state.role === 'orangtua'
+          ? 'Pilih metode pengerjaan'
+          : 'Metode pengerjaan siswa' }),
       isAssistant ? el('p', {
         class: 't-small', style: 'margin:0 0 10px 0',
         text: 'Soal disusun asisten dari bahan yang diunggah ' + task.teacher +
           ' (simulasi offline, bukan AI sungguhan).'
       }) : null,
-      RESULTS[task.id]
-        ? el('button', {
-          class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
-          onclick: function () { closeSheet(); showResult(task); }
-        }, ['Lihat hasil'])
-        : el('button', {
-          class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
-          onclick: function () { closeSheet(); startQuiz(task); }
-        }, ['Kerjakan kuis']),
+      // Metode 1: pilihan ganda (dinilai otomatis).
+      el('button', {
+        class: 'method-card pressable', type: 'button',
+        'aria-label': 'Pilihan ganda',
+        onclick: function () {
+          closeSheet();
+          if (savedResult) showResult(task); else startQuiz(task);
+        }
+      }, [
+        el('span', { class: 'method-icon', text: '🔠' }),
+        el('span', { style: 'flex:1;min-width:0;text-align:left' }, [
+          el('span', { class: 't-item-title', style: 'display:block', text: 'Pilihan ganda' }),
+          el('span', { class: 't-small', style: 'display:block',
+            text: bank.length + ' soal · dinilai otomatis' }),
+          savedResult && savedResult.score !== undefined
+            ? el('span', { class: 'method-badge',
+                text: 'Nilai ' + savedResult.score + '/' + savedResult.total })
+            : null
+        ]),
+        el('span', { class: 'method-action',
+          text: savedResult && savedResult.score !== undefined ? 'Kerjakan lagi' : 'Mulai' })
+      ]),
+      // Metode 2: esai (jawaban disimpan, tidak dinilai otomatis).
+      el('button', {
+        class: 'method-card pressable', type: 'button',
+        'aria-label': 'Esai',
+        onclick: function () { closeSheet(); startEssayForTask(task); }
+      }, [
+        el('span', { class: 'method-icon', text: '✍️' }),
+        el('span', { style: 'flex:1;min-width:0;text-align:left' }, [
+          el('span', { class: 't-item-title', style: 'display:block', text: 'Esai' }),
+          el('span', { class: 't-small', style: 'display:block',
+            text: essayBank.length + ' soal · jawabanmu disimpan' }),
+          essayDone ? el('span', { class: 'method-badge', text: 'Sudah dikirim' }) : null
+        ]),
+        el('span', { class: 'method-action', text: essayDone ? 'Lihat jawaban' : 'Mulai' })
+      ]),
+      el('p', {
+        class: 't-small', style: 'margin:10px 0 0 0',
+        text: essayDone
+          ? 'Kedua metode sudah dikerjakan. Kamu bisa mengulanginya kapan saja.'
+          : 'Kamu boleh mengerjakan salah satu atau keduanya. Esai tidak dinilai otomatis.'
+      }),
       el('button', {
         class: 't-link pressable', type: 'button', style: 'margin-top:12px;display:block;width:100%',
         onclick: function () { closeSheet(); render(); }
@@ -5156,6 +5204,122 @@
       score: 0
     };
     go('kuis');
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Bagian esai sebuah tugas (metode 2)
+   * Cermin AppState.startTaskEssay/submitTaskEssay: bank esai mengikuti
+   * mapel tugas, jawaban disimpan ke RESULTS[task.id].essayAnswers, dan
+   * skor pilihan ganda yang sudah ada tidak dihapus.
+   * ------------------------------------------------------------------ */
+  function startEssayForTask(task) {
+    var bank = essayBankFor(task.subject);
+    var saved = (RESULTS[task.id] && RESULTS[task.id].essayAnswers) || [];
+    var drafts = bank.map(function (_, i) { return saved[i] || ''; });
+    state.essay = {
+      task: task,
+      bank: bank,
+      index: 0,
+      drafts: drafts,
+      showExample: false,
+      error: ''
+    };
+    go('esai');
+  }
+
+  function submitTaskEssay() {
+    var esai = state.essay;
+    if (!esai) return;
+    var answers = esai.drafts.map(function (a) { return String(a || '').trim(); });
+    if (!answers.some(function (a) { return a; })) {
+      esai.error = 'Tulis minimal satu jawaban esai sebelum mengirim.';
+      render();
+      return;
+    }
+    var previous = RESULTS[esai.task.id] || {};
+    RESULTS[esai.task.id] = {
+      score: previous.score,
+      total: previous.total,
+      answers: previous.answers || [],
+      demo: previous.demo || false,
+      studentName: state.studentName,
+      className: esai.task.className,
+      essayAnswers: answers,
+      essayAt: new Date().toISOString()
+    };
+    state.essay = null;
+    state.quizResult = { task: esai.task, result: RESULTS[esai.task.id] };
+    go('hasil-kuis');
+  }
+
+  function renderEssay() {
+    var esai = state.essay;
+    if (!esai || !esai.bank.length) {
+      // Tanpa data (mis. dibuka lewat deep link): tetap ada isi yang jelas,
+      // jangan layar kosong.
+      return el('div', {}, [
+        pageHeader('Esai', null, function () { go(ROLE_SCREEN_PREFIX[state.role] + 'beranda'); }),
+        el('p', { class: 't-muted', style: 'margin-top:20px',
+          text: 'Belum ada soal esai yang dibuka. Pilih tugas dari daftar Tugas, ' +
+            'lalu pilih metode Esai.' })
+      ]);
+    }
+    var pair = esai.bank[esai.index];
+    var ratio = (esai.index + 1) / esai.bank.length;
+    var isLast = esai.index + 1 >= esai.bank.length;
+
+    var input = el('textarea', {
+      class: 'karsa-input essay-input', rows: '5',
+      placeholder: 'Tulis jawabanmu di sini...',
+      'aria-label': 'Jawaban esai',
+      oninput: function (e) {
+        esai.drafts[esai.index] = e.target.value;
+        esai.error = '';
+        // Perbarui status tombol tanpa menimpa kotak yang sedang diketik.
+        var btn = document.getElementById('essay-primary');
+        if (btn) btn.disabled = !String(e.target.value).trim();
+      }
+    }, [esai.drafts[esai.index] || '']);
+
+    return el('div', {}, [
+      pageHeader(esai.task.subject + ' · Esai',
+        'Soal ' + (esai.index + 1) + ' dari ' + esai.bank.length + ' · esai tugas',
+        function () { go('siswa-tugas'); }),
+      el('div', { class: 'quiz-progress' }, [
+        el('div', { class: 'quiz-progress-fill', style: 'width:' + (ratio * 100) + '%' })
+      ]),
+      el('p', { class: 'quiz-question', text: pair.prompt }),
+      el('p', { class: 't-label', style: 'margin:0 0 8px 0', text: 'Jawabanmu' }),
+      input,
+      esai.showExample ? noticeCard('💡 Contoh jawaban', pair.sampleAnswer) : null,
+      el('button', {
+        class: 'karsa-btn clay-raised pressable', type: 'button',
+        id: 'essay-primary',
+        style: 'border:none;cursor:pointer',
+        disabled: !String(esai.drafts[esai.index] || '').trim() ? true : null,
+        onclick: function () {
+          if (!String(esai.drafts[esai.index] || '').trim()) return;
+          if (!esai.showExample) {
+            esai.showExample = true;
+            render();
+            return;
+          }
+          if (isLast) { submitTaskEssay(); return; }
+          esai.index += 1;
+          esai.showExample = false;
+          render();
+        }
+      }, [esai.showExample
+        ? (isLast ? 'Kirim jawaban esai' : 'Soal berikutnya')
+        : 'Lihat contoh jawaban']),
+      esai.error ? el('p', { class: 'notice-title', style: 'margin:10px 0 0 0', text: esai.error }) : null,
+      el('p', {
+        class: 't-small',
+        style: 'text-align:center;color:var(--muted);font-size:12px;margin-top:18px',
+        text: 'Esai tidak dinilai otomatis. Jawabanmu tersimpan untuk tugas ini, ' +
+          'dan kamu tetap bisa mengerjakan pilihan gandanya.'
+      })
+    ]);
   }
 
   function renderQuiz() {
@@ -5241,18 +5405,53 @@
     }
     var task = target.task;
     var result = target.result;
-    var bank = quizBankFor(task.subject);
+    var own = task && task.questions && task.questions.length ? task.questions : null;
+    var bank = own || quizBankFor(task.subject);
     var total = result.total || bank.length;
+    // Hasil bisa datang dari pilihan ganda, esai, atau keduanya.
+    var essayAnswers = (result.essayAnswers || []).filter(function (a) {
+      return String(a || '').trim();
+    });
+    var hasQuizScore = result.score !== undefined && result.score !== null;
+    var essayOnly = !hasQuizScore && essayAnswers.length > 0;
+    var essayBank = essayBankFor(task.subject);
 
     var children = [
-      pageHeader('Hasil kuis', task.subject + ' · ' + task.title + (result.demo ? ' · Contoh' : ''),
-        function () { go(ROLE_SCREEN_PREFIX[state.role] + 'beranda'); }),
-      el('div', { class: 'clay-soft', style: 'margin-bottom:16px;padding:45px;text-align:center' }, [
+      pageHeader(essayOnly ? 'Hasil esai' : 'Hasil kuis',
+        task.subject + ' · ' + task.title + (result.demo ? ' · Contoh' : ''),
+        function () { go(ROLE_SCREEN_PREFIX[state.role] + 'beranda'); })
+    ];
+
+    if (!essayOnly) {
+      children.push(el('div', { class: 'clay-soft', style: 'margin-bottom:16px;padding:45px;text-align:center' }, [
         el('span', { style: 'font-size:45px', text: '🌟' }),
         el('p', { class: 't-result-number', style: 'margin:15px 0', text: (result.score || 0) + ' / ' + total }),
         el('p', { class: 't-section', style: 'margin:0', text: 'Bagus! Terus berlatih ya.' })
-      ])
-    ];
+      ]));
+    } else {
+      children.push(el('div', { class: 'clay-soft', style: 'margin-bottom:16px;padding:32px;text-align:center' }, [
+        el('span', { style: 'font-size:45px', text: '✍️' }),
+        el('p', { class: 't-section', style: 'margin:12px 0 6px 0', text: 'Jawaban esai terkirim' }),
+        el('p', { class: 't-small', style: 'margin:0',
+          text: essayAnswers.length + ' jawaban tersimpan di perangkat ini.' })
+      ]));
+    }
+
+    // Bagian esai selalu ditampilkan bila ada jawabannya.
+    if (essayAnswers.length) {
+      children.push(el('p', { class: 't-section', style: 'margin:0 0 10px 0', text: 'Jawaban esai' }));
+      children.push(clayCard([
+        el('p', { class: 't-small', style: 'margin:0',
+          text: 'Esai tidak dinilai otomatis. Berikut jawaban yang kamu kirim; guru dapat memeriksanya.' }),
+        el('div', {}, essayAnswers.map(function (answer, i) {
+          return el('div', { style: 'margin-top:12px' }, [
+            el('p', { class: 't-item-title', style: 'margin:0',
+              text: (i + 1) + '. ' + (i < essayBank.length ? essayBank[i].prompt : 'Soal esai') }),
+            el('p', { class: 't-muted', style: 'margin:4px 0 0 0', text: answer })
+          ]);
+        }))
+      ]));
+    }
 
     if (total !== bank.length) {
       children.push(el('p', {
@@ -5329,6 +5528,7 @@
     { id: 'materi', label: 'Materi', group: 'Umum', render: renderMateri, nav: null },
     { id: 'notifikasi', label: 'Notifikasi', group: 'Umum', render: renderNotifikasi, nav: null },
     { id: 'kuis', label: 'Kuis', group: 'Umum', render: renderQuiz, nav: null },
+    { id: 'esai', label: 'Esai', group: 'Umum', render: renderEssay, nav: null },
     { id: 'hasil-kuis', label: 'Hasil Kuis', group: 'Umum', render: renderHasilKuis, nav: null }
   ];
 
@@ -5545,7 +5745,9 @@
     restoreState: restoreState,
     materials: function () { return MATERIALS; },
     tasks: function () { return TASKS; },
+    results: function () { return RESULTS; },
     startQuiz: startQuiz,
+    startEssayForTask: startEssayForTask,
     operator: {
       classNames: operatorClassNames,
       classOptions: operatorClassOptions,

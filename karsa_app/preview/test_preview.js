@@ -317,11 +317,11 @@ const EXPECTED_SCREENS = [
   'operator-beranda', 'operator-siswa', 'operator-kelas', 'operator-materi', 'operator-profil',
   'operator-media', 'operator-tugas', 'operator-pengumuman',
   'operator-agenda', 'operator-nilai',
-  'materi', 'notifikasi', 'kuis', 'hasil-kuis'
+  'materi', 'notifikasi', 'kuis', 'esai', 'hasil-kuis'
 ];
 
-eq(preview.screens.length, 40, 'screen registry contains 40 screens');
-eq(EXPECTED_SCREENS.length, 40, 'the expected screen list has 40 entries');
+eq(preview.screens.length, 41, 'screen registry contains 41 screens');
+eq(EXPECTED_SCREENS.length, 41, 'the expected screen list has 41 entries');
 EXPECTED_SCREENS.forEach((id) => {
   ok(preview.screens.indexOf(id) >= 0, 'screen "' + id + '" is registered');
 });
@@ -546,8 +546,13 @@ ok(!!taskCard, 'guru tasks renders task cards to open');
 if (taskCard) {
   taskCard.click();
   const sheetButtons = sheetPanel.querySelectorAll('button');
-  const startButton = sheetButtons.filter((b) => (b.textContent || '').indexOf('Kerjakan kuis') >= 0)[0];
-  ok(!!startButton, 'task sheet offers the quiz action');
+  // Detail tugas kini menawarkan DUA metode, bukan satu tombol kuis.
+  const startButton = sheetButtons.filter((b) =>
+    (b.getAttribute('aria-label') || '') === 'Pilihan ganda')[0];
+  const essayButton = sheetButtons.filter((b) =>
+    (b.getAttribute('aria-label') || '') === 'Esai')[0];
+  ok(!!startButton, 'task sheet offers the multiple-choice method');
+  ok(!!essayButton, 'task sheet offers the essay method');
   if (startButton) {
     startButton.click();
     eq(preview.state.screen, 'kuis', 'quiz screen opens');
@@ -707,8 +712,9 @@ if (notifItems.length) {
   ok(sheetBackdrop.hidden === false, 'clicking a notification opens the related content');
   ok(sheetPanel.textContent.indexOf('Pecahan dan perbandingan') >= 0,
     'the notification opens the matching task detail');
-  ok(sheetPanel.textContent.indexOf('Kerjakan kuis') >= 0,
-    'the opened task offers the quiz action');
+  ok(sheetPanel.textContent.indexOf('Pilihan ganda') >= 0 &&
+    sheetPanel.textContent.indexOf('Esai') >= 0,
+    'the opened task offers both methods');
   // Tutup sheet.
   const closeBtn = sheetPanel.querySelectorAll('button')
     .filter((b) => (b.textContent || '').indexOf('Tutup') >= 0)[0];
@@ -1039,8 +1045,8 @@ ok(!!studentTaskCard, 'the new task appears on the student task list');
 if (studentTaskCard) {
   studentTaskCard.click();
   const startBtn = sheetPanel.querySelectorAll('button')
-    .filter((b) => (b.textContent || '').indexOf('Kerjakan kuis') >= 0)[0];
-  ok(!!startBtn, 'the student can start the quiz for that task');
+    .filter((b) => (b.getAttribute('aria-label') || '') === 'Pilihan ganda')[0];
+  ok(!!startBtn, 'the student can start the multiple-choice method for that task');
   if (startBtn) {
     startBtn.click();
     eq(preview.state.screen, 'kuis', 'the student lands on the quiz screen');
@@ -2107,6 +2113,107 @@ ok(!!lightRose && !!darkRose && lightRose[1].trim() !== darkRose[1].trim(),
   preview.go(hash.replace('#', ''));
   ok(preview.state.screen.indexOf('-') > 0, 'deep link ' + hash + ' resolves to ' + preview.state.screen);
 });
+
+/* ------------------------------------------------------------------ *
+ * 11b. Dua metode tugas: pilihan ganda + esai
+ * ------------------------------------------------------------------ */
+// Tugas harus menawarkan kedua metode; esai menyimpan jawaban per tugas dan
+// tidak menghapus skor pilihan ganda yang sudah ada.
+preview.state.role = 'siswa';
+preview.state.studentClass = 'Kelas 1';
+preview.state.taskFilter = 'Aktif';
+preview.state.subjectFilter = 'Semua';
+preview.state.search = '';
+preview.go('siswa-tugas');
+
+const methodTask = preview.tasks().filter((t) => t.className === 'Kelas 1')[0];
+ok(!!methodTask, 'there is a task to exercise both methods');
+
+if (methodTask) {
+  // Bersihkan hasil lama supaya pemeriksaan ini mandiri.
+  delete preview.results()[methodTask.id];
+  preview.go('siswa-tugas');
+  const card = viewport.querySelectorAll('.list-item-card')
+    .filter((n) => (n.textContent || '').indexOf(methodTask.title) >= 0)[0];
+  if (card) card.click();
+
+  const methodCards = sheetPanel.querySelectorAll('.method-card');
+  eq(methodCards.length, 2, 'the task detail offers exactly two methods');
+  ok(sheetPanel.textContent.indexOf('Pilihan ganda') >= 0,
+    'method 1 is labelled "Pilihan ganda"');
+  ok(sheetPanel.textContent.indexOf('Esai') >= 0,
+    'method 2 is labelled "Esai"');
+  ok(sheetPanel.textContent.indexOf('Kamu boleh mengerjakan salah satu atau keduanya') >= 0,
+    'the sheet explains that either or both methods can be done');
+
+  // Metode 2: buka esai.
+  const essayBtn = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.getAttribute('aria-label') || '') === 'Esai')[0];
+  ok(!!essayBtn, 'the essay method is clickable');
+  if (essayBtn) {
+    essayBtn.click();
+    eq(preview.state.screen, 'esai', 'the essay screen opens');
+    ok(viewport.textContent.indexOf('esai tugas') >= 0,
+      'the essay screen is presented as part of the task');
+    const essayBox = viewport.querySelectorAll('.essay-input')[0];
+    ok(!!essayBox, 'the essay screen has an answer box');
+    const primary = () => viewport.querySelectorAll('#essay-primary')[0];
+    ok(!!primary(), 'the essay screen has a primary action');
+    ok(!!primary() && primary().getAttribute('disabled') !== null,
+      'the action is disabled until something is typed');
+    if (essayBox) {
+      essayBox.value = 'Jawaban saya: pecahan dibagi menjadi bagian yang sama besar.';
+      essayBox.dispatch('input', { target: essayBox });
+      // oninput memperbarui properti .disabled (atribut tidak dihapus di mock).
+      ok(primary().disabled === false, 'typing enables the action');
+    }
+    // Lihat contoh jawaban.
+    primary().click();
+    ok(viewport.textContent.indexOf('Contoh jawaban') >= 0,
+      'the essay screen can reveal a sample answer');
+
+    // Maju sampai soal terakhir, lalu kirim.
+    let guard = 0;
+    while (guard < 20) {
+      const btn = viewport.querySelectorAll('#essay-primary')[0];
+      if (!btn || (btn.textContent || '').indexOf('Kirim jawaban esai') >= 0) break;
+      btn.click();
+      const box = viewport.querySelectorAll('.essay-input')[0];
+      if (box) {
+        box.value = 'Jawaban ' + guard;
+        box.dispatch('input', { target: box });
+      }
+      guard += 1;
+    }
+    const sendBtn = viewport.querySelectorAll('#essay-primary')[0];
+    ok(!!sendBtn && (sendBtn.textContent || '').indexOf('Kirim jawaban esai') >= 0,
+      'the last essay question offers "Kirim jawaban esai"');
+    if (sendBtn) sendBtn.click();
+
+    const saved = preview.results()[methodTask.id];
+    ok(!!saved, 'submitting the essay stores a result for the task');
+    ok(!!saved && Array.isArray(saved.essayAnswers) && saved.essayAnswers.length > 0,
+      'the saved result keeps the essay answers');
+    eq(preview.state.screen, 'hasil-kuis', 'submitting the essay opens the result screen');
+    ok(viewport.textContent.indexOf('Jawaban esai') >= 0,
+      'the result screen lists the essay answers');
+    ok(viewport.textContent.indexOf('tidak dinilai otomatis') >= 0,
+      'the result screen is honest that essays are not auto-graded');
+  }
+
+  // Esai tidak menghapus skor pilihan ganda yang sudah ada: keduanya hidup di
+  // TaskResult yang sama.
+  const withScore = preview.results()[methodTask.id];
+  ok(!!withScore && Array.isArray(withScore.essayAnswers),
+    'the task result keeps essay answers');
+  if (withScore) {
+    withScore.score = 8;
+    withScore.total = 10;
+  }
+  const rebuilt = preview.results()[methodTask.id];
+  ok(rebuilt.score === 8 && rebuilt.total === 10 && rebuilt.essayAnswers.length > 0,
+    'a multiple-choice score and essay answers can coexist in one result');
+}
 
 /* ------------------------------------------------------------------ *
  * 12. Splash markup contract

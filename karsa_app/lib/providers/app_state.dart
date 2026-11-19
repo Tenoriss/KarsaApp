@@ -70,6 +70,14 @@ class AppState extends ChangeNotifier {
   bool _checked = false;
   List<int> _answers = <int>[];
   String _essay = '';
+
+  /// `true` bila halaman esai sedang mengejar bagian esai sebuah **tugas**
+  /// (bukan latihan mandiri). Menentukan asal bank soal dan ke mana hasilnya
+  /// disimpan.
+  bool _essayForTask = false;
+
+  /// Jawaban esai yang sedang diketik, satu entri per soal.
+  List<String> _essayDrafts = <String>[];
   bool _showExample = false;
 
   int _month1Based = DateTime.now().month;
@@ -210,6 +218,19 @@ class AppState extends ChangeNotifier {
   bool get checked => _checked;
   List<int> get answers => _answers;
   String get essay => _essay;
+
+  bool get essayForTask => _essayForTask;
+
+  /// Jawaban esai tersimpan untuk tugas yang sedang dibuka.
+  List<String> get savedEssayAnswers {
+    final task = _selectedTask;
+    if (task == null) return const <String>[];
+    return _data.results[task.id]?.essayAnswers ?? const <String>[];
+  }
+
+  /// Bagian esai tugas ini sudah dikerjakan siswa.
+  bool get taskEssayDone => savedEssayAnswers.any((a) => a.trim().isNotEmpty);
+
   bool get showExample => _showExample;
 
   int get month1Based => _month1Based;
@@ -1614,6 +1635,7 @@ class AppState extends ChangeNotifier {
   void openTask(TaskItem task) {
     _selectedTask = task;
     _error = '';
+    _essayForTask = false;
     _screen = isTeacher ? 'teacherTask' : 'taskDetail';
     notifyListeners();
   }
@@ -1641,11 +1663,21 @@ class AppState extends ChangeNotifier {
   }
 
   List<EssayPrompt> get currentEssayBank {
+    // Dalam konteks tugas, esai memakai mapel tugas itu supaya siswa tidak
+    // mendapat soal esai dari mata pelajaran lain.
+    if (_essayForTask && _selectedTask != null) {
+      return CurriculumData.exercisesFor(
+        _selectedTask!.subject,
+        _data.religion,
+      );
+    }
     final subj = _selectedPractice?.subject ?? _draftSubject;
     return CurriculumData.exercisesFor(subj, _data.religion);
   }
 
   void startQuiz() {
+    // Mulai pilihan ganda: pastikan konteks esai tugas tidak tertinggal.
+    _essayForTask = false;
     _questionIndex = 0;
     _choiceIndex = null;
     _checked = false;
@@ -1699,6 +1731,9 @@ class AppState extends ChangeNotifier {
         if (nextAnswers[i] == bank[i].answerIndex) score++;
       }
       final task = _selectedTask!;
+      // Pertahankan jawaban esai yang mungkin sudah dikirim siswa lebih dulu;
+      // mengerjakan pilihan ganda tidak boleh menghapus bagian esai.
+      final previousResult = _data.results[task.id];
       final nextResults = <String, TaskResult>{
         ..._data.results,
         task.id: TaskResult(
@@ -1708,6 +1743,8 @@ class AppState extends ChangeNotifier {
           religion: _data.religion,
           studentName: _data.studentName,
           className: task.className,
+          essayAnswers: previousResult?.essayAnswers ?? const <String>[],
+          essayAt: previousResult?.essayAt,
         ),
       };
       final nextReviewed = _data.reviewed.where((id) => id != task.id).toList();
@@ -1735,8 +1772,82 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Memulai **bagian esai** dari sebuah tugas. Berbeda dari latihan mandiri:
+  /// bank soal mengikuti mapel tugas dan jawaban disimpan ke `TaskResult`.
+  void startTaskEssay() {
+    final task = _selectedTask;
+    if (task == null) return;
+    _essayForTask = true;
+    _questionIndex = 0;
+    _essay = '';
+    _showExample = false;
+    _returnScreen = 'taskDetail';
+    // Lanjutkan jawaban yang sudah tersimpan bila siswa kembali lagi.
+    final saved = _data.results[task.id]?.essayAnswers ?? const <String>[];
+    _essayDrafts = List<String>.from(saved);
+    while (_essayDrafts.length < currentEssayBank.length) {
+      _essayDrafts.add('');
+    }
+    _error = '';
+    _screen = 'essay';
+    notifyListeners();
+  }
+
+  /// Menyimpan seluruh jawaban esai tugas lalu membuka layar hasil.
+  void submitTaskEssay() {
+    final task = _selectedTask;
+    if (task == null) return;
+    final bank = currentEssayBank;
+    final answers = <String>[
+      for (var i = 0; i < bank.length; i++)
+        i < _essayDrafts.length ? _essayDrafts[i].trim() : '',
+    ];
+    if (answers.every((a) => a.isEmpty)) {
+      _error = 'Tulis minimal satu jawaban esai sebelum mengirim.';
+      notifyListeners();
+      return;
+    }
+
+    final previous = _data.results[task.id];
+    final notif = _buildNotification(
+      target: 'teachers',
+      subject: task.subject,
+      className: task.className,
+      title: '${_data.studentName} mengirim jawaban esai ${task.title}',
+      kind: 'task',
+      contentId: task.id,
+    );
+    _error = '';
+    _notice = 'Jawaban esai tersimpan di perangkat ini. Esai tidak dinilai '
+        'otomatis; guru dapat melihat jawabanmu.';
+    _essayForTask = false;
+    _screen = 'result';
+    _persistData(
+      _data.copyWith(
+        results: <String, TaskResult>{
+          ..._data.results,
+          task.id: TaskResult(
+            // Pertahankan skor pilihan ganda yang sudah ada, bila ada.
+            score: previous?.score,
+            total: previous?.total,
+            answers: previous?.answers ?? const <int>[],
+            demo: previous?.demo ?? false,
+            submittedOnly: previous?.submittedOnly ?? false,
+            religion: previous?.religion,
+            studentName: _data.studentName,
+            className: task.className,
+            essayAnswers: answers,
+            essayAt: DateTime.now().toUtc().toIso8601String(),
+          ),
+        },
+        localNotifications: <LocalNotification>[notif, ..._data.localNotifications],
+      ),
+    );
+  }
+
   void startPractice() {
     if (!isTeacher) _returnScreen = 'main';
+    _essayForTask = false;
     _questionIndex = 0;
     _essay = '';
     _showExample = false;
@@ -1746,6 +1857,12 @@ class AppState extends ChangeNotifier {
 
   void updateEssay(String val) {
     _essay = val;
+    if (_essayForTask) {
+      while (_essayDrafts.length <= _questionIndex) {
+        _essayDrafts.add('');
+      }
+      _essayDrafts[_questionIndex] = val;
+    }
     notifyListeners();
   }
 
@@ -1759,6 +1876,11 @@ class AppState extends ChangeNotifier {
 
     final bank = currentEssayBank;
     if (_questionIndex >= bank.length - 1) {
+      // Esai bagian tugas: kirim ke penyimpanan tugas, bukan status latihan.
+      if (_essayForTask) {
+        submitTaskEssay();
+        return;
+      }
       final practice = _selectedPractice!;
       if (!isTeacher) {
         final nextDone = <String, bool>{

@@ -1666,3 +1666,63 @@ body.is-splash {
   background: #3A2F36;
   border-color: #4E414A;
 }
+
+/* ------------------------------------------------------------------ *
+ * Kartu pemilih metode pengerjaan (pilihan ganda / esai)
+ * Dua kartu setara, bukan satu tombol utama + satu tautan.
+ * ------------------------------------------------------------------ */
+.method-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  border-radius: 18px;
+  border: 2px solid var(--clay-soft-border);
+  box-shadow: var(--clay-soft-shadow);
+  background-color: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+  text-align: left;
+}
+
+.method-card .method-icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 21px;
+  background-color: var(--rose);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.method-card .method-badge {
+  display: inline-block;
+  margin-top: 3px;
+  color: var(--rose);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.method-card .method-action {
+  flex: 0 0 auto;
+  color: var(--rose);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* Kotak jawaban esai: 16px agar iOS tidak memperbesar halaman saat fokus. */
+.essay-input {
+  min-height: 130px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.t-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}

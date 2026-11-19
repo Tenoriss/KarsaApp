@@ -39,7 +39,7 @@ curl http://127.0.0.1:8000/healthz
 | --- | --- |
 | `index.html` | Kerangka halaman: viewport, bottom nav, dan sheet modal — tanpa bar pengembang di atas. |
 | `styles.css` | Token claymorphism, palet terang/gelap, tipografi, dan komponen (1:1 dengan `lib/core/theme/*`). |
-| `app.js` | Seluruh logika pratinjau: state, 40 layar, interaksi, router hash. |
+| `app.js` | Seluruh logika pratinjau: state, 41 layar, interaksi, router hash. |
 | `curriculum-data.js` | **Berkas hasil generate** — bank soal, bank esai, info mata pelajaran, daftar agama, dan peta glif Ionicons. |
 | `serve.py` | Server statis tanpa cache + `/healthz`. |
 | `test_preview.js` | Harness verifikasi (mock DOM) — `node test_preview.js`. |
@@ -74,7 +74,7 @@ node karsa_app/tool/generate_preview_data.js
 
 ---
 
-## Layar (40)
+## Layar (41)
 
 | # | Layar | Catatan |
 | --- | --- | --- |
@@ -116,8 +116,9 @@ node karsa_app/tool/generate_preview_data.js
 | 36 | `operator-nilai` |  |
 | 37 | `materi` |  |
 | 38 | `notifikasi` |  |
-| 39 | `kuis` |  |
-| 40 | `hasil-kuis` |  |
+| 39 | `kuis` | metode 1: pilihan ganda |
+| 40 | `esai` | metode 2: esai tugas |
+| 41 | `hasil-kuis` | skor PG + daftar jawaban esai |
 
 ## Cakupan operator sekolah
 
@@ -201,6 +202,10 @@ Media** — bukan lagi section yang menempel di ujung beranda.
   Jika tidak cocok → pesan galat **"NIP/NISN atau kata sandi tidak sesuai."**
   Kotak akun demo di bawahnya berbeda isi untuk tiap peran.
 
+* **Dua metode tugas** — detail tugas menampilkan dua kartu setara:
+  **Pilihan ganda** (dinilai otomatis) dan **Esai** (jawaban disimpan, tidak
+  dinilai otomatis). Keduanya disimpan di `RESULTS[task.id]` yang sama, jadi
+  mengerjakan satu metode tidak menghapus hasil metode lain.
 * **Bottom nav** — tiap peran punya tabnya sendiri (operator 5 tab, wali 5
   tab, guru 5 tab, siswa 3 tab, orang tua 4 tab).
 * **Chip kelas / mata pelajaran**, **segmen** (Semua/Berjalan/Selesai,
@@ -279,7 +284,7 @@ node karsa_app/preview/test_preview.js
 ```
 
 Harness memakai **mock DOM** (tanpa browser) dan memverifikasi:
-40 layar ter-render tanpa error, transisi splash 2300 ms yang langsung membuka
+41 layar ter-render tanpa error, transisi splash 2300 ms yang langsung membuka
 form login tunggal, deteksi peran dari NIP/NISN (kelima akun masuk lewat form
 yang sama, termasuk pesan galat per kolom kosong), "Ingat saya" yang menyimpan
 identitas tanpa kata sandi, navigasi bawah, filter chip/segmen/pencarian,
@@ -294,7 +299,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **559 pemeriksaan**.
+Total **583 pemeriksaan**.
 
 ---
 

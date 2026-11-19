@@ -17,13 +17,22 @@ class EssayPracticePage extends StatelessWidget {
     final theme = KarsaThemeScope.of(context);
     final c = theme.colors;
     final practice = state.selectedPractice;
+    final task = state.selectedTask;
+    // Halaman ini dipakai dua konteks: bagian esai sebuah **tugas** dan
+    // latihan mandiri. Judul, subjudul, dan tujuan tombol mengikuti konteks.
+    final forTask = state.essayForTask && task != null;
     final bank = state.currentEssayBank;
 
-    if (practice == null || bank.isEmpty) {
+    if ((!forTask && practice == null) || bank.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          PageHeader(title: 'Latihan', onBack: () => state.setScreen('main')),
+          PageHeader(
+            title: forTask ? 'Esai tugas' : 'Latihan',
+            onBack: () => state.setScreen(
+              forTask ? 'taskDetail' : 'main',
+            ),
+          ),
         ],
       );
     }
@@ -36,10 +45,15 @@ class EssayPracticePage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         PageHeader(
-          title: '${practice.subject} · Latihan',
-          sub: 'Soal ${idx + 1} dari ${bank.length} · tanpa batas waktu',
+          title: forTask
+              ? '${task.subject} · Esai'
+              : '${practice!.subject} · Latihan',
+          sub: 'Soal ${idx + 1} dari ${bank.length}'
+              '${forTask ? " · esai tugas" : " · tanpa batas waktu"}',
           onBack: () => state.setScreen(
-            state.isTeacher ? 'practicePreview' : 'practiceDetail',
+            forTask
+                ? 'taskDetail'
+                : (state.isTeacher ? 'practicePreview' : 'practiceDetail'),
           ),
         ),
         ClipRRect(
@@ -85,7 +99,9 @@ class EssayPracticePage extends StatelessWidget {
           ),
         KarsaButton(
           title: state.showExample
-              ? (idx == bank.length - 1 ? 'Selesai latihan' : 'Soal berikutnya')
+              ? (idx == bank.length - 1
+                  ? (forTask ? 'Kirim jawaban esai' : 'Selesai latihan')
+                  : 'Soal berikutnya')
               : 'Lihat contoh jawaban',
           disabled: state.essay.trim().isEmpty,
           onTap: state.checkOrAdvanceEssay,
@@ -93,7 +109,10 @@ class EssayPracticePage extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: 18),
           child: Text(
-            'Latihan ini tidak dinilai; status selesai tercatat di perangkat ini.',
+            forTask
+                ? 'Esai tidak dinilai otomatis. Jawabanmu tersimpan untuk tugas ini, '
+                    'dan kamu tetap bisa mengerjakan pilihan gandanya.'
+                : 'Latihan ini tidak dinilai; status selesai tercatat di perangkat ini.',
             textAlign: TextAlign.center,
             style: TextStyle(color: c.muted, fontSize: 12),
           ),
