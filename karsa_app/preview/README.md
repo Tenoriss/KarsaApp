@@ -327,6 +327,25 @@ bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
 Total **717 pemeriksaan**.
 
+## Membuka preview tanpa panel Live Preview
+
+Preview di Arena berjalan di sandbox yang **mewajibkan token akses**
+(`e2b-traffic-access-token`). Tautan mentah `8000-<sandbox>.e2b.app` karena itu
+menampilkan **403 missing traffic access token** bila dibuka langsung di tab
+baru — token hanya disuntikkan oleh panel Live Preview.
+
+Untuk membuka aplikasi di luar panel tersebut:
+
+```bash
+python3 karsa_app/tool/build_standalone.py
+# -> karsa_app/preview/karsa-standalone.html (~2,9 MB)
+```
+
+Berkas itu menanam CSS, `app.js`, `curriculum-data.js`, enam gambar, dan font
+Ionicons sebagai data URI, jadi bisa dibuka **langsung dari disk** (klik dua
+kali) tanpa server. `standalone-download.html` adalah halaman pembuka berisi
+tombol unduh untuk berkas tersebut.
+
 ---
 
 ## Alur login terbaru

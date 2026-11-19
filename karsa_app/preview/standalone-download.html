@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KARSA — unduh aplikasi versi satu berkas</title>
+<style>
+  :root {
+    --sky: #A2D7FB;
+    --rose: #B1445D;
+    --ink: #203E5A;
+    --muted: #6B7F8A;
+    --card: #FFFAF7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: linear-gradient(180deg, var(--sky) 0%, #E8F4FD 62%, #FFFAF7 100%);
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 18px 40px;
+  }
+  .card {
+    width: 100%;
+    max-width: 430px;
+    background: var(--card);
+    border: 2px solid #fff;
+    border-radius: 26px;
+    padding: 26px 22px 24px;
+    box-shadow: 0 18px 40px rgba(60, 100, 140, 0.18);
+    text-align: center;
+  }
+  .logo { width: 132px; height: auto; display: block; margin: 0 auto 14px; }
+  h1 { font-size: 19px; margin: 0 0 6px; letter-spacing: -0.2px; }
+  p.lead { font-size: 13.5px; line-height: 1.55; color: var(--muted); margin: 0 0 20px; }
+  a.download {
+    display: block;
+    background: var(--rose);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 15px;
+    padding: 15px 18px;
+    border-radius: 16px;
+    box-shadow: 0 8px 18px rgba(177, 68, 93, 0.28);
+  }
+  a.download small { display: block; font-weight: 600; font-size: 11.5px; opacity: 0.85; margin-top: 3px; }
+  ol { text-align: left; font-size: 13px; line-height: 1.7; color: #33475c; margin: 20px 0 0; padding-left: 20px; }
+  ol li { margin-bottom: 4px; }
+  .note {
+    margin-top: 18px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--muted);
+    background: #FFFFFF;
+    border: 1px solid #E4EFF8;
+    border-radius: 14px;
+    padding: 12px 14px;
+    text-align: left;
+  }
+  code {
+    background: #EAF3FB;
+    padding: 1px 5px;
+    border-radius: 5px;
+    font-size: 11.5px;
+  }
+</style>
+</head>
+<body>
+  <main class="card">
+    <img class="logo" src="./assets/images/karsa-login-logo.png" alt="Logo KARSA" />
+    <h1>Versi satu berkas</h1>
+    <p class="lead">
+      Semua tampilan, gambar, dan font sudah ditanam di dalam satu berkas HTML —
+      bisa dibuka langsung dari komputer mana pun, tanpa server dan tanpa token.
+    </p>
+
+    <a class="download" href="./karsa-standalone.html" download="karsa-standalone.html">
+      Unduh karsa-standalone.html
+      <small>2,93 MB · 43 layar · splash 10 detik</small>
+    </a>
+
+    <ol>
+      <li>Klik tombol unduh di atas.</li>
+      <li>Buka <b>folder Unduhan</b>, lalu klik dua kali berkasnya.</li>
+      <li>Atau: <b>klik kanan → Open with → Chrome/Safari</b>.</li>
+    </ol>
+
+    <div class="note">
+      <b>Kenapa perlu begini?</b> Tautan preview mentah
+      (<code>8000-….e2b.app</code>) dijaga token akses, jadi hanya bisa dibuka
+      dari panel <b>Live Preview</b> di Arena. Berkas ini tidak butuh itu.
+      Penyimpanan data (mis. “Ingat saya”) tetap berjalan; kalau diblokir
+      browser, aplikasi tidak error.
+    </div>
+  </main>
+</body>
+</html>
