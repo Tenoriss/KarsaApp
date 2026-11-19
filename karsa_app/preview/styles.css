@@ -348,9 +348,68 @@ body.is-splash {
   display: block;
 }
 
+/* Logo KARSA beranimasi, mengisi area logo yang dibersihkan dari ilustrasi:
+   x 95..566 (lebar 471/654) dan y 88..348 (tengah 208/1048). */
+.splash-logo-wrap {
+  position: absolute;
+  left: 50.5%;
+  top: 20.8%;
+  width: 72%;
+  max-width: 320px;
+  transform: translate(-50%, -50%);
+  aspect-ratio: 305 / 290;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.splash-logo {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 6px 16px rgba(60, 110, 150, 0.18));
+  animation: karsa-logo-pulse 2.5s ease-in-out infinite;
+}
+
+/* Cincin yang mengembang lalu memudar dari dalam logo. */
+.splash-logo-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 62%;
+  aspect-ratio: 1;
+  margin: -31% 0 0 -31%;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.55);
+  animation: karsa-logo-ring 2.5s ease-out infinite;
+}
+
+@keyframes karsa-logo-pulse {
+  0%, 100% { transform: scale(0.97); }
+  50%      { transform: scale(1.03); }
+}
+
+@keyframes karsa-logo-ring {
+  0%   { transform: scale(0.55); opacity: 0; }
+  18%  { opacity: 0.6; }
+  60%  { transform: scale(1.25); opacity: 0; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+
+/* Hormati preferensi sistem: tanpa animasi bila pengguna memintanya. */
+@media (prefers-reduced-motion: reduce) {
+  .splash-logo,
+  .splash-logo-ring {
+    animation: none;
+  }
+}
+
 .splash-pill {
   position: absolute;
-  bottom: 20px;
+  bottom: 42px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255, 250, 247, 0.9);

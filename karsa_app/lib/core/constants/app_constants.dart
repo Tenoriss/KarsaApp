@@ -10,9 +10,15 @@ class AppConstants {
   /// Lama splash tampil sebelum masuk ke form login.
   ///
   /// Satu sumber kebenaran: dipakai [SplashPage] dan diuji oleh
-  /// `app_state_auth_test.dart` / `preview/test_preview.js`. Ubah di sini bila
-  /// durasinya perlu disesuaikan lagi.
-  static const Duration splashDuration = Duration(seconds: 18);
+  /// `splash_duration_test.dart` / `preview/test_preview.js`. Permintaan
+  /// pemilik produk: 10 detik. Ubah di sini bila perlu disesuaikan lagi.
+  static const Duration splashDuration = Duration(seconds: 10);
+
+  /// Lama satu putaran animasi logo di splash (skala + cahaya + cincin).
+  ///
+  /// Splash 10 detik berarti animasinya berulang beberapa kali; pakai durasi
+  /// yang membagi habis 10 detik supaya tidak terpotong di tengah putaran.
+  static const Duration splashLogoCycle = Duration(milliseconds: 2500);
 
   static const List<String> classes = <String>[
     'Kelas 1',

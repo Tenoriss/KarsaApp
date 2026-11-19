@@ -227,7 +227,7 @@ dikunci ke orientasi potret.
 ```bash
 python3 karsa_app/preview/serve.py --host 0.0.0.0 --port 8000
 curl http://127.0.0.1:8000/healthz
-node karsa_app/preview/test_preview.js    # 698 pemeriksaan, mock DOM
+node karsa_app/preview/test_preview.js    # 709 pemeriksaan, mock DOM
 ```
 
 ---
@@ -247,7 +247,7 @@ node karsa_app/preview/test_preview.js    # 698 pemeriksaan, mock DOM
 
 | Area | Detail |
 | --- | --- |
-| Identitas | Splash (#A2D7FB + ilustrasi asli, 18 detik + hitungan mundur), logo & teks SD Karitas Purwokerto, banner siswa & guru |
+| Identitas | Splash (#A2D7FB + ilustrasi asli, 10 detik, logo beranimasi + hitungan mundur), logo & teks SD Karitas Purwokerto, banner siswa & guru |
 | Autentikasi | Satu form login untuk 5 peran (peran dideteksi dari NIP/NISN + kata sandi + tombol mata), "Ingat saya" yang menyimpan identitas tanpa kata sandi, lupa kata sandi, logout, validasi dengan pesan galat yang sama |
 | Dashboard | 5 dashboard berbeda sesuai peran (tanpa menyatukan menjadi halaman generik) |
 | **Operator sekolah** | 6 tab (Beranda, Siswa, Kelas, Materi, Media, Profil) + halaman tugas, pengumuman, agenda, nilai, dan form siswa/kelas/akun/materi. CRUD siswa, kelas dinamis, akun guru & wali, tugas, pengumuman, agenda, materi, nilai 0–100, logo/banner sekolah, serta data pribadi operator. Semua tersimpan di `@karsa-demo-v1`, dengan validasi terlihat dan perlindungan kelas terakhir |
@@ -277,14 +277,26 @@ node karsa_app/preview/test_preview.js    # 698 pemeriksaan, mock DOM
   133 berkas Dart,
   impor, aset, inisialisasi field `final`, argumen bernama `Image()`, dan
   null-check `.isEmpty` secara statis, sementara
-  `node karsa_app/preview/test_preview.js` menjalankan 698 pemeriksaan alur.
+  `node karsa_app/preview/test_preview.js` menjalankan 709 pemeriksaan alur.
 
-**Splash 18 detik.** Sesuai permintaan, layar splash tampil **15-20 detik**
-(dipakai: 18 detik) sebelum form login. Durasi tunggal ada di
-`AppConstants.splashDuration`, dan karena 18 detik lama, splash menampilkan
-hitungan mundur *"Masuk dalam N detik"* plus progress bar tipis supaya tidak
-terbaca sebagai macet. Preview memakai angka yang sama (`SPLASH_MS = 18000`)
-dan menampilkan elemen yang sama.
+**Splash 10 detik dengan logo beranimasi.** Sesuai permintaan terakhir, layar
+splash tampil **10 detik** sebelum form login. Durasi tunggal ada di
+`AppConstants.splashDuration` (`Duration(seconds: 10)`); preview memakai angka
+yang sama (`SPLASH_MS = 10000`).
+
+Background ilustrasi sekolah **tetap** dipakai. Logo KARSA pada ilustrasi asli
+dihapus dari `splash-art.png` (diisi langit sekitarnya, area di luar logo
+identik piksel), lalu diganti logo transparan `karsa-login-logo.png` yang
+dianimasikan di posisi yang persis sama -- jadi tetap satu logo, bukan dua.
+Animasinya: detak skala 0.97-1.03, aura putih berdenyut, dan cincin yang
+mengembang lalu memudar, satu putaran **2,5 detik** (`AppConstants.splashLogoCycle`,
+habis dibagi 10 detik sehingga berakhir rapi). Hitungan mundur *"Masuk dalam N
+detik"* + progress bar tetap ada supaya tidak terasa macet.
+
+Preview memakai `patchSplash()`: saat splash sudah tampil, tik hitungan mundur
+hanya memperbarui angka dan lebar progress bar, **tidak** membangun ulang DOM.
+Render ulang penuh akan me-restart animasi CSS tiap detik sehingga logo
+berkedip; hal ini dijaga oleh tes.
 * Uji visual di perangkat iOS/Android nyata belum dilakukan.
 * Pembukaan berkas ekspor `.xlsx`/`.pdf` di perangkat belum diuji.
 * Perilaku `file_picker` di iOS belum diuji.

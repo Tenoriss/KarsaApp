@@ -4,25 +4,33 @@ import 'package:karsa_app/core/constants/app_constants.dart';
 import 'package:karsa_app/models/user_role.dart';
 import 'package:karsa_app/providers/app_state.dart';
 
-/// Splash sengaja tampil lama sebelum form login.
+/// Splash tampil 10 detik dengan logo beranimasi sebelum form login.
 ///
-/// Permintaan pemilik produk: 15-20 detik. Tes ini menjaga agar durasinya
-/// tidak diam-diam kembali ke ~2 detik, dan memastikan splash tetap berakhir
-/// di form login.
+/// Permintaan pemilik produk (terbaru): 10 detik, bukan 15-20 detik lagi.
+/// Tes ini menjaga agar durasinya tidak diam-diam berubah, dan memastikan
+/// splash tetap berakhir di form login.
 void main() {
   group('Durasi splash', () {
-    test('durasi splash berada di rentang 15-20 detik', () {
+    test('durasi splash tepat 10 detik', () {
       final seconds = AppConstants.splashDuration.inSeconds;
-      expect(seconds, greaterThanOrEqualTo(15),
-          reason: 'splash minimal 15 detik, dapat $seconds');
-      expect(seconds, lessThanOrEqualTo(20),
-          reason: 'splash maksimal 20 detik, dapat $seconds');
+      expect(seconds, 10, reason: 'permintaan terakhir: 10 detik, dapat $seconds');
+      expect(AppConstants.splashDuration.inMilliseconds, 10000);
     });
 
-    test('durasi splash bukan 2-3 detik lagi', () {
-      // Nilai lama yang diminta diganti.
+    test('durasi splash bukan nilai lama (18 detik / 2,3 detik)', () {
+      expect(AppConstants.splashDuration.inSeconds, isNot(18));
       expect(AppConstants.splashDuration.inMilliseconds, isNot(2300));
-      expect(AppConstants.splashDuration.inSeconds, greaterThan(3));
+    });
+
+    test('animasi logo membagi habis durasi splash', () {
+      // Satu putaran 2,5 detik: 10 / 2,5 = 4 putaran penuh, jadi animasi
+      // tidak pernah terpotong di tengah saat splash selesai.
+      final cycle = AppConstants.splashLogoCycle.inMilliseconds;
+      expect(cycle, greaterThan(0));
+      expect(AppConstants.splashDuration.inMilliseconds % cycle, 0,
+          reason: 'durasi splash harus kelipatan satu putaran animasi logo');
+      expect(cycle, lessThanOrEqualTo(3000),
+          reason: 'satu putaran cukup cepat agar terlihat hidup');
     });
 
     test('splash tetap berakhir di form login', () async {

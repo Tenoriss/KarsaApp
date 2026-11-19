@@ -394,15 +394,15 @@ try {
 }
 
 /* ------------------------------------------------------------------ *
- * 3. Splash tampil lama (18 detik) lalu masuk ke form login
+ * 3. Splash 10 detik dengan logo beranimasi, lalu masuk ke form login
  * ------------------------------------------------------------------ */
-// Durasi splash sengaja panjang dan menjadi satu angka acuan. Tes menjaga
-// agar durasinya tetap 15-20 detik sesuai permintaan, bukan kembali ke 2 detik.
-const SPLASH_MS_EXPECTED = 18000;
+// Durasi splash menjadi satu angka acuan. Tes menjaga agar nilainya tetap
+// 10 detik sesuai permintaan terakhir (bukan 18 detik, bukan 2 detik).
+const SPLASH_MS_EXPECTED = 10000;
 const splashTimer = timers.find((t) => t.ms === SPLASH_MS_EXPECTED);
-ok(!!splashTimer, 'splash schedules an ' + SPLASH_MS_EXPECTED + ' ms timer');
-ok(SPLASH_MS_EXPECTED >= 15000 && SPLASH_MS_EXPECTED <= 20000,
-  'durasi splash berada di rentang 15-20 detik, dapat ' + (SPLASH_MS_EXPECTED / 1000) + ' detik');
+ok(!!splashTimer, 'splash schedules a ' + SPLASH_MS_EXPECTED + ' ms timer');
+ok(SPLASH_MS_EXPECTED === 10000,
+  'durasi splash 10 detik sesuai permintaan, dapat ' + (SPLASH_MS_EXPECTED / 1000) + ' detik');
 if (splashTimer) {
   preview.go('splash');
   splashTimer.fn();
@@ -420,15 +420,48 @@ ok(/Masuk dalam \d+ detik/.test(splashText),
   (splashText.match(/Masuk dalam [^.]*/) || ['-'])[0]);
 ok(!!viewport.querySelectorAll('.splash-progress')[0],
   'splash punya progress bar');
+// Logo beranimasi + background tetap ada.
+const splashArtImg = viewport.querySelectorAll('.splash-art')[0];
+ok(!!splashArtImg, 'background splash (ilustrasi) tetap ditampilkan');
+const logoImg = viewport.querySelectorAll('.splash-logo')[0];
+ok(!!logoImg, 'logo KARSA tampil di splash');
+if (logoImg) {
+  ok(String(logoImg.getAttribute('src')).indexOf('karsa-login-logo.png') >= 0,
+    'logo memakai aset logo transparan (karsa-login-logo.png)');
+  ok(logoImg.getAttribute('class').indexOf('splash-logo') >= 0,
+    'logo memakai kelas beranimasi .splash-logo');
+}
+ok(!!viewport.querySelectorAll('.splash-logo-ring')[0],
+  'logo punya cincin animasi (.splash-logo-ring)');
+// Background yang dipakai tidak lagi memuat logo tercetak, supaya logo
+// beranimasi tidak bertumpuk dengan logo statis.
+const splashCss = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+ok(/@keyframes\s+karsa-logo-pulse/.test(splashCss),
+  'ada keyframes detak logo (karsa-logo-pulse)');
+ok(/@keyframes\s+karsa-logo-ring/.test(splashCss),
+  'ada keyframes cincin logo (karsa-logo-ring)');
+ok(splashCss.indexOf('.splash-logo {') >= 0 &&
+   /animation:\s*karsa-logo-pulse/.test(splashCss),
+  'CSS menerapkan animasi detak ke logo');
+ok(/prefers-reduced-motion[\s\S]{0,220}splash-logo/.test(splashCss),
+  'animasi logo dimatikan bila pengguna meminta kurangi gerak');
+ok(/@keyframes\s+karsa-logo-pulse[\s\S]{0,200}scale\(0\.97\)/.test(splashCss),
+  'detak logo memakai skala (bukan hanya opacity)');
+
 const countdownBefore = (splashText.match(/Masuk dalam (\d+)/) || [])[1];
 // Tik detik berikutnya harus mengurangi angka.
 const tick = timers.find((t) => t.ms === 1000);
 ok(!!tick, 'splash menjadwalkan pembaruan tiap detik');
 if (tick) {
+  const logoBefore = viewport.querySelectorAll('.splash-logo')[0];
   tick.fn();
   const after = (viewport.textContent.match(/Masuk dalam (\d+)/) || [])[1];
   ok(Number(after) < Number(countdownBefore),
     'hitungan mundur berkurang tiap detik (' + countdownBefore + ' -> ' + after + ')');
+  // Node logo harus tetap sama setelah tik: kalau diganti, animasi CSS
+  // ter-restart dan logo terlihat berkedip tiap detik.
+  ok(viewport.querySelectorAll('.splash-logo')[0] === logoBefore,
+    'tik hitungan mundur tidak membangun ulang logo (animasi tidak restart)');
 }
 
 /* ------------------------------------------------------------------ *

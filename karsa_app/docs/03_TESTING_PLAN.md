@@ -102,9 +102,11 @@ Yang dipverifikasi:
   keluar; beranda tidak lagi merender kolom profil penuh dan hanya menyisakan
   pintasan ke tab tersebut;
 * alias `#wali-rekap` → `wali-recap`;
-* splash menjadwalkan timer **18000 ms (18 detik)** -- di dalam rentang 15-20 detik
-yang diminta -- lalu otomatis pindah ke **form login tunggal**; hitungan mundur
-"Masuk dalam N detik" dan progress bar bertambah tiap detik
+* splash menjadwalkan timer **10000 ms (10 detik)** sesuai permintaan terakhir,
+  lalu otomatis pindah ke **form login tunggal**; logo KARSA beranimasi
+  (`karsa-logo-pulse` + `karsa-logo-ring`) di atas background yang tetap ada,
+  hitungan mundur "Masuk dalam N detik" dan progress bar bertambah tiap detik,
+  dan tik tiap detik tidak membangun ulang node logo (animasi tidak restart)
   (bukan layar pilih peran);
 * form login tunggal: kelima akun demo masuk lewat form yang sama, peran
   dideteksi dari NIP/NISN, galat per kolom kosong, label NIP vs NISN, badge
@@ -255,7 +257,7 @@ login dengan identitas masih terisi.
 
 | # | Langkah | Hasil yang diharapkan |
 | --- | --- | --- |
-| P1 | Buka `http://localhost:8000` | Splash tampil 18 detik dengan hitungan mundur "Masuk dalam N detik" + progress bar, lalu pindah otomatis ke form login tunggal |
+| P1 | Buka `http://localhost:8000` | Splash tampil 10 detik: background ilustrasi sekolah, logo KARSA berdenyut dengan cincin mengembang, hitungan mundur "Masuk dalam N detik" + progress bar, lalu pindah otomatis ke form login tunggal |
 | P2 | Ganti layar lewat dropdown | Semua 40 layar terbuka tanpa error konsol |
 | P3 | Login dengan 5 akun demo | Masuk ke beranda peran yang sesuai |
 | P4 | Login dengan data salah | Galat tampil, tetap di layar login |

@@ -302,10 +302,13 @@ node karsa_app/preview/test_preview.js
 ```
 
 Harness memakai **mock DOM** (tanpa browser) dan memverifikasi:
-41 layar ter-render tanpa error, splash **18000 ms** (18 detik, dalam rentang
-15-20 detik yang diminta) yang menampilkan hitungan mundur *"Masuk dalam N
-detik"* dan progress bar yang benar-benar bertambah sebelum membuka form login
-tunggal, deteksi peran dari NIP/NISN (kelima akun masuk lewat form
+41 layar ter-render tanpa error, splash **10000 ms** (10 detik sesuai permintaan
+terakhir) yang menampilkan **logo beranimasi** (`.splash-logo` +
+`.splash-logo-ring`, keyframes `karsa-logo-pulse` / `karsa-logo-ring`) di atas
+background ilustrasi yang tetap ada, hitungan mundur *"Masuk dalam N detik"*
+dan progress bar yang benar-benar bertambah, serta memastikan tik hitungan
+mundur **tidak** membangun ulang node logo (animasi tidak restart) sebelum
+membuka form login tunggal, deteksi peran dari NIP/NISN (kelima akun masuk lewat form
 yang sama, termasuk pesan galat per kolom kosong), "Ingat saya" yang menyimpan
 identitas tanpa kata sandi, navigasi bawah, filter chip/segmen/pencarian,
 pemilihan status kehadiran, pergantian tips, alur kuis → hasil, adaptasi agama,
@@ -319,14 +322,14 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **698 pemeriksaan**.
+Total **709 pemeriksaan**.
 
 ---
 
 ## Alur login terbaru
 
-Splash (**18 detik**, dengan hitungan mundur + progress bar) → **satu form
-login** → dashboard sesuai peran. Tidak ada lagi
+Splash (**10 detik**, logo beranimasi + hitungan mundur + progress bar) →
+**satu form login** → dashboard sesuai peran. Tidak ada lagi
 layar pilih peran di jalur utama.
 
 | Langkah | Perilaku |

@@ -1209,11 +1209,11 @@
    * ------------------------------------------------------------------ */
   /* Lama splash tampil sebelum form login. Cermin
      AppConstants.splashDuration di Flutter; tes membaca angka ini. */
-  var SPLASH_MS = 18000;
+  // Permintaan pemilik produk: splash 10 detik, logo beranimasi.
+  var SPLASH_MS = 10000;
 
   function renderSplash() {
-    // Splash cukup lama (18 detik), jadi tampilkan hitungan mundur supaya
-    // pengguna tahu aplikasi sedang menyiapkan, bukan macet.
+    // Splash 10 detik: hitungan mundur + progress bar supaya tidak terasa macet.
     var remaining = typeof state.splashRemaining === 'number'
       ? state.splashRemaining
       : Math.ceil(SPLASH_MS / 1000);
@@ -1221,6 +1221,16 @@
       ((SPLASH_MS / 1000) - remaining) / (SPLASH_MS / 1000) * 100));
     return el('div', { class: 'splash-stage' }, [
       el('img', { class: 'splash-art', src: ASSETS.splashArt, alt: 'Ilustrasi KARSA' }),
+      // Logo KARSA beranimasi, menempati area logo yang sudah dibersihkan
+      // dari ilustrasi (x 95..566, y 88..348 dari 654x1048).
+      el('div', { class: 'splash-logo-wrap', 'aria-hidden': 'true' }, [
+        el('span', { class: 'splash-logo-ring' }),
+        el('img', {
+          class: 'splash-logo',
+          src: ASSETS.loginLogo,
+          alt: 'Logo KARSA'
+        })
+      ]),
       el('div', { class: 'splash-pill' }, [
         el('div', { class: 'splash-dots' }, [
           el('span', { class: 'splash-dot' }),
@@ -6303,10 +6313,35 @@
     return def.render();
   }
 
+  /// Perbarui hitungan mundur & progress bar tanpa membangun ulang splash.
+  /// Mengembalikan true bila splash sudah ada di DOM dan berhasil diperbarui.
+  function patchSplash(viewport) {
+    var stage = viewport.querySelectorAll('.splash-stage')[0];
+    if (!stage) return false;
+    var remaining = typeof state.splashRemaining === 'number'
+      ? state.splashRemaining
+      : Math.ceil(SPLASH_MS / 1000);
+    var progress = Math.min(100, Math.max(0,
+      ((SPLASH_MS / 1000) - remaining) / (SPLASH_MS / 1000) * 100));
+    var label = stage.querySelectorAll('.splash-countdown')[0];
+    if (label) label.textContent = 'Masuk dalam ' + remaining + ' detik';
+    var fill = stage.querySelectorAll('.splash-progress-fill')[0];
+    if (fill) fill.setAttribute('style', 'width:' + progress + '%');
+    return true;
+  }
+
   function render() {
     var viewport = document.getElementById('app-viewport');
     var isSplash = state.screen === 'splash';
     viewport.classList.toggle('no-pad', isSplash);
+    // Splash beranimasi CSS: render ulang penuh tiap detik akan me-restart
+    // animasinya dari nol sehingga logo terlihat berkedip. Jadi saat splash
+    // sudah tampil, cukup perbarui bagian yang berubah (hitungan + progress).
+    if (isSplash && patchSplash(viewport)) {
+      document.getElementById('app-shell').classList.toggle('splash-mode', true);
+      document.body.classList.toggle('is-splash', true);
+      return;
+    }
     clear(viewport);
     viewport.appendChild(renderScreen());
     document.getElementById('app-shell').classList.toggle('splash-mode', isSplash);
