@@ -226,7 +226,7 @@ mobile-first (`100dvh` di ponsel, kolom `480px` di layar lebar,
 ```bash
 python3 karsa_app/preview/serve.py --host 0.0.0.0 --port 8000
 curl http://127.0.0.1:8000/healthz
-node karsa_app/preview/test_preview.js    # 477 pemeriksaan, mock DOM
+node karsa_app/preview/test_preview.js    # 507 pemeriksaan, mock DOM
 ```
 
 ---
@@ -251,6 +251,7 @@ node karsa_app/preview/test_preview.js    # 477 pemeriksaan, mock DOM
 | Dashboard | 5 dashboard berbeda sesuai peran (tanpa menyatukan menjadi halaman generik) |
 | **Operator sekolah** | 6 tab (Beranda, Siswa, Kelas, Materi, Media, Profil) + halaman tugas, pengumuman, agenda, nilai, dan form siswa/kelas/akun/materi. CRUD siswa, kelas dinamis, akun guru & wali, tugas, pengumuman, agenda, materi, nilai 0–100, logo/banner sekolah, serta data pribadi operator. Semua tersimpan di `@karsa-demo-v1`, dengan validasi terlihat dan perlindungan kelas terakhir |
 | Tugas | Daftar, filter kelas/mapel, pencarian, deadline & countdown, status, lampiran, form tambah tugas |
+| **Asisten soal (simulasi)** | Di form tugas, wali/guru/orang tua dapat mengunggah bahan (PDF/gambar/teks) lalu menyusun soal. Karena demo ini **tidak membaca PDF**, asisten bekerja dari teks yang ditempel atau isi file `.txt`: kalimat dipecah, kata kunci jadi jawaban, kata kunci kalimat lain jadi pengecoh. Deterministik, 1 soal per kalimat (maks. 10), tanpa jaringan. Soal disimpan bersama tugas (`questionsSource: 'assistant'`) dan dipakai saat siswa mengerjakan kuis. Label di UI menyebut terang-terangan "simulasi offline, bukan AI sungguhan" |
 | Materi | Daftar, detail, form unggah, filter per kelas/mapel |
 | Kuis & latihan | Bank soal 9 mapel, pilihan ganda, soal esai, navigasi soal, periksa jawaban, skor, riwayat |
 | Kehadiran & nilai | Rekap kehadiran per tanggal (Hadir/Izin/Sakit/Alpa), input nilai 0–100, rata-rata kelas, rekap nilai per kelas |
@@ -267,12 +268,13 @@ node karsa_app/preview/test_preview.js    # 477 pemeriksaan, mock DOM
 ## Yang belum terverifikasi
 
 * `flutter analyze` dan `flutter test` **belum dijalankan** (SDK tidak ada di
-  lingkungan pembuatan). Lima berkas uji sudah siap di `karsa_app/test/`,
-  termasuk `operator_crud_test.dart`; sebagai gantinya
-  `python3 karsa_app/tool/check_syntax.py` memvalidasi 120 berkas Dart,
+  lingkungan pembuatan). Enam berkas uji sudah siap di `karsa_app/test/`,
+  termasuk `operator_crud_test.dart` dan `quiz_assistant_test.dart`;
+  sebagai gantinya `python3 karsa_app/tool/check_syntax.py` memvalidasi
+  125 berkas Dart,
   impor, aset, inisialisasi field `final`, argumen bernama `Image()`, dan
   null-check `.isEmpty` secara statis, sementara
-  `node karsa_app/preview/test_preview.js` menjalankan 477 pemeriksaan alur.
+  `node karsa_app/preview/test_preview.js` menjalankan 507 pemeriksaan alur.
 * Uji visual di perangkat iOS/Android nyata belum dilakukan.
 * Pembukaan berkas ekspor `.xlsx`/`.pdf` di perangkat belum diuji.
 * Perilaku `file_picker` di iOS belum diuji.

@@ -49,7 +49,9 @@ class TaskDetailSheet extends StatelessWidget {
           child: Text(
             task.isFileTask
                 ? 'Buka file tugas. Setelah mengerjakan, tandai selesai di perangkat ini. Jawaban tidak dikirim otomatis.'
-                : '10 soal pilihan ganda. Pilih jawaban lalu lihat hasil setelah selesai. Waktu hanya informasi dalam demo.',
+                : task.questionsFromAssistant
+                    ? '${task.questions.length} soal pilihan ganda disusun asisten dari bahan yang diunggah guru (simulasi offline, bukan AI sungguhan). Pilih jawaban lalu lihat hasil setelah selesai.'
+                    : '10 soal pilihan ganda. Pilih jawaban lalu lihat hasil setelah selesai. Waktu hanya informasi dalam demo.',
             style: theme.text.muted.copyWith(height: 23 / 13),
           ),
         ),

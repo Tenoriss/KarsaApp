@@ -1636,3 +1636,53 @@ body.is-splash {
   font-weight: 700;
   color: var(--ink);
 }
+
+/* ------------------------------------------------------------------ *
+ * Simulasi asisten penyusun soal (form tambah tugas)
+ * ------------------------------------------------------------------ */
+.assistant-panel {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #F2F6F8;
+  border: 1px solid #DCE9EE;
+}
+
+[data-theme='dark'] .assistant-panel {
+  background: #34414E;
+  border-color: #47535F;
+}
+
+.assistant-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 17px;
+  background: var(--blue);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.assistant-panel textarea.karsa-input {
+  margin-top: 10px;
+  width: 100%;
+  min-height: 86px;
+  resize: vertical;
+  font: inherit;
+  font-size: 13px;
+}
+
+.assistant-result {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 15px;
+  background: #FBF3F4;
+  border: 1px solid #F1E5E2;
+}
+
+[data-theme='dark'] .assistant-result {
+  background: #3A2F36;
+  border-color: #4E414A;
+}

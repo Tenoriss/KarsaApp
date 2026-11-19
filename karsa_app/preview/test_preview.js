@@ -929,6 +929,170 @@ if (profileShortcut) {
     'the home shortcut jumps to the Profile tab');
 }
 
+/* ------------------------------------------------------------------ *
+ * 9h. Wali kelas: unggah bahan -> asisten menyusun soal
+ * ------------------------------------------------------------------ */
+// Bug yang diperbaiki: wali kelas tidak punya jalan apa pun ke form tugas,
+// sehingga fitur unggah PDF + asisten tidak pernah bisa dipakai.
+preview.state.role = 'wali';
+preview.state.tab = 'Beranda';
+preview.go('wali-beranda');
+
+const buatTugasShortcut = viewport.querySelectorAll('[aria-label]')
+  .filter((n) => n.getAttribute('aria-label') === 'Buat tugas dari bahan ajar')[0];
+ok(!!buatTugasShortcut, 'the homeroom home offers a "create task from material" shortcut');
+if (buatTugasShortcut) {
+  buatTugasShortcut.click();
+  ok(sheetBackdrop.hidden === false, 'the shortcut opens the task form sheet');
+  ok(sheetPanel.textContent.indexOf('Asisten penyusun soal') >= 0,
+    'the task form has the assistant panel');
+  ok(sheetPanel.textContent.indexOf('Simulasi offline') >= 0,
+    'the assistant is labelled as an offline simulation');
+  ok(sheetPanel.textContent.indexOf('Unggah bahan') >= 0,
+    'the task form offers a material upload button');
+
+  const assistantButton = () => sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Buat soal dengan asisten') >= 0)[0];
+  ok(!!assistantButton(), 'the assistant has a generate button');
+
+  // Tanpa bahan: pesan jelas, tidak mengarang soal.
+  if (assistantButton()) assistantButton().click();
+  ok(sheetPanel.textContent.indexOf('Tempel teks bahan ajar dulu') >= 0,
+    'the assistant asks for material instead of inventing questions');
+  ok(sheetPanel.textContent.indexOf('PDF belum bisa dibaca') >= 0,
+    'the assistant states honestly that PDFs are not parsed');
+
+  // Tempel bahan: asisten menyusun soal.
+  const sourceBox = sheetPanel.querySelectorAll('#assistant-source')[0];
+  ok(!!sourceBox, 'the assistant has a text box for the material');
+  if (sourceBox) {
+    sourceBox.value = 'Fotosintesis adalah proses tumbuhan membuat makanan sendiri. ' +
+      'Tumbuhan menyerap air dan mineral melalui akar di dalam tanah. ' +
+      'Daun menangkap cahaya matahari menggunakan klorofil hijau. ' +
+      'Hasil fotosintesis berupa glukosa dan oksigen yang dilepas ke udara. ' +
+      'Proses ini penting karena menjadi sumber makanan bagi makhluk hidup lain.';
+    sourceBox.dispatch('input', { target: sourceBox });
+    // Bahan berganti -> tombol kembali ke label awal.
+    const regen = sheetPanel.querySelectorAll('button')
+      .filter((b) => (b.textContent || '').indexOf('Buat soal dengan asisten') >= 0)[0];
+    ok(!!regen, 'the generate button is still available after typing material');
+    if (regen) regen.click();
+  }
+  ok(/\d+ soal siap dipakai tugas ini/.test(sheetPanel.textContent),
+    'the assistant reports how many questions are ready');
+  ok(sheetPanel.textContent.indexOf('simulasi offline, bukan AI sungguhan') >= 0,
+    'the assistant says the result is not real AI');
+
+  const madeQuestions = sheetPanel.querySelectorAll('.assistant-result')[0];
+  ok(!!madeQuestions, 'the assistant lists the generated questions');
+  if (madeQuestions) {
+    const lines = (madeQuestions.textContent.match(/kata kunci/g) || []).length;
+    ok(lines >= 5, 'the generated questions are derived from the pasted material');
+  }
+}
+
+// Tugas tersimpan membawa soal asistennya sendiri.
+const taskCountBefore = preview.tasks().length;
+const titleBox = sheetPanel.querySelectorAll('#task-title')[0];
+if (titleBox) {
+  titleBox.value = 'Fotosintesis';
+  titleBox.dispatch('input', { target: titleBox });
+}
+const saveTaskBtn = sheetPanel.querySelectorAll('button')
+  .filter((b) => (b.textContent || '').indexOf('Simpan tugas') >= 0)[0];
+ok(!!saveTaskBtn, 'the task form has a save button');
+if (saveTaskBtn) saveTaskBtn.click();
+eq(preview.tasks().length, taskCountBefore + 1, 'the task with assistant questions is saved');
+const savedTask = preview.tasks()[preview.tasks().length - 1];
+ok(savedTask && savedTask.questionsSource === 'assistant',
+  'the saved task is marked as using assistant questions');
+ok(savedTask && savedTask.questions && savedTask.questions.length >= 5 &&
+  savedTask.questions.length <= 10,
+  'the saved task keeps every generated question (one per complete sentence)');
+
+// Kuis memakai soal milik tugas, bukan bank soal contoh.
+if (savedTask) {
+  preview.startQuiz(savedTask);
+  eq(preview.state.screen, 'kuis', 'starting the quiz opens the quiz screen');
+  eq(preview.state.quiz.bank.length, savedTask.questions.length,
+    'the quiz uses the task\'s own questions');
+  eq(preview.state.quiz.bank[0].question, savedTask.questions[0].question,
+    'the first quiz question comes from the assistant draft');
+}
+
+// Siswa yang mengerjakan tugas itu benar-benar melihat soal asistennya.
+// Siswa demo ada di Kelas 5, sedangkan wali mengajar Kelas 1; pindahkan siswa
+// ke kelas tugas dulu agar pengecekan ini menguji hal yang benar.
+preview.state.studentClass = 'Kelas 1';
+preview.state.role = 'siswa';
+preview.state.tab = 'Tugas';
+// Filter bisa tersisa dari pemeriksaan sebelumnya; mulai dari keadaan bersih.
+preview.state.taskFilter = 'Aktif';
+preview.state.subjectFilter = 'Semua';
+preview.state.search = '';
+preview.go('siswa-tugas');
+// Mock DOM hanya mendukung satu selector sederhana (tanpa daftar berkoma
+// atau nilai atribut), jadi pakai kelas kartu daftar.
+const studentTaskCard = viewport.querySelectorAll('.list-item-card')
+  .filter((n) => (n.textContent || '').indexOf('Fotosintesis') >= 0)[0];
+ok(!!studentTaskCard, 'the new task appears on the student task list');
+if (studentTaskCard) {
+  studentTaskCard.click();
+  const startBtn = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Kerjakan kuis') >= 0)[0];
+  ok(!!startBtn, 'the student can start the quiz for that task');
+  if (startBtn) {
+    startBtn.click();
+    eq(preview.state.screen, 'kuis', 'the student lands on the quiz screen');
+    eq(preview.state.quiz.bank[0].answerIndex, savedTask.questions[0].answerIndex,
+      'the student sees the assistant questions, not the example bank');
+  }
+}
+
+// Bahan terlalu pendek tidak menghasilkan soal palsu.
+preview.go('wali-beranda');
+if (buatTugasShortcut) buatTugasShortcut.click();
+const shortBox = sheetPanel.querySelectorAll('#assistant-source')[0];
+if (shortBox) {
+  shortBox.value = 'Terlalu pendek.';
+  shortBox.dispatch('input', { target: shortBox });
+  sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Buat soal dengan asisten') >= 0)[0].click();
+}
+ok(sheetPanel.textContent.indexOf('terlalu pendek') >= 0,
+  'material that is too short is rejected with a clear message');
+const closeTaskSheet = sheetPanel.querySelectorAll('button')
+  .filter((b) => (b.textContent || '').indexOf('Simpan tugas') >= 0)[0];
+if (closeTaskSheet) {
+  // Tutup tanpa menyimpan: judul kosong menjaga tombol tidak membuat tugas.
+}
+const backdrop = sheetBackdrop;
+if (backdrop && backdrop.hidden === false) {
+  // Tutup sheet lewat tombol X/backdrop yang disediakan pratinjau.
+  const closeBtn = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.getAttribute('aria-label') || '') === 'Tutup')[0];
+  if (closeBtn) closeBtn.click();
+}
+
+// Tugas yang baru disimpan muncul di Beranda wali (wali tidak punya tab Tugas).
+preview.go('wali-beranda');
+ok(viewport.textContent.indexOf('Tugas kelas') >= 0,
+  'the homeroom home lists class tasks');
+ok(viewport.textContent.indexOf('Fotosintesis') >= 0,
+  'the task created from material shows up on the homeroom home');
+ok(viewport.textContent.indexOf('soal asisten') >= 0,
+  'the task card states that its questions came from the assistant');
+
+// Beranda wali juga membuka materi (sebelumnya tidak ada jalan).
+preview.go('wali-beranda');
+const materiShortcut = viewport.querySelectorAll('[aria-label]')
+  .filter((n) => n.getAttribute('aria-label') === 'Kelola materi kelas')[0];
+ok(!!materiShortcut, 'the homeroom home links to class materials');
+
+preview.state.role = 'operator';
+preview.state.tab = 'Beranda';
+preview.go('operator-beranda');
+
 // Tab operator: 6 tab, Profil di kanan Media.
 const opTabs = bottomNav.querySelectorAll('.nav-item');
 eq(opTabs.length, 6, 'the operator bottom nav has 6 tabs');

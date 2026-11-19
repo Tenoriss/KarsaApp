@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../core/constants/app_constants.dart';
 import '../core/utils/date_utils.dart';
+import '../core/services/quiz_draft_service.dart';
 import '../core/utils/offline_summarizer.dart';
 import '../data/curriculum_data.dart';
 import '../data/seed_data.dart';
@@ -98,6 +99,15 @@ class AppState extends ChangeNotifier {
   AttachmentFile? _attachment;
   String _sourceText = '';
   String _summaryText = '';
+
+  /// Teks bahan yang ditempel guru/wali untuk simulasi asisten.
+  String _assistantSource = '';
+
+  /// Soal hasil simulasi asisten untuk draft tugas yang sedang dibuat.
+  List<QuizQuestion> _assistantQuestions = <QuizQuestion>[];
+
+  /// `true` saat draft memakai soal dari asisten.
+  bool _assistantUsed = false;
 
   String _recapTab = 'Kehadiran';
   String _recapDate = KarsaDateUtils.formatDateKey(DateTime.now());
@@ -226,6 +236,18 @@ class AppState extends ChangeNotifier {
   AttachmentFile? get attachment => _attachment;
   String get sourceText => _sourceText;
   String get summaryText => _summaryText;
+
+  /// Teks bahan untuk simulasi asisten penyusun soal.
+  String get assistantSource => _assistantSource;
+
+  /// Soal yang sudah dihasilkan asisten untuk draft ini.
+  List<QuizQuestion> get assistantQuestions => _assistantQuestions;
+
+  /// Apakah draft tugas ini memakai soal dari asisten.
+  bool get assistantUsed => _assistantUsed;
+
+  /// Asisten sudah membuat soal dan soal itu siap dipakai.
+  bool get assistantReady => _assistantUsed && _assistantQuestions.isNotEmpty;
 
   String get recapTab => _recapTab;
   String get recapDate => _recapDate;
@@ -831,6 +853,14 @@ class AppState extends ChangeNotifier {
 
     final isEdit = _draftTaskId.isNotEmpty;
     final id = isEdit ? _draftTaskId : 't${DateTime.now().millisecondsSinceEpoch}';
+    // Saat operator mengedit tugas yang sudah punya soal hasil asisten, soalnya
+    // tidak boleh ikut terhapus hanya karena form ini tidak mengelola soal.
+    final previous = isEdit
+        ? _data.tasks.where((t) => t.id == id).toList()
+        : const <TaskItem>[];
+    final keptQuestions = previous.isEmpty
+        ? const <QuizQuestion>[]
+        : previous.first.questions;
     final task = TaskItem(
       id: id,
       subject: _draftSubject,
@@ -840,6 +870,10 @@ class AppState extends ChangeNotifier {
       kind: 'quiz',
       teacher: _data.teacherName,
       dueAt: due.toUtc().toIso8601String(),
+      questions: keptQuestions,
+      questionsSource: previous.isEmpty
+          ? 'example'
+          : previous.first.questionsSource,
     );
     final tasks = isEdit
         ? _data.tasks.map((t) => t.id == id ? task : t).toList()
@@ -1515,6 +1549,9 @@ class AppState extends ChangeNotifier {
     _persistData(_data.copyWith(notifications: value));
   }
 
+  /// Hanya guru (termasuk wali kelas) yang punya tab daftar tugas.
+  bool get hasTasksTab => isGuru;
+
   void changeTab(String nextTab) {
     _tab = nextTab;
     if (nextTab == 'Tugas') {
@@ -1590,9 +1627,14 @@ class AppState extends ChangeNotifier {
   }
 
   List<QuizQuestion> get currentQuizBank {
-    final subj = _selectedTask?.subject ?? _draftSubject;
-    final savedReligion = _screen == 'result' && _selectedTask != null
-        ? _data.results[_selectedTask!.id]?.religion
+    // Tugas yang soalnya dibuat asisten memakai soalnya sendiri; tanpa ini
+    // soal hasil asisten tidak pernah tampil saat siswa mengerjakan kuis.
+    final task = _selectedTask;
+    if (task != null && task.hasOwnQuestions) return task.questions;
+
+    final subj = task?.subject ?? _draftSubject;
+    final savedReligion = _screen == 'result' && task != null
+        ? _data.results[task.id]?.religion
         : null;
     final effectiveReligion = savedReligion ?? _data.religion;
     return CurriculumData.questionsFor(subj, effectiveReligion);
@@ -1813,6 +1855,9 @@ class AppState extends ChangeNotifier {
     _attachment = null;
     _sourceText = '';
     _summaryText = '';
+    _assistantSource = '';
+    _assistantQuestions = <QuizQuestion>[];
+    _assistantUsed = false;
     _screen = kind;
     notifyListeners();
   }
@@ -1861,9 +1906,82 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Menulis teks bahan untuk simulasi asisten penyusun soal.
+  void setAssistantSource(String val) {
+    _assistantSource = val;
+    if (_error.isNotEmpty) _error = '';
+    notifyListeners();
+  }
+
+  /// Menjalankan simulasi asisten: ubah bahan menjadi soal.
+  ///
+  /// Sumber teks diambil dari tempelan guru/wali; kalau kosong, dipakai isi
+  /// file `.txt` yang sudah dilampirkan. PDF **tidak** dibaca — itu batasan
+  /// jujur demo offline, dan alasannya ditampilkan ke pengguna.
+  void generateQuestionsFromMaterial() {
+    final attachmentText = _sourceText.trim();
+    final text = _assistantSource.trim().isNotEmpty
+        ? _assistantSource.trim()
+        : attachmentText;
+
+    if (text.isEmpty) {
+      _error = 'Tempel teks bahan ajar dulu (atau unggah file .txt). '
+          'PDF belum bisa dibaca otomatis di demo ini.';
+      _assistantQuestions = <QuizQuestion>[];
+      _assistantUsed = false;
+      notifyListeners();
+      return;
+    }
+
+    final draft = const QuizDraftService().draftQuestions(
+      text,
+      count: QuizDraftService.questionsPerTask,
+    );
+
+    if (draft.isEmpty) {
+      // Bahan terlalu pendek: jangan mengarang soal, pakai bank contoh saja.
+      _assistantQuestions = <QuizQuestion>[];
+      _assistantUsed = false;
+      _error = 'Bahan terlalu pendek untuk dijadikan soal (minimal dua '
+          'kalimat lengkap). Tambah teks atau pakai kuis contoh.';
+      notifyListeners();
+      return;
+    }
+
+    _assistantQuestions = draft;
+    _assistantUsed = true;
+    _error = '';
+    if (_draftTitle.trim().isEmpty) {
+      _draftTitle = 'Tugas $_draftSubject';
+    }
+    _notice = '${draft.length} soal dibuat dari bahan yang ditempel '
+        '(simulasi offline, bukan AI sungguhan).';
+    notifyListeners();
+  }
+
+  /// Membuang soal hasil asisten dan kembali ke bank soal contoh.
+  void clearAssistantQuestions() {
+    _assistantQuestions = <QuizQuestion>[];
+    _assistantUsed = false;
+    _notice = '';
+    _error = '';
+    notifyListeners();
+  }
+
+  /// Soal yang dipakai untuk [task].
+  ///
+  /// Tugas hasil asisten memakai soalnya sendiri; tugas lain memakai bank soal
+  /// contoh sesuai mata pelajaran dan agama siswa.
+  List<QuizQuestion> questionsForTask(TaskItem task) {
+    if (task.hasOwnQuestions) return task.questions;
+    return CurriculumData.questionsFor(task.subject, _data.religion);
+  }
+
   void useExampleQuizForTask() {
     _attachment = null;
     _draftBody = 'quiz';
+    _assistantQuestions = <QuizQuestion>[];
+    _assistantUsed = false;
     if (_draftTitle.trim().isEmpty) {
       _draftTitle = 'Kuis $_draftSubject';
     }
@@ -1889,6 +2007,9 @@ class AppState extends ChangeNotifier {
     if (outcome.extractedText != null) {
       _sourceText = outcome.extractedText!;
     }
+    // Bahan berganti -> soal dari asisten yang lama tidak relevan lagi.
+    _assistantQuestions = <QuizQuestion>[];
+    _assistantUsed = false;
     _notice = outcome.notice ?? '';
     notifyListeners();
   }
@@ -1970,8 +2091,8 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    if (_attachment == null && _draftBody.isEmpty) {
-      _error = 'Lampirkan file tugas atau pilih buat kuis contoh.';
+    if (_attachment == null && _draftBody.isEmpty && !_assistantUsed) {
+      _error = 'Lampirkan file tugas, jalankan asisten, atau pilih buat kuis contoh.';
       notifyListeners();
       return;
     }
@@ -1998,6 +2119,10 @@ class AppState extends ChangeNotifier {
       file: _attachment,
       teacher: _data.teacherName,
       dueAt: due.toUtc().toIso8601String(),
+      questions: _assistantUsed
+          ? List<QuizQuestion>.unmodifiable(_assistantQuestions)
+          : const <QuizQuestion>[],
+      questionsSource: _assistantUsed ? 'assistant' : 'example',
     );
     final notif = _buildNotification(
       target: 'learners',
@@ -2015,7 +2140,9 @@ class AppState extends ChangeNotifier {
         localNotifications: <LocalNotification>[notif, ..._data.localNotifications],
       ),
     );
-    changeTab('Tugas');
+    // Wali & operator tidak punya tab 'Tugas'; mereka kembali ke Beranda
+    // supaya layar tidak kosong setelah tugas disimpan.
+    changeTab(hasTasksTab ? 'Tugas' : 'Beranda');
   }
 
   void savePractice() {

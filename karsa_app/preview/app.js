@@ -1573,6 +1573,7 @@
     var notRecorded = members.length - recorded;
     var scored = members.filter(function (m) { return state.classScores[m.id] !== undefined; });
     var avg = scoreAverage();
+    var waliTasks = TASKS.filter(function (t) { return t.className === WALI_CLASS; });
 
     return el('div', {}, [
       schoolIdentity(true),
@@ -1639,6 +1640,75 @@
           text: 'Belum ada nilai. Isi rekap nilai untuk melihat grafik.'
         })
       ]),
+      el('p', { class: 't-section', style: 'margin:8px 0 10px 0', text: 'Tugas kelas' }),
+      el('div', {
+        class: 'clay-soft pressable',
+        style: 'padding:16px;display:flex;align-items:center;gap:12px',
+        role: 'button', tabindex: '0',
+        'aria-label': 'Buat tugas dari bahan ajar',
+        onclick: function () { openTaskForm(); }
+      }, [
+        el('div', {
+          style: 'width:44px;height:44px;border-radius:22px;background:var(--blue);color:#fff;' +
+                 'display:flex;align-items:center;justify-content:center'
+        }, [icon('albums', 20)]),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 't-item-title', style: 'margin:0', text: 'Buat tugas dari bahan' }),
+          el('p', { class: 't-small', style: 'margin:0',
+            text: 'Unggah PDF/gambar/teks, lalu susun soal dengan asisten' })
+        ]),
+        el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('chevron-forward', 18)])
+      ]),
+      el('div', {
+        class: 'clay-soft pressable',
+        style: 'margin-top:10px;padding:16px;display:flex;align-items:center;gap:12px',
+        role: 'button', tabindex: '0',
+        'aria-label': 'Kelola materi kelas',
+        onclick: function () { go('materi'); }
+      }, [
+        el('div', {
+          style: 'width:44px;height:44px;border-radius:22px;background:var(--rose);color:#fff;' +
+                 'display:flex;align-items:center;justify-content:center'
+        }, [icon('book-outline', 20)]),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 't-item-title', style: 'margin:0', text: 'Materi kelas' }),
+          el('p', { class: 't-small', style: 'margin:0',
+            text: 'Unggah bahan bacaan dan ringkasan untuk kelas ' + WALI_CLASS })
+        ]),
+        el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('chevron-forward', 18)])
+      ]),
+      // Daftar tugas kelas: wali tidak punya tab 'Tugas' di pratinjau.
+      el('div', {
+        style: 'display:flex;justify-content:space-between;align-items:center;' +
+               'margin:16px 0 8px 0'
+      }, [
+        el('p', { class: 't-section', style: 'margin:0', text: 'Tugas kelas' }),
+        el('p', {
+          class: 't-small', style: 'margin:0',
+          text: waliTasks.length + ' tugas'
+        })
+      ]),
+      waliTasks.length
+        ? el('div', {}, waliTasks.map(function (t) {
+            return listItemCard({
+              iconEmoji: metaFor(t.subject).icon,
+              tileColor: metaFor(t.subject).color,
+              title: t.title,
+              meta: t.subject + ' · ' + t.minutes + ' menit' +
+                (t.questionsSource === 'assistant'
+                  ? ' · ' + t.questions.length + ' soal asisten'
+                  : '') +
+                ' · ' + deadlineCountdown(t.dueAt, NOW),
+              status: RESULTS[t.id] ? 'Selesai'
+                : (t.questionsSource === 'assistant' ? 'Soal asisten' : 'Aktif'),
+              onTap: function () { openTaskDetail(t); }
+            });
+          }))
+        : el('p', {
+            class: 't-small', style: 'margin:0 0 4px 0',
+            text: 'Belum ada tugas untuk ' + WALI_CLASS +
+              '. Buat satu dari bahan ajar di atas.'
+          }),
       el('div', {
         class: 'clay-soft pressable',
         style: 'margin-top:5px;padding:16px;border-radius:20px;display:flex;justify-content:space-between;align-items:center',
@@ -2544,37 +2614,283 @@
     return el('div', {}, children);
   }
 
+  /* ---------------- Simulasi asisten penyusun soal ----------------
+     Cermin QuizDraftService (Flutter): bukan AI sungguhan, offline, dan
+     tidak membaca PDF. Kalimat bahan dipecah, kata kunci diambil sebagai
+     jawaban, kata kunci kalimat lain jadi pengecoh. Hasil deterministik. */
+  var ASSISTANT_STOP_WORDS = [
+    'yang', 'dengan', 'untuk', 'dari', 'dalam', 'pada', 'adalah', 'akan',
+    'dapat', 'juga', 'kita', 'mereka', 'siswa', 'kelas', 'materi', 'belajar',
+    'tugas', 'soal', 'ini', 'itu', 'dan', 'atau', 'agar', 'karena', 'saat',
+    'setelah', 'sebelum', 'lebih', 'sangat', 'contoh', 'mengenai', 'tentang'
+  ];
+
+  function assistantSentences(text) {
+    var cleaned = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!cleaned) return [];
+    return cleaned.split(/(?<=[.!?])\s+/)
+      .map(function (x) { return x.trim(); })
+      .filter(function (x) { return x.length >= 24; });
+  }
+
+  function assistantKeywords(sentence, limit) {
+    var words = String(sentence || '').toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(function (w) {
+        return w.length >= 4 && ASSISTANT_STOP_WORDS.indexOf(w) < 0;
+      });
+    var unique = [];
+    words.forEach(function (w) {
+      if (unique.indexOf(w) < 0) unique.push(w);
+    });
+    return unique.slice(0, limit || 6);
+  }
+
+  function assistantQuestions(text, count) {
+    var limit = count || 10;
+    var lines = assistantSentences(text);
+    if (lines.length < 2) return [];
+    var questions = [];
+    for (var i = 0; i < lines.length && questions.length < limit; i++) {
+      var keys = assistantKeywords(lines[i]);
+      if (!keys.length) continue;
+      var answer = keys[0];
+      var distractors = [];
+      for (var off = 1; off < lines.length + 1 && distractors.length < 3; off++) {
+        var other = lines[(i + off) % lines.length];
+        assistantKeywords(other).forEach(function (k) {
+          if (k !== answer && distractors.indexOf(k) < 0 && distractors.length < 3) {
+            distractors.push(k);
+          }
+        });
+      }
+      if (distractors.length < 3) continue;
+      var answerIndex = questions.length % 4;
+      var choices = distractors.slice(0, 3);
+      choices.splice(answerIndex, 0, answer);
+      var shown = lines[i].length > 110
+        ? lines[i].slice(0, 110).trim() + '…'
+        : lines[i];
+      questions.push({
+        question: 'Berdasarkan bahan bacaan, kata kunci pada kalimat "' + shown + '" adalah ...',
+        choices: choices,
+        answerIndex: answerIndex,
+        explanation: 'Kata kunci kalimat itu adalah "' + answer + '".'
+      });
+    }
+    return questions;
+  }
+
   function openTaskForm() {
-    var titleInput = el('input', { class: 'karsa-input', id: 'task-title', placeholder: 'Judul tugas' });
-    var subjectSelect = el('select', { class: 'karsa-input', id: 'task-subject' },
-      SUBJECTS.map(function (s) { return el('option', { value: s, text: s }); }));
-    var classSelect = el('select', { class: 'karsa-input', id: 'task-class' },
-      CLASSES.map(function (c) { return el('option', { value: c, text: c }); }));
-    openSheet(el('div', {}, [
-      el('div', { class: 'sheet-handle' }),
-      el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0', text: '+ Tambah tugas' }),
-      el('p', { class: 't-muted', style: 'margin-bottom:14px', text: 'Tugas baru tersimpan lokal di perangkat ini.' }),
-      titleInput, subjectSelect, classSelect,
-      el('button', {
-        class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
-        onclick: function () {
-          var title = (document.getElementById('task-title').value || '').trim();
-          if (title) {
+    // Mapel default harus tersedia di kelas yang dipilih: IPAS baru ada mulai
+    // kelas 3, jadi Kelas 1 tidak boleh memakai SUBJECTS[0] (IPAS) — kalau
+    // tidak, tugas tersimpan tapi tidak pernah muncul di daftar siswa.
+    // Mapel default mencerminkan AppState.openForm: mapel guru untuk guru,
+    // Matematika untuk peran lain — lalu dijaga agar tersedia di kelasnya
+    // (IPAS baru ada mulai kelas 3), supaya tugas tidak "hilang" dari daftar.
+    var startClass = state.role === 'wali' ? WALI_CLASS : CLASSES[0];
+    var startSubjects = subjectsForClass(startClass);
+    var wanted = state.role === 'guru' ? state.teacherSubject : 'Matematika';
+    var startSubject = startSubjects.indexOf(wanted) >= 0
+      ? wanted
+      : startSubjects[0];
+    var draft = {
+      title: '',
+      subject: startSubject,
+      className: startClass,
+      attachmentName: '',
+      attachmentText: '',
+      source: '',
+      questions: [],
+      used: false,
+      error: '',
+      notice: ''
+    };
+
+    function refresh() {
+      var questionList = draft.questions.length
+        ? el('div', {}, draft.questions.map(function (q, i) {
+            return el('p', {
+              class: 't-small',
+              style: 'margin:7px 0 0 0;color:var(--ink)',
+              text: (i + 1) + '. ' + q.question
+            });
+          }))
+        : null;
+
+      openSheet(el('div', {}, [
+        el('div', { class: 'sheet-handle' }),
+        el('h2', {
+          class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0',
+          text: '+ Tambah tugas'
+        }),
+        el('p', {
+          class: 't-muted', style: 'margin-bottom:14px',
+          text: 'Tugas baru tersimpan lokal di perangkat ini.'
+        }),
+        el('input', {
+          class: 'karsa-input', id: 'task-title', type: 'text',
+          value: draft.title, placeholder: 'Judul tugas',
+          'aria-label': 'Judul tugas',
+          oninput: function (e) { draft.title = e.target.value; draft.error = ''; }
+        }),
+        el('select', {
+          class: 'karsa-input', id: 'task-subject', 'aria-label': 'Mata pelajaran',
+          onchange: function (e) { draft.subject = e.target.value; }
+        }, subjectsForClass(draft.className).map(function (sub) {
+          return el('option', {
+            value: sub, text: sub,
+            selected: sub === draft.subject ? 'selected' : null
+          });
+        })),
+        el('select', {
+          class: 'karsa-input', id: 'task-class', 'aria-label': 'Kelas',
+          onchange: function (e) {
+            draft.className = e.target.value;
+            // Mapel yang tidak ada di kelas baru (mis. IPAS di Kelas 1) diganti.
+            if (subjectsForClass(draft.className).indexOf(draft.subject) < 0) {
+              draft.subject = subjectsForClass(draft.className)[0];
+            }
+            refresh();
+          }
+        }, CLASSES.map(function (cl) {
+          return el('option', {
+            value: cl, text: cl,
+            selected: cl === draft.className ? 'selected' : null
+          });
+        })),
+
+        // Unggah bahan. Berkas tidak benar-benar dibaca; teks .txt bisa
+        // ditempel, PDF diarahkan ke tempel manual (batasan jujur).
+        el('button', {
+          class: 'karsa-btn clay-raised pressable', type: 'button',
+          style: 'border:none;cursor:pointer;margin-top:4px',
+          onclick: function () {
+            draft.attachmentName = draft.attachmentName ? '' : 'bahan-ajar.pdf';
+            draft.questions = [];
+            draft.used = false;
+            refresh();
+          }
+        }, [draft.attachmentName ? 'Ganti bahan' : 'Unggah bahan (PDF/gambar/teks)']),
+        draft.attachmentName ? el('p', {
+          class: 't-small', style: 'margin:6px 0 0 0',
+          text: '📎 ' + draft.attachmentName +
+            ' — bukan .txt, teksnya tidak terbaca otomatis. Tempel teksnya di bawah.'
+        }) : null,
+
+        el('div', { class: 'assistant-panel' }, [
+          el('div', { style: 'display:flex;align-items:center;gap:10px' }, [
+            el('span', { class: 'assistant-badge' }, [icon('albums', 17)]),
+            el('div', { style: 'flex:1;min-width:0' }, [
+              el('p', { class: 't-item-title', style: 'margin:0', text: 'Asisten penyusun soal' }),
+              el('p', { class: 't-small', style: 'margin:0', text: 'Simulasi offline' })
+            ])
+          ]),
+          el('p', {
+            class: 't-small', style: 'margin:10px 0 0 0',
+            text: 'Unggah bahan lalu tempel isinya di bawah, atau unggah file .txt '
+              + 'yang teksnya terbaca otomatis. Asisten menyusun soal pilihan ganda '
+              + 'dari bahan itu: satu soal per kalimat lengkap, maksimal 10 soal.'
+          }),
+          el('textarea', {
+            class: 'karsa-input', id: 'assistant-source', rows: '4',
+            placeholder: 'Tempel teks bahan ajar di sini (minimal dua kalimat)...',
+            'aria-label': 'Teks bahan ajar',
+            oninput: function (e) { draft.source = e.target.value; draft.error = ''; }
+          }, draft.source ? [draft.source] : []),
+          el('button', {
+            class: 'karsa-btn clay-raised pressable', type: 'button',
+            style: 'border:none;cursor:pointer;margin-top:10px',
+            onclick: function () {
+              var text = (draft.source || '').trim() || (draft.attachmentText || '').trim();
+              if (!text) {
+                draft.error = 'Tempel teks bahan ajar dulu (atau unggah file .txt). ' +
+                  'PDF belum bisa dibaca otomatis di demo ini.';
+                draft.questions = [];
+                draft.used = false;
+                refresh();
+                return;
+              }
+              var made = assistantQuestions(text, 10);
+              if (!made.length) {
+                draft.questions = [];
+                draft.used = false;
+                draft.error = 'Bahan terlalu pendek untuk dijadikan soal (minimal dua ' +
+                  'kalimat lengkap). Tambah teks atau pakai kuis contoh.';
+                refresh();
+                return;
+              }
+              draft.questions = made;
+              draft.used = true;
+              draft.error = '';
+              draft.notice = made.length + ' soal dibuat dari bahan yang ditempel ' +
+                '(simulasi offline, bukan AI sungguhan).';
+              if (!draft.title.trim()) draft.title = 'Tugas ' + draft.subject;
+              refresh();
+            }
+          }, [draft.used ? 'Buat ulang soal dari bahan' : 'Buat soal dengan asisten'])
+        ]),
+        draft.questions.length ? el('div', { class: 'assistant-result' }, [
+          el('div', { style: 'display:flex;align-items:center;gap:6px' }, [
+            el('span', { style: 'display:inline-flex;color:var(--blue)' }, [icon('checkmark-circle', 16)]),
+            el('span', {
+              class: 't-small',
+              style: 'flex:1;font-weight:700;color:var(--ink)',
+              text: draft.questions.length + ' soal siap dipakai tugas ini'
+            }),
+            el('button', {
+              class: 't-link pressable', type: 'button',
+              onclick: function () {
+                draft.questions = [];
+                draft.used = false;
+                draft.notice = '';
+                refresh();
+              }
+            }, ['Buang'])
+          ]),
+          questionList
+        ]) : null,
+        draft.error ? el('p', {
+          class: 'notice-title', style: 'margin:10px 0 0 0', text: draft.error
+        }) : null,
+        draft.notice ? el('p', {
+          class: 't-small', style: 'margin:10px 0 0 0', text: draft.notice
+        }) : null,
+        el('button', {
+          class: 'karsa-btn clay-raised pressable', type: 'button',
+          style: 'border:none;cursor:pointer;margin-top:12px',
+          onclick: function () {
+            var title = (draft.title || '').trim();
+            if (!title) {
+              draft.error = 'Isi judul tugas terlebih dahulu.';
+              refresh();
+              return;
+            }
+            // Tugas sah bila punya lampiran atau soal dari asisten; kalau
+            // tidak keduanya, jatuh ke bank soal contoh seperti sebelumnya.
             TASKS.push({
               id: 'local-' + (TASKS.length + 1),
-              subject: document.getElementById('task-subject').value,
+              subject: draft.subject,
               title: title,
-              className: document.getElementById('task-class').value,
+              className: draft.className,
               minutes: '30',
               dueAt: new Date(NOW.getTime() + 3 * 86400000).toISOString(),
+              kind: draft.used ? 'quiz' : (draft.attachmentName ? 'file' : 'quiz'),
+              file: draft.attachmentName || null,
+              teacher: state.role === 'wali' ? state.waliName : state.teacherName,
+              questions: draft.used ? draft.questions : [],
+              questionsSource: draft.used ? 'assistant' : 'example',
               demo: false
             });
+            closeSheet();
+            render();
           }
-          closeSheet();
-          render();
-        }
-      }, ['Simpan tugas'])
-    ]));
+        }, ['Simpan tugas'])
+      ]));
+    }
+
+    refresh();
   }
 
   function openGradeRecap() {
@@ -4786,7 +5102,11 @@
   }
 
   function openTaskDetail(task) {
-    var bank = quizBankFor(task.subject);
+    // Tugas hasil asisten membawa soalnya sendiri; hitungan harus mencerminkan
+    // soal yang benar-benar akan dikerjakan siswa.
+    var own = task && task.questions && task.questions.length ? task.questions : null;
+    var bank = own || quizBankFor(task.subject);
+    var isAssistant = !!(own && task.questionsSource === 'assistant');
     openSheet(el('div', {}, [
       el('div', { class: 'sheet-handle' }),
       el('h2', { class: 't-page-title', style: 'font-size:20px;margin:6px 0 4px 0', text: task.title }),
@@ -4796,6 +5116,11 @@
           deadlineCountdown(task.dueAt, NOW)
       }),
       el('p', { class: 't-item-title', style: 'margin-bottom:8px', text: 'Soal tersedia: ' + bank.length + ' pertanyaan' }),
+      isAssistant ? el('p', {
+        class: 't-small', style: 'margin:0 0 10px 0',
+        text: 'Soal disusun asisten dari bahan yang diunggah ' + task.teacher +
+          ' (simulasi offline, bukan AI sungguhan).'
+      }) : null,
       RESULTS[task.id]
         ? el('button', {
           class: 'karsa-btn clay-raised pressable', type: 'button', style: 'border:none;cursor:pointer',
@@ -4813,9 +5138,12 @@
   }
 
   function startQuiz(task) {
+    // Tugas hasil asisten membawa soalnya sendiri (cermin
+    // AppState.currentQuizBank): tanpa ini soal asisten tidak pernah tampil.
+    var own = task && task.questions && task.questions.length ? task.questions : null;
     state.quiz = {
       task: task,
-      bank: quizBankFor(task.subject),
+      bank: own || quizBankFor(task.subject),
       index: 0,
       choice: -1,
       checked: false,
@@ -5241,6 +5569,7 @@
     restoreState: restoreState,
     materials: function () { return MATERIALS; },
     tasks: function () { return TASKS; },
+    startQuiz: startQuiz,
     operator: {
       classNames: operatorClassNames,
       classOptions: operatorClassOptions,

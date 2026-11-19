@@ -237,6 +237,32 @@ Media** — bukan lagi section yang menempel di ujung beranda.
 
 ---
 
+## Asisten soal di form tugas (wali kelas)
+
+Form tugas di pratinjau kini punya **panel asisten** yang meniru
+`QuizDraftService` di Flutter. Alurnya:
+
+1. Dari **Beranda wali kelas** → kartu **Buat tugas dari bahan** (sebelumnya
+   wali sama sekali tidak punya jalan ke form tugas).
+2. Tombol **Unggah bahan** memasang nama berkas contoh (`bahan-ajar.pdf`) dan
+   **tidak** membaca isinya — pratinjau tidak punya pembaca PDF.
+3. Teks bahan ditempel di kotak **Simulasi offline**. Kalimat dipecah, kata
+   kunci pertama jadi jawaban, kata kunci kalimat lain jadi tiga pengecoh.
+4. Asisten menampilkan `N soal siap dipakai tugas ini` (satu soal per kalimat
+   lengkap, maksimal 10) dengan label **"bukan AI sungguhan"**.
+5. **Simpan tugas** menyimpan `questions` + `questionsSource: 'assistant'`;
+   kuis siswa lalu memakai soal itu, bukan bank soal contoh mapel.
+6. Tugas hasil asisten muncul di **Tugas kelas** pada Beranda wali dengan
+   penanda `soal asisten` — wali tidak punya tab Tugas sendiri.
+
+Bahan yang terlalu pendek ditolak dengan pesan
+`Bahan terlalu pendek untuk dijadikan soal (minimal dua kalimat lengkap)`,
+dan bahan kosong memunculkan
+`Tempel teks bahan ajar dulu (atau unggah file .txt). PDF belum bisa dibaca otomatis di demo ini.`
+Pratinjau tidak pernah mengarang soal ketika bahan tidak memadai.
+
+---
+
 ## Verifikasi
 
 ```bash
@@ -259,7 +285,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **477 pemeriksaan**.
+Total **507 pemeriksaan**.
 
 ---
 
@@ -289,6 +315,9 @@ dahulu.` / `NIP/NISN atau kata sandi tidak sesuai.`
   alur, token desain, dan isi soal.
 * Pratinjau **tidak** memakai backend. Data hidup di `localStorage` browser
   (bukan memori semata), sehingga bertahan saat halaman dimuat ulang.
+* Kalkulator soal di form tugas adalah **simulasi offline**, bukan model AI,
+  dan **tidak membaca PDF/gambar**: bahan harus ditempel sebagai teks atau
+  berasal dari berkas `.txt`.
 * Ekspor `.xlsx`/`.pdf` dan pemilihan berkas lampiran hanya ada di aplikasi
   Flutter (`lib/services/grade_export_service.dart` dan
   `lib/services/attachment_service.dart`).

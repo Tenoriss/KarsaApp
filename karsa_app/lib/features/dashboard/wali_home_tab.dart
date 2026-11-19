@@ -8,9 +8,11 @@ import '../../core/utils/date_utils.dart';
 import '../../core/widgets/chart_row.dart';
 import '../../core/widgets/clay_card.dart';
 import '../../core/widgets/karsa_icons.dart';
+import '../../core/widgets/list_item_card.dart';
 import '../../core/widgets/motion_pressable.dart';
 import '../../core/widgets/school_identity.dart';
 import '../../core/widgets/stat_card.dart';
+import '../../data/curriculum_data.dart';
 import '../../providers/app_state.dart';
 import '../../shared/widgets/greeting_header.dart';
 
@@ -28,6 +30,9 @@ class WaliHomeTab extends StatelessWidget {
     final notRecorded = members.length - recordedCount;
     final scored = state.scoredMembers;
     final avg = state.scoreAverage;
+    final classTasks = state.data.tasks
+        .where((t) => t.className == AppConstants.waliClass)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -225,6 +230,140 @@ class WaliHomeTab extends StatelessWidget {
             ],
           ),
         ),
+        // Wali kelas juga menyusun tugas: unggah bahan lalu buat soal dengan
+        // simulasi asisten. Sebelumnya tidak ada jalan ke form ini sama sekali.
+        Padding(
+          padding: const EdgeInsets.only(top: 8, bottom: 10),
+          child: Text('Tugas kelas', style: theme.text.section),
+        ),
+        MotionPressable(
+          semanticsLabel: 'Buat tugas dari bahan ajar',
+          onTap: () => state.openForm('taskForm'),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: ClayStyles.soft(
+              color: const Color(0xFFF2F6F8),
+              isDark: c.isDark,
+              radius: 20,
+              borderColor: const Color(0xFFDCE9EE),
+              borderWidth: 1,
+            ),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: ClayStyles.raised(
+                    color: c.blue,
+                    isDark: c.isDark,
+                    radius: 22,
+                  ),
+                  child: const Icon(
+                    KarsaIcons.albums,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text('Buat tugas dari bahan', style: theme.text.itemTitle),
+                      Text(
+                        'Unggah PDF/gambar/teks, lalu susun soal dengan asisten',
+                        style: theme.text.smallMuted,
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(KarsaIcons.chevronForward, size: 18, color: c.rose),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        MotionPressable(
+          semanticsLabel: 'Kelola materi kelas',
+          onTap: () => state.setScreen('materials'),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: ClayStyles.soft(
+              color: c.card,
+              isDark: c.isDark,
+              radius: 20,
+            ),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: ClayStyles.raised(
+                    color: c.rose,
+                    isDark: c.isDark,
+                    radius: 22,
+                  ),
+                  child: const Icon(
+                    KarsaIcons.bookOutline,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text('Materi kelas', style: theme.text.itemTitle),
+                      Text(
+                        'Unggah bahan bacaan dan ringkasan untuk kelas ${AppConstants.waliClass}',
+                        style: theme.text.smallMuted,
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(KarsaIcons.chevronForward, size: 18, color: c.rose),
+              ],
+            ),
+          ),
+        ),
+        // Daftar tugas kelas: wali tidak punya tab 'Tugas', jadi tugas yang
+        // baru dibuat harus bisa dilihat dan dibuka dari sini.
+        Padding(
+          padding: const EdgeInsets.only(top: 16, bottom: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Text('Tugas kelas', style: theme.text.section),
+              Text(
+                '${classTasks.length} tugas',
+                style: theme.text.smallMuted,
+              ),
+            ],
+          ),
+        ),
+        if (classTasks.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'Belum ada tugas untuk ${AppConstants.waliClass}. Buat satu dari bahan ajar di atas.',
+              style: theme.text.smallMuted,
+            ),
+          )
+        else
+          for (final t in classTasks)
+            ListItemCard(
+              iconEmoji: CurriculumData.metaFor(t.subject).icon,
+              tileColor: CurriculumData.metaFor(t.subject).color,
+              title: t.title,
+              meta: '${t.subject} · ${t.minutes} menit'
+                  '${t.questionsFromAssistant ? ' · ${t.questions.length} soal asisten' : ''}'
+                  ' · ${KarsaDateUtils.deadlineCountdown(t.dueAt, state.now)}',
+              status: t.questionsFromAssistant ? 'Soal asisten' : 'Aktif',
+              onTap: () => state.openTask(t),
+            ),
         MotionPressable(
           onTap: () => state.changeTab('Agenda'),
           child: Container(
