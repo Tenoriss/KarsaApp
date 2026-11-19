@@ -778,12 +778,108 @@ preview.go('operator-beranda');
 
 ok(viewport.textContent.indexOf('Operator Sekolah') >= 0,
   'the operator home shows the operator heading');
-ok(viewport.textContent.indexOf('24 siswa') >= 0,
+ok(viewport.textContent.indexOf(String((preview.state.roster || []).length)) >= 0,
   'the operator home shows the roster size (' + (preview.state.roster || []).length + ' siswa)');
 ok(viewport.textContent.indexOf('grafis') >= 0,
   'the operator home shows the grafis shortcut');
 ok(viewport.textContent.indexOf('Logo & banner sekolah') >= 0,
   'the operator home links to the media section');
+
+// Beranda operator yang baru: tanpa banner "Semangat mengajar", sapaan
+// langsung di bawah judul, dan pintasan yang bisa dilipat sendiri-sendiri.
+preview.go('operator-beranda');
+ok(viewport.textContent.indexOf('Selamat datang, Operator Sekolah') >= 0,
+  'the operator home greets the operator right under the heading');
+ok(viewport.querySelectorAll('.banner-img').length === 0,
+  'the operator home no longer shows the teacher banner');
+const welcomeIdx = viewport.textContent.indexOf('Selamat datang, Operator Sekolah');
+const statsIdx = viewport.textContent.indexOf('Siswa');
+ok(welcomeIdx >= 0 && statsIdx > welcomeIdx,
+  'the greeting sits above the statistics');
+
+// Semua kartu mulai terlipat: rincian belum ada di DOM.
+eq(viewport.querySelectorAll('.collapsible-card').length, 5,
+  'the operator home renders five collapsible shortcut cards');
+eq(viewport.querySelectorAll('.collapsible-body').length, 0,
+  'every shortcut card starts collapsed');
+eq(viewport.querySelectorAll('.collapsible-caret.open').length, 0,
+  'no collapsed card shows the open caret');
+
+// Membuka satu kartu hanya membuka kartu itu. Urutan kartu:
+// 0 tugas, 1 pengumuman, 2 agenda, 3 nilai, 4 logo & banner.
+const cardHeads = () => viewport.querySelectorAll('.collapsible-head');
+cardHeads()[1].click();
+eq(viewport.querySelectorAll('.collapsible-body').length, 1,
+  'tapping a card opens only that card');
+ok(viewport.textContent.indexOf('Pengumuman sekolah') >= 0,
+  'the opened card keeps its title visible');
+// Kartu pengumuman menampilkan judul pengumuman yang tersimpan.
+const openBody = viewport.querySelectorAll('.collapsible-body')[0];
+ok(!!openBody && (openBody.textContent || '').length > 3,
+  'the opened card reveals its stored entries');
+if (openBody) {
+  const hasEntry = preview.state.announcements === undefined ||
+    (openBody.textContent.indexOf('Belum ada pengumuman') < 0 ||
+     preview.state.announcements.length === 0);
+  ok(hasEntry, 'the opened announcement card lists real entries, not just an empty state');
+}
+
+// Kartu lain tetap terlipat.
+const openedCards = viewport.querySelectorAll('[data-card]')
+  .filter((n) => n.getAttribute('aria-expanded') === 'true' ||
+                 (n.querySelectorAll('.collapsible-body').length > 0));
+eq(openedCards.length, 1, 'only one card is open after a single tap');
+
+// Membuka kartu kedua tidak menutup kartu pertama (mandiri, bukan akordeon).
+cardHeads()[0].click();
+eq(viewport.querySelectorAll('.collapsible-body').length, 2,
+  'each card keeps its own open state');
+// Kartu tugas meringkas mapel dan kelas dari data nyata.
+const taskBody = viewport.querySelectorAll('.collapsible-card')[0]
+  .querySelectorAll('.collapsible-body')[0];
+ok(!!taskBody && /\d+ mata pelajaran · \d+ kelas/.test(taskBody.textContent || ''),
+  'the opened task card summarises subjects and classes');
+
+// Mengetuk lagi menutup kartu itu saja.
+cardHeads()[0].click();
+eq(viewport.querySelectorAll('.collapsible-body').length, 1,
+  'tapping an open card closes it again');
+
+// Tombol Kelola membuka halaman, bukan menutup kartu.
+const manageBtn = viewport.querySelectorAll('[data-card]')[0]
+  .querySelectorAll('.status-badge')[0];
+ok(!!manageBtn, 'each shortcut card has its manage button');
+if (manageBtn) {
+  manageBtn.click();
+  eq(preview.state.screen, 'operator-tugas',
+    'the manage button opens the related operator page');
+}
+
+// Tombol Ubah profil membuka form, bukan menutup section.
+preview.go('operator-beranda');
+const editProfileBtn = viewport.querySelectorAll('[aria-label]')
+  .filter((n) => n.getAttribute('aria-label') === 'Ubah profil operator')[0];
+ok(!!editProfileBtn, 'the profile section keeps an edit button');
+if (editProfileBtn) {
+  editProfileBtn.click();
+  ok(sheetBackdrop.hidden === false, 'the profile edit button opens the personal info form');
+  const closeProfileSheet = sheetPanel.querySelectorAll('button')
+    .filter((b) => (b.textContent || '').indexOf('Tutup') >= 0)[0];
+  if (closeProfileSheet) closeProfileSheet.click();
+}
+
+// Status buka/tutup bertahan saat layar dirender ulang (mis. ganti mode gelap).
+preview.go('operator-beranda');
+viewport.querySelectorAll('.collapsible-head')[2].click();
+const openBeforeToggle = viewport.querySelectorAll('.collapsible-body').length;
+preview.toggleTheme();
+eq(viewport.querySelectorAll('.collapsible-body').length, openBeforeToggle,
+  'the open card stays open after re-rendering the screen');
+preview.toggleTheme();
+
+// Kembalikan semua kartu ke keadaan terlipat.
+preview.state.operatorOpen = {};
+preview.go('operator-beranda');
 
 // Tab operator: 5 tab dan fifth screen media.
 const opTabs = bottomNav.querySelectorAll('.nav-item');
@@ -1316,18 +1412,26 @@ preview.state.studentName = 'Dimas Nugroho';
 preview.go('operator-beranda');
 // Mock DOM tidak mendukung selector `[attr=value]`; saring manual.
 const opInfoCard = viewport.querySelectorAll('[aria-label]')
-  .filter((n) => n.getAttribute('aria-label') === 'Ubah data operator')[0];
-ok(!!opInfoCard, 'the operator home renders the identity card');
+  .filter((n) => n.getAttribute('aria-label') === 'Ubah profil operator')[0];
+ok(!!opInfoCard, 'the operator home renders the profile section with an edit button');
 if (opInfoCard) {
-  // Kartu identitas menampilkan jabatan, NIP, dan indikator kelengkapan.
+  // Section profil menampilkan jabatan, NIP, dan indikator kelengkapan.
   ok(viewport.textContent.indexOf('Operator Sekolah') >= 0,
-    'the identity card shows the operator role');
-  ok(viewport.textContent.indexOf('NIP 19870003') >= 0,
-    'the identity card shows the operator NIP');
-  ok(/Lengkapi data pribadi \(\d\/6 kolom\)/.test(viewport.textContent),
-    'the identity card shows how complete the profile is');
+    'the profile section shows the operator role');
+  ok(viewport.textContent.indexOf('19870003') >= 0,
+    'the profile section shows the operator NIP');
+  // Section profil baru memuat keenam kolom, bukan hanya nama + NIP.
+  const profileLabels = ['Nama lengkap', 'NIP', 'Jabatan', 'Unit kerja', 'Surel', 'Telepon'];
+  eq(profileLabels.filter((l) => viewport.textContent.indexOf(l) >= 0).length, 6,
+    'the profile section lists all six profile fields');
+  ok(viewport.textContent.indexOf('Belum diisi') >= 0,
+    'empty profile fields are labelled "Belum diisi"');
+  ok(/Lengkapi (surel|telepon|data pribadi)[^()]*\(\d\/6 kolom terisi\)/.test(viewport.textContent),
+    'the profile section shows how complete the profile is');
   ok(viewport.textContent.indexOf('Data pribadi sudah lengkap') < 0,
     'the demo operator profile is reported as incomplete until contact is filled');
+  ok(viewport.textContent.indexOf('surel & telepon') >= 0,
+    'the profile section names the missing columns');
 
   opInfoCard.click();
   ok(sheetBackdrop.hidden === false, 'the operator identity card opens the personal info sheet');

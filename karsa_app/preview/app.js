@@ -202,6 +202,17 @@
     return d.getDate() + ' ' + MONTH_NAMES[d.getMonth()] + ' ' + d.getFullYear();
   }
 
+  /* "2026-11-07" -> "7 November 2026". Dipakai rincian agenda di beranda operator. */
+  function fullDateFromKey(key) {
+    var parts = String(key || '').split('-');
+    if (parts.length !== 3) return String(key || '');
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    var d = parseInt(parts[2], 10);
+    if (!y || !m || !d || m < 1 || m > 12) return String(key || '');
+    return d + ' ' + MONTH_NAMES[m - 1] + ' ' + y;
+  }
+
   function dayMonthYearId(d) {
     return d.getDate() + ' ' + SHORT_MONTHS[d.getMonth()] + ' ' + d.getFullYear();
   }
@@ -431,6 +442,7 @@
     studentName: 'Dimas Nugroho',
     teacherName: 'Ibu Sari',
     waliName: 'Ibu Sari',
+    operatorOpen: {},
     rememberMe: true,
     rememberedLogin: null,
     operatorName: 'Operator Sekolah',
@@ -3143,107 +3155,243 @@
     return statCard(opts);
   }
 
+  /* Beranda operator: cermin OperatorHomeTab yang baru.
+     Tidak ada banner "Semangat mengajar" (banner itu milik guru/siswa);
+     sapaan singkat langsung di bawah judul, lima pintasan yang bisa dilipat
+     sendiri-sendiri, lalu section profil operator lengkap. */
+  function operatorWelcomeLine(name) {
+    return el('div', { style: 'margin-bottom:16px' }, [
+      el('p', {
+        style: 'margin:0;font-size:20px;line-height:1.3;font-weight:800;color:var(--ink)',
+        text: 'Selamat datang, ' + (name || 'Operator Sekolah')
+      }),
+      el('p', {
+        class: 't-muted', style: 'margin:4px 0 0 0',
+        text: 'Semua data siswa, kelas, materi, dan aset sekolah bisa diubah dari sini.'
+      })
+    ]);
+  }
+
+  /* Kartu pintasan yang bisa dilipat sendiri-sendiri (cermin
+     OperatorCollapsibleCard). Kunci buka/tutupnya hidup di state supaya
+     pilihan operator tidak hilang saat layar dirender ulang. */
+  function operatorCollapsibleCard(opts) {
+    var open = !!(state.operatorOpen && state.operatorOpen[opts.key]);
+    return el('div', {
+      class: 'clay-soft collapsible-card',
+      'data-card': opts.key
+    }, [
+      el('div', {
+        class: 'collapsible-head pressable',
+        role: 'button', tabindex: '0',
+        'aria-expanded': open ? 'true' : 'false',
+        'aria-label': (open ? 'Tutup rincian ' : 'Buka rincian ') + opts.title,
+        onclick: function () { toggleOperatorCard(opts.key); },
+        onkeydown: function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleOperatorCard(opts.key);
+          }
+        }
+      }, [
+        el('div', {
+          class: 'item-tile', style: 'background-color:' + (opts.tileColor || '#F8EBEC')
+        }, [el('span', { text: opts.iconEmoji })]),
+        el('div', { style: 'flex:1;min-width:0' }, [
+          el('p', { class: 't-item-title', text: opts.title }),
+          el('p', { class: 't-small', text: opts.meta })
+        ]),
+        el('button', {
+          class: 'status-badge pressable', type: 'button',
+          'aria-label': opts.status + ' ' + opts.title,
+          onclick: function (e) {
+            if (e && e.stopPropagation) e.stopPropagation();
+            opts.onManage();
+          }
+        }, [opts.status]),
+        el('span', { class: 'collapsible-caret' + (open ? ' open' : ''), 'aria-hidden': 'true' },
+          [icon('chevron-forward', 17)])
+      ]),
+      open && opts.details && opts.details.length
+        ? el('div', { class: 'collapsible-body' }, opts.details.map(function (line) {
+            return el('div', { class: 'collapsible-line' }, [
+              el('span', { class: 'collapsible-dot', 'aria-hidden': 'true' }),
+              el('span', { text: line })
+            ]);
+          }))
+        : null
+    ]);
+  }
+
+  function toggleOperatorCard(key) {
+    if (!state.operatorOpen) state.operatorOpen = {};
+    state.operatorOpen[key] = !state.operatorOpen[key];
+    render();
+  }
+
   function renderOperatorBeranda() {
     var custom = Object.keys(state.mediaAssets).length;
     var active = state.roster.filter(function (s) { return s.active; }).length;
+    var op = state.operatorProfile || {};
+
+    var subjects = [];
+    TASKS.forEach(function (t) {
+      if (subjects.indexOf(t.subject) < 0) subjects.push(t.subject);
+    });
+    var taskClasses = [];
+    TASKS.forEach(function (t) {
+      if (taskClasses.indexOf(t.className) < 0) taskClasses.push(t.className);
+    });
+
+    var announcementDetails = ANNOUNCEMENTS.length
+      ? ANNOUNCEMENTS.slice(0, 3).map(function (a) { return a.title || a.body; })
+      : ['Belum ada pengumuman tersimpan.'];
+
+    var eventDetails = CLASS_EVENTS.length
+      ? CLASS_EVENTS.slice().sort(function (a, b) {
+          return String(a.date).localeCompare(String(b.date));
+        }).slice(0, 3).map(function (e) {
+          return e.title + ' · ' + fullDateFromKey(e.date);
+        })
+      : ['Belum ada agenda tersimpan.'];
+
     return el('div', {}, [
       pageHeader('Operator Sekolah', 'Kelola seluruh isi KARSA'),
-      el('img', { class: 'banner-img', src: state.mediaAssets['banner-guru'] || ASSETS.teacherBanner, alt: 'Banner guru' }),
-      noticeCard('Selamat datang, Operator',
-        'Anda mengelola data siswa, kelas, materi, dan aset sekolah. Semua perubahan tersimpan di perangkat ini pada kunci "@karsa-demo-v1".'),
+      operatorWelcomeLine(op.name),
       el('div', { class: 'stats-grid' }, [
         operatorStatCard({
           icon: 'person', label: 'Siswa', value: String(state.roster.length),
-          desc: active + ' aktif · ' + state.roster.length + ' siswa',
-          color: 'var(--rose)', onTap: function () { go('operator-siswa'); }
+          desc: active + ' aktif', color: 'var(--rose)',
+          onTap: function () { go('operator-siswa'); }
         }),
         operatorStatCard({
           icon: 'people', label: 'Kelas', value: String(state.schoolClasses.length),
-          desc: 'kelas aktif', color: 'var(--blue)', onTap: function () { go('operator-kelas'); }
+          desc: 'kelas aktif', color: 'var(--blue)',
+          onTap: function () { go('operator-kelas'); }
         })
       ]),
       el('div', { class: 'stats-grid' }, [
         operatorStatCard({
           icon: 'book-outline', label: 'Materi', value: String(MATERIALS.length),
-          desc: 'semua guru', color: 'var(--blue)', onTap: function () { go('operator-materi'); }
+          desc: 'semua guru', color: 'var(--blue)',
+          onTap: function () { go('operator-materi'); }
         }),
         operatorStatCard({
           icon: 'albums', label: 'Aset', value: custom + '/3',
-          desc: 'grafis aktif', color: 'var(--rose)', onTap: function () { go('operator-media'); }
+          desc: 'grafis aktif', color: 'var(--rose)',
+          onTap: function () { go('operator-media'); }
         })
       ]),
-      listItemCard({
-        iconEmoji: '📝', tileColor: '#F8EBEC', title: 'Tugas sekolah',
-        meta: TASKS.length + ' tugas aktif lintas kelas',
-        status: 'Kelola', onTap: function () { go('operator-tugas'); }
+      el('p', { class: 't-section', style: 'margin:18px 0 10px 0', text: 'Kelola sekolah' }),
+      operatorCollapsibleCard({
+        key: 'tasks', iconEmoji: '📝', title: 'Tugas sekolah',
+        meta: TASKS.length + ' tugas aktif lintas kelas', status: 'Kelola',
+        details: [
+          subjects.length + ' mata pelajaran · ' + taskClasses.length + ' kelas',
+          subjects.slice(0, 4).join(', ')
+        ].filter(function (v) { return v; }),
+        onManage: function () { go('operator-tugas'); }
       }),
-      listItemCard({
-        iconEmoji: '📣', tileColor: '#F8EBEC', title: 'Pengumuman sekolah',
-        meta: ANNOUNCEMENTS.length + ' pengumuman aktif',
-        status: 'Kelola', onTap: function () { go('operator-pengumuman'); }
+      operatorCollapsibleCard({
+        key: 'announcements', iconEmoji: '📣', title: 'Pengumuman sekolah',
+        meta: ANNOUNCEMENTS.length + ' pengumuman aktif', status: 'Kelola',
+        details: announcementDetails,
+        onManage: function () { go('operator-pengumuman'); }
       }),
-      listItemCard({
-        iconEmoji: '📅', tileColor: '#F8EBEC', title: 'Agenda sekolah',
-        meta: CLASS_EVENTS.length + ' agenda tersimpan',
-        status: 'Kelola', onTap: function () { go('operator-agenda'); }
+      operatorCollapsibleCard({
+        key: 'agenda', iconEmoji: '📅', title: 'Agenda sekolah',
+        meta: CLASS_EVENTS.length + ' agenda tersimpan', status: 'Kelola',
+        details: eventDetails,
+        onManage: function () { go('operator-agenda'); }
       }),
-      listItemCard({
-        iconEmoji: '📊', tileColor: '#F8EBEC', title: 'Nilai kelas',
-        meta: 'Isi, ubah, dan hapus nilai ringkas siswa',
-        status: 'Kelola', onTap: function () { go('operator-nilai'); }
+      operatorCollapsibleCard({
+        key: 'grades', iconEmoji: '📊', title: 'Nilai kelas',
+        meta: 'Isi, ubah, dan hapus nilai ringkas siswa', status: 'Kelola',
+        details: [
+          'Nilai ringkas per kelas dipakai untuk rekap di beranda wali kelas.',
+          'Nilai di luar 0–100 ditolak.'
+        ],
+        onManage: function () { go('operator-nilai'); }
       }),
-      listItemCard({
-        iconEmoji: '🗂️', tileColor: '#F8EBEC', title: 'Logo & banner sekolah',
+      operatorCollapsibleCard({
+        key: 'media', iconEmoji: '🗂️', title: 'Logo & banner sekolah',
         meta: custom === 0 ? 'Masih memakai aset bawaan aplikasi'
           : custom + ' grafis memakai gambar pilihan operator',
-        status: 'Ubah', onTap: function () { go('operator-media'); }
+        status: 'Ubah',
+        details: [
+          ['school-logo', 'Logo sekolah', 'logo-sd-karitas.png'],
+          ['banner-siswa', 'Banner siswa', 'student-banner.png'],
+          ['banner-guru', 'Banner guru', 'teacher-banner.png']
+        ].map(function (slot) {
+          return slot[1] + ' — ' + (state.mediaAssets[slot[0]] ? 'gambar pilihan operator' : 'aset bawaan');
+        }),
+        onManage: function () { go('operator-media'); }
       }),
-      operatorIdentityCard()
+      el('p', { class: 't-section', style: 'margin:8px 0 10px 0', text: 'Profil operator' }),
+      operatorProfileSection(op)
     ]);
   }
 
-  /* Kartu identitas operator: cermin _OperatorIdentityCard di Flutter. */
-  function operatorIdentityCard() {
-    var op = state.operatorProfile || {};
+  /* Section profil operator: enam kolom read-only + tombol Ubah. */
+  function operatorProfileSection(op) {
     var parts = (op.name || '').trim().split(/\s+/).filter(function (w) { return w; });
     var initials = parts.length
       ? (parts.length === 1
           ? parts[0].charAt(0)
           : parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
       : '?';
-    var filled = ['name', 'nip', 'role', 'email', 'phone', 'unit']
-      .filter(function (k) { return (op[k] || '').trim(); }).length;
-    var contact = [op.email, op.phone].filter(function (v) { return v; }).join(' · ');
+    var fields = [
+      ['Nama lengkap', op.name],
+      ['NIP', op.nip],
+      ['Jabatan', op.role],
+      ['Unit kerja', op.unit],
+      ['Surel', op.email],
+      ['Telepon', op.phone]
+    ];
+    var filled = fields.filter(function (f) { return (f[1] || '').trim(); }).length;
+    var missing = [];
+    if (!(op.email || '').trim()) missing.push('surel');
+    if (!(op.phone || '').trim()) missing.push('telepon');
 
-    var card = el('div', {
-      class: 'clay-soft pressable',
-      style: 'padding:16px;margin-top:4px;cursor:pointer',
-      onclick: function () { openSetting('Informasi pribadi'); },
-      role: 'button', tabindex: '0',
-      'aria-label': 'Ubah data operator',
-      onkeydown: function (e) {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSetting('Informasi pribadi'); }
-      }
-    }, [
-      el('div', { style: 'display:flex;align-items:center;gap:12px' }, [
+    return el('div', { class: 'clay-soft', style: 'padding:16px' }, [
+      el('div', { style: 'display:flex;align-items:center;gap:13px' }, [
         el('div', {
-          style: 'width:48px;height:48px;border-radius:24px;background:#fff;display:flex;' +
-                 'align-items:center;justify-content:center;font-weight:800;font-size:16px;color:var(--rose)'
+          style: 'width:54px;height:54px;border-radius:27px;background:#FBEAEC;display:flex;' +
+                 'align-items:center;justify-content:center;font-weight:800;font-size:19px;color:var(--rose)'
         }, [initials]),
         el('div', { style: 'flex:1;min-width:0' }, [
           el('p', { class: 't-item-title', style: 'margin:0', text: op.name || 'Operator Sekolah' }),
-          el('p', { class: 't-small', style: 'margin:2px 0 0 0',
-            text: [op.role, op.nip ? 'NIP ' + op.nip : ''].filter(function (v) { return v; }).join(' · ') })
+          el('p', { class: 't-small', style: 'margin:3px 0 0 0',
+            text: (op.unit || '').trim() || 'Unit kerja belum diisi' })
         ]),
-        el('span', { style: 'color:var(--rose);display:inline-flex' }, [icon('chevron-forward', 18)])
+        el('button', {
+          class: 'status-badge pressable', type: 'button',
+          'aria-label': 'Ubah profil operator',
+          onclick: function () { openSetting('Informasi pribadi'); }
+        }, ['Ubah'])
       ]),
-      contact ? el('p', { class: 't-small', style: 'margin:10px 0 0 0', text: contact }) : null,
-      el('p', { class: 't-small', style: 'margin:10px 0 0 0;color:var(--rose);font-weight:700',
-        text: filled < 6
-          ? 'Lengkapi data pribadi (' + filled + '/6 kolom)'
-          : 'Data pribadi sudah lengkap' })
+      el('div', { style: 'margin-top:14px' }, fields.map(function (f, i) {
+        var value = (f[1] || '').trim();
+        return el('div', {
+          class: 'profile-field' + (i === fields.length - 1 ? ' last' : '')
+        }, [
+          el('span', { class: 'profile-field-label', text: f[0] }),
+          el('span', {
+            class: 'profile-field-value' + (value ? '' : ' empty'),
+            text: value || 'Belum diisi'
+          })
+        ]);
+      })),
+      el('div', { class: 'profile-complete' }, [
+        icon(filled < 6 ? 'help-circle-outline' : 'checkmark-circle', 17),
+        el('span', {
+          text: filled < 6
+            ? 'Lengkapi ' + (missing.length ? missing.join(' & ') : 'data pribadi') +
+              ' (' + filled + '/6 kolom terisi)'
+            : 'Data pribadi sudah lengkap'
+        })
+      ])
     ]);
-    return card;
   }
 
   function renderOperatorSiswa() {

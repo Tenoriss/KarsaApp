@@ -84,7 +84,7 @@ flutter test
 
 ```bash
 $ node karsa_app/preview/test_preview.js
-Checks passed: 433
+Checks passed: 455
 ALL PREVIEW CHECKS PASSED
 ```
 
@@ -92,6 +92,11 @@ Yang dipverifikasi:
 
 * 39 layar terdaftar dan **seluruhnya** ter-render tanpa exception; daftar
   harapan lengkap diperiksa dua arah (tidak ada layar tak terdokumentasi);
+* beranda operator: sapaan tepat di bawah judul, tidak ada banner guru,
+  lima kartu pintasan mulai terlipat, tiap kartu membuka/menutup sendiri
+  (bukan akordeon), status buka bertahan saat layar dirender ulang, tombol
+  `Kelola`/`Ubah` membuka halaman terkait, dan section profil menampilkan
+  keenam kolom beserta indikator kelengkapan;
 * alias `#wali-rekap` → `wali-recap`;
 * splash menjadwalkan timer **2300 ms** dan otomatis pindah ke **form login tunggal**
   (bukan layar pilih peran);
@@ -218,6 +223,10 @@ login dengan identitas masih terisi.
 | N16 | Operator memilih IPAS untuk kelas bernomor 1–2 | Ditolak dengan `IPAS hanya boleh dipakai untuk kelas 3-6.`; form tetap terbuka |
 | N17 | `Image(provider, ...)` atau field `final` tanpa parameter konstruktor ditambahkan | `tool/check_syntax.py` gagal dan menunjuk berkas/field yang salah |
 | N18 | Kartu "Saya Operator Sekolah" di layar `welcome` (arsip) diklik | Pindah ke `login-operator`; medan masuk berlabel NIP dan kredensial `19870003` / `operator123` membuka beranda operator |
+| N22 | Beranda operator: ketuk kartu "Pengumuman sekolah" | Hanya kartu itu yang membuka rincian (3 judul pengumuman); kartu lain tetap terlipat |
+| N23 | Beranda operator: buka "Agenda sekolah", lalu ganti mode gelap | Kartu tetap terbuka karena status buka disimpan di state |
+| N24 | Beranda operator: gulir ke bawah | Section "Profil operator" menampilkan 6 kolom; kolom kosong berlabel "Belum diisi"; tombol Ubah membuka form |
+| N25 | Beranda operator: periksa atas layar | Tidak ada banner "Semangat mengajar"; ada "Selamat datang, <nama operator>" tepat di bawah judul |
 | N19 | Form login tunggal: ketik `19870003` lalu `operator123`, klik `Masuk` | Masuk ke beranda operator tanpa pernah memilih peran; badge "Operator sekolah" muncul begitu NIP dikenali |
 | N20 | Centang "Ingat saya", masuk, lalu buka ulang aplikasi | Splash → form login dengan NIP sudah terisi dan kartu "Terakhir masuk sebagai"; kata sandi tetap kosong |
 | N21 | Klik "Bukan saya" pada kartu tersimpan | Identitas terhapus dari form dan dari `@karsa-demo-v1` |
@@ -262,7 +271,7 @@ login dengan identitas masih terisi.
 | A5 | 5 peran + kredensial + dashboard/tab/profil berbeda | `AppState.authenticate()`, `lib/features/dashboard/*`, `lib/features/settings/profile_tab.dart` | ✅ |
 | A6 | Kurikulum utuh (9 mapel, 10 PG + 5 esai, 6 agama) | `lib/data/curriculum_data.dart` + `tool/generate_curriculum.py` | ✅ |
 | A7 | Struktur Flutter modular, tanpa layar placeholder / tombol mati | 120 berkas Dart, `tool/check_syntax.py` lolos | ✅ |
-| A8 | Pratinjau 39 layar, mobile-first, tanpa CDN, tanpa label "Pratinjau" | `karsa_app/preview/*`, `node karsa_app/preview/test_preview.js` (433 cek) | ✅ |
+| A8 | Pratinjau 39 layar, mobile-first, tanpa CDN, tanpa label "Pratinjau" | `karsa_app/preview/*`, `node karsa_app/preview/test_preview.js` (455 cek) | ✅ |
 | A8b | Peran operator sekolah lengkap, CRUD persisten, validasi terlihat, 5 tab | `lib/features/operator/*`, `providers/app_state.dart`, `test/operator_crud_test.dart`, blok operator di harness pratinjau | ✅ (uji Flutter belum dieksekusi) |
 | A9 | Ekspor XLSX & PDF benar-benar dapat dibuat & dibuka | `lib/services/grade_export_service.dart` | ⚠️ belum diuji di perangkat |
 | A10 | `flutter analyze` / `flutter test` hijau | — | ❌ **belum dijalankan** (SDK tidak ada) |
@@ -284,7 +293,7 @@ diuji. Tidak ada klaim "selesai" tanpa bukti eksekusi.
 | --- | --- | --- |
 | Sintaks Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 120 berkas / 16.623 baris / 148 class |
 | Sintaks JS | `node --check` ×4 | OK |
-| Harness pratinjau | `node karsa_app/preview/test_preview.js` | OK — 433 cek lulus |
+| Harness pratinjau | `node karsa_app/preview/test_preview.js` | OK — 455 cek lulus |
 | Regresi negatif | Varian scratch: perlindungan kelas terakhir dimatikan / penghapusan materi dibuat no-op / validasi IPAS-per-kelas dihapus / entri `operator` di `LOGIN_SCREEN` dihapus / label NIP staf dikembalikan ke NISN | Gagal sesuai dugaan (1, 3, 3, 4, dan 2 cek), membuktikan uji baru bermakna |
 | Regresi statis | Varian scratch: guard `existing == null` dihapus / tiga field `KarsaStoreData` dihapus dari konstruktor / import `karsa_icons.dart` dihapus | `check_syntax.py` gagal dengan 4 cek yang tepat menunjuk penyebabnya |
 | Server pratinjau | `curl` ×13 | OK — semua aset 200, `/healthz` 200 |

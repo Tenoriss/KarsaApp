@@ -318,7 +318,7 @@ Pemeriksaan yang dilakukan:
 | Sintaks & struktur Dart | `python3 karsa_app/tool/check_syntax.py` | OK — 120 berkas, 16.623 baris, 148 class/enum/mixin; semua import, aset, referensi member, inisialisasi field `final`, argumen bernama `Image`, null-check `.isEmpty`, dan import simbol lokal resolve |
 | Uji unit Flutter (disiapkan, belum dieksekusi) | `flutter test` | **Tidak dijalankan** — SDK tidak tersedia (termasuk uji baru: ringkasan nilai kelas + pengeditan data pribadi) |
 | Sintaks JS pratinjau | `node --check` | OK untuk `app.js`, `curriculum-data.js`, `test_preview.js`, `tool/generate_preview_data.js` |
-| Perilaku pratinjau (mock DOM) | `node karsa_app/preview/test_preview.js` | OK — 433 pemeriksaan lulus |
+| Perilaku pratinjau (mock DOM) | `node karsa_app/preview/test_preview.js` | OK — 455 pemeriksaan lulus |
 | Server pratinjau | `curl http://127.0.0.1:8000/...` | OK — `/healthz` 200, HTML/CSS/JS 200 + charset utf-8, 6 PNG 200, `Ionicons.ttf` 200, 404 untuk berkas tak dikenal |
 
 Rencana uji lengkap: [`03_TESTING_PLAN.md`](03_TESTING_PLAN.md).
@@ -344,6 +344,13 @@ diperiksa **tanpa Flutter** dan **tanpa browser automation**.
   materi, tugas, pengumuman, agenda, dan nilai tersimpan di `localStorage`
   `@karsa-demo-v1`; nilai ditolak di luar 0–100, kelas terakhir dilindungi,
   dan array kosong yang tersimpan tidak di-seed ulang.
+* **Beranda operator ringkas**: banner "Semangat mengajar" milik guru/siswa
+  tidak dipakai di beranda operator; diganti sapaan satu baris di bawah judul.
+  Lima pintasan (tugas, pengumuman, agenda, nilai, logo & banner) memakai
+  `OperatorCollapsibleCard` dan **bisa dilipat sendiri-sendiri** — tertutup
+  hanya menampilkan ringkasan, terbuka menampilkan rincian nyata dari data
+  tersimpan. Section profil operator menampilkan enam kolom read-only
+  (nama, NIP, jabatan, unit kerja, surel, telepon) dengan tombol Ubah.
 * **Interaksi hidup**: input NIP/NISN + kata sandi asli dengan tombol mata dan
   submit Enter, deteksi peran dari kredensial dengan pesan galat per kolom,
   centang "Ingat saya" + kartu "Terakhir masuk sebagai", kotak akun demo
@@ -396,7 +403,7 @@ HTML. Kode React Native di root repository tetap tidak disentuh.
   `x@y.z` bila diisi, telepon 8-16 angka bila diisi. Galat tampil di dalam
   form dan tidak menyimpan apa pun.
 * **Regresi**: `test/operator_crud_test.dart` (Flutter, belum dieksekusi karena
-  SDK tidak ada) dan blok operator di `preview/test_preview.js` (433
+  SDK tidak ada) dan blok operator di `preview/test_preview.js` (455
   pemeriksaan lulus), termasuk pembuktian bahwa uji gagal bila perlindungan
   kelas terakhir atau penghapusan materi dimatikan.
 

@@ -109,7 +109,7 @@ node karsa_app/tool/generate_preview_data.js
 | 38 | `kuis` |  |
 | 39 | `hasil-kuis` |  |
 
-### Cakupan operator sekolah
+## Cakupan operator sekolah
 
 Lima tab bawah: **Beranda, Siswa, Kelas, Materi, Media** (Foto & Grafis).
 Halaman tambahan yang dibuka dari pintasan/form: tugas, pengumuman, agenda,
@@ -117,7 +117,7 @@ nilai, form siswa, form materi, form kelas, dan form akun guru/wali.
 
 | Layar | Isi |
 | --- | --- |
-| `operator-beranda` | Ringkasan sekolah + pintasan kelola data, tugas, pengumuman, agenda, nilai |
+| `operator-beranda` | Sapaan operator, 4 statistik, 5 pintasan yang bisa dilipat, dan section profil operator |
 | `operator-siswa` | Roster seluruh kelas, pencarian, filter, tambah/ubah/hapus |
 | `operator-kelas` | Sub-tab **Kelas / Akun / Siswa** + form kelas & akun guru/wali |
 | `operator-materi` | Materi seluruh kelas + tambah/ubah/hapus, lampiran URL/berkas |
@@ -133,6 +133,26 @@ bisa dihapus, dan data seed yang sengaja dihapus tidak dibangkitkan ulang.
 
 Deep link memakai hash: `index.html#guru-tugas`, `#wali-recap`, `#wali-rekap`,
 `#ortu-latihan`, `#hasil-kuis`, dan seterusnya.
+
+---
+
+## Beranda operator
+
+Beranda operator dirancang supaya tidak menumpuk: banner "Semangat mengajar!"
+(banner guru/siswa) **tidak** dipakai lagi di sini, diganti sapaan satu baris
+di bawah judul layar.
+
+| Bagian | Perilaku |
+| --- | --- |
+| Sapaan | `Selamat datang, <nama operator>` + satu kalimat penjelas, langsung di bawah judul |
+| Statistik | Empat kartu ringkas: Siswa, Kelas, Materi, Aset |
+| Pintasan | Lima kartu (Tugas, Pengumuman, Agenda, Nilai, Logo & banner) yang **bisa dilipat sendiri-sendiri** |
+| Tertutup | Hanya judul + ringkasan satu baris + tombol `Kelola`/`Ubah`; daftar tetap ringkas |
+| Terbuka | Rincian nyata dari data tersimpan (mis. 3 judul pengumuman, agenda + tanggal, ringkasan mapel/kelas, status tiap slot grafis) |
+| Mandiri | Membuka satu kartu tidak menutup kartu lain — bukan akordeon; status buka bertahan saat layar dirender ulang |
+| Profil operator | Section read-only berisi enam kolom (nama, NIP, jabatan, unit kerja, surel, telepon) + indikator kelengkapan dan tombol `Ubah` ke form |
+
+---
 
 ---
 
@@ -220,7 +240,7 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **433 pemeriksaan**.
+Total **455 pemeriksaan**.
 
 ---
 
