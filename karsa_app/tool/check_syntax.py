@@ -31,6 +31,7 @@ SDK_OR_EXTERNAL_PACKAGES = {
     "open_filex",
     "pdf",
     "excel",
+    "audioplayers",
 }
 
 

@@ -102,7 +102,16 @@ Yang dipverifikasi:
   keluar; beranda tidak lagi merender kolom profil penuh dan hanya menyisakan
   pintasan ke tab tersebut;
 * alias `#wali-rekap` → `wali-recap`;
-* splash menjadwalkan timer **2300 ms** dan otomatis pindah ke **form login tunggal**
+* musik splash (`assets/audio/splash-logo.wav`) berbunyi dengan volume 0,75,
+  tetap aman bila browser memblokir autoplay, dan dihentikan saat splash
+  berakhir; durasi berkasnya ~6 detik sama dengan splash
+* splash menjadwalkan timer **6000 ms (6 detik, dalam rentang 5-7 detik)**
+  sesuai permintaan terakhir,
+  lalu otomatis pindah ke **form login tunggal**; logo KARSA beranimasi
+  (`karsa-logo-pulse` + `karsa-logo-ring`) di atas background yang tetap ada,
+  progress bar bertambah tiap detik tanpa teks hitungan mundur (teks
+  "Masuk dalam N detik" sudah dihapus sesuai permintaan),
+  dan tik tiap detik tidak membangun ulang node logo (animasi tidak restart)
   (bukan layar pilih peran);
 * form login tunggal: kelima akun demo masuk lewat form yang sama, peran
   dideteksi dari NIP/NISN, galat per kolom kosong, label NIP vs NISN, badge
@@ -253,7 +262,7 @@ login dengan identitas masih terisi.
 
 | # | Langkah | Hasil yang diharapkan |
 | --- | --- | --- |
-| P1 | Buka `http://localhost:8000` | Splash tampil, pindah otomatis ke form login tunggal dalam 2300 ms |
+| P1 | Buka `http://localhost:8000` | Splash tampil 6 detik: background ilustrasi sekolah, logo KARSA beranimasi variatif (melayang, detak, aura, dua cincin, sapuan cahaya), progress bar bertambah tanpa teks hitungan mundur, lalu pindah otomatis ke form login tunggal |
 | P2 | Ganti layar lewat dropdown | Semua 40 layar terbuka tanpa error konsol |
 | P3 | Login dengan 5 akun demo | Masuk ke beranda peran yang sesuai |
 | P4 | Login dengan data salah | Galat tampil, tetap di layar login |

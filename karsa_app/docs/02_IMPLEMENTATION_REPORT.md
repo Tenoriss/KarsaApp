@@ -160,7 +160,10 @@ label 10px.
 
 ### 4.2 Autentikasi
 
-Alur: `SplashPage` (2300 ms) → `LoginPage` (**satu form untuk kelima peran**)
+Splash tampil **6 detik** (`AppConstants.splashDuration`, rentang 5-7 detik) dengan logo
+beranimasi, **dengan musik pengiring** `assets/audio/splash-logo.wav` (6 detik, arpeggio lonceng; dihentikan otomatis saat splash selesai). Animasi 6 lapis dengan ritme berbeda: melayang 3,4 d · detak 2,5 d · aura 3,1 d · cincin 2,9 d & 3,7 d · sapuan cahaya 3,3 d), dan progress bar. Teks hitungan mundur tidak ditampilkan. Background ilustrasi tetap; logo tercetak dihapus dari aset dan
+diganti logo transparan beranimasi pada posisi yang sama.
+Alur: `SplashPage` (6 detik) → `LoginPage` (**satu form untuk kelima peran**)
 → `MainShell` sesuai peran yang terdeteksi. `WelcomePage` (pilih peran) masih
 ada di repo tetapi tidak lagi dijangkau dari splash. `ForgotPasswordPage`
 menampilkan informasi akun demo.
@@ -435,6 +438,24 @@ HTML. Kode React Native di root repository tetap tidak disentuh.
    sehingga catatan "bukan push notification" tetap jujur.
 7. **Pratinjau bukan aplikasi.** HTML preview hanya memvisualkan alur, token,
    dan isi soal; tidak menggantikan aplikasi Flutter.
+8. **Ikon pratinjau: SVG inline, bukan glyph font.** Mula-mula ikon dirender
+   sebagai glyph *Private Use Area* (U+F100–U+F8FF) dari `Ionicons.ttf`.
+   Glyph PUA **tidak punya fallback font sistem**, jadi ketika font gagal
+   dimuat — dibuka langsung dari disk, di dalam iframe tanpa jaringan, atau
+   font diblokir — ikon menghilang tanpa jejak dan tombol ikon tampak sebagai
+   lingkaran kosong. Dua keluhan nyata muncul dari sini: tombol mode terang
+   terlihat "hilang". Perbaikan: `preview/icon-paths.js` (dibangun oleh
+   `tool/build_icons.py` dari paket `ionicons@7.4.0`) menampung 30 ikon sebagai
+   `<svg>` inline dengan `currentColor`. Karena itu `Ionicons.ttf` tidak lagi
+   ditanam di berkas standalone (hemat ±520 KB; `--with-font` bila diperlukan).
+9. **Tepi tombol ikon harus kontras.** `--line` (#EFDFD9) hanya 1,25:1 di latar
+   halaman (#FFFAF7); permukaan tombolnya sendiri (#FFFDFB) bahkan 1,02:1 —
+   praktis tak terlihat. Ditambahkan token `--control-border` (#A07A6E terang,
+   #7A6976 gelap) yang mencapai ≥3:1, ambang WCAG untuk batas komponen
+   antarmuka. Tombol tema juga memakai permukaan `--surface-rose` agar tidak
+   menyatu dengan latar.
+
+   ![Perbandingan tombol tema sebelum dan sesudah](gambar/tombol-tema-sebelum-sesudah.png)
 
 ---
 

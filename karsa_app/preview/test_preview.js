@@ -35,11 +35,16 @@ class MockNode {
     this.style = {};
     this.dataset = {};
     this._text = '';
+    this._html = '';
     this.value = '';
     this.checked = false;
     this.disabled = false;
     this.hidden = false;
     this.selectionStart = 0;
+    // Properti media (<audio>/<video>) dipakai fitur splash.
+    this.currentTime = 0;
+    this.volume = 1;
+    this.paused = true;
     const self = this;
     this.classList = {
       add(name) {
@@ -132,8 +137,15 @@ class MockNode {
     return this.childNodes.map((c) => c.textContent).join('');
   }
 
-  set innerHTML(value) { this.textContent = value; }
-  get innerHTML() { return this.textContent; }
+  // `innerHTML` menyimpan MARKUP, bukan teks. Di DOM sungguhan textContent
+  // tidak pernah memuat markup — kalau di sini disamakan, isi <svg> bocor ke
+  // textContent dan label tab terbaca sebagai path SVG. Simpan terpisah.
+  set innerHTML(value) {
+    this.childNodes = [];
+    this._text = '';
+    this._html = value === null || value === undefined ? '' : String(value);
+  }
+  get innerHTML() { return this._html || this.textContent; }
 
   get id() { return this.attributes.id || ''; }
   set id(value) { this.attributes.id = value; }
@@ -253,6 +265,7 @@ sheetPanel.setAttribute('id', 'sheet-panel');
 [shell, viewport, bottomNav, screenSelect, themeToggle, sheetBackdrop, sheetPanel].forEach((n) => doc.body.appendChild(n));
 
 const timers = [];
+const intervals = [];
 // Mock localStorage supaya penyimpanan lokal di pratinjau bisa diuji.
 const storageData = {};
 const fakeLocalStorage = {
@@ -267,6 +280,16 @@ const fakeWindow = {
   history: { replaceState() { fakeWindow.location.hash = arguments[2]; } },
   setTimeout(fn, ms) { timers.push({ fn, ms }); return timers.length; },
   clearTimeout() {},
+  // Splash memakai hitungan mundur per detik, jadi mock perlu interval.
+  setInterval(fn, ms) {
+    const id = intervals.length + 1;
+    intervals.push({ id, fn, ms, cleared: false });
+    timers.push({ fn, ms });
+    return id;
+  },
+  clearInterval(id) {
+    intervals.forEach((it) => { if (it.id === id) it.cleared = true; });
+  },
   addEventListener() {},
   localStorage: fakeLocalStorage
 };
@@ -278,6 +301,8 @@ const sandbox = {
   console,
   setTimeout: fakeWindow.setTimeout,
   clearTimeout: fakeWindow.clearTimeout,
+  setInterval: fakeWindow.setInterval,
+  clearInterval: fakeWindow.clearInterval,
   history: fakeWindow.history,
   location: fakeWindow.location,
   Date,
@@ -381,15 +406,268 @@ try {
 }
 
 /* ------------------------------------------------------------------ *
- * 3. Splash auto-advances after 2300 ms
+ * 3. Splash 5-7 detik dengan logo beranimasi, lalu masuk ke form login
  * ------------------------------------------------------------------ */
-const splashTimer = timers.find((t) => t.ms === 2300);
-ok(!!splashTimer, 'splash schedules a 2300 ms timer');
+// Permintaan terakhir: durasi splash 5-7 detik. Dipakai 6 detik (tengah
+// rentang). Tes menjaga agar nilainya tetap di dalam rentang itu.
+const SPLASH_MS_EXPECTED = 6000;
+const splashTimer = timers.find((t) => t.ms === SPLASH_MS_EXPECTED);
+ok(!!splashTimer, 'splash schedules a ' + SPLASH_MS_EXPECTED + ' ms timer');
+ok(SPLASH_MS_EXPECTED >= 5000 && SPLASH_MS_EXPECTED <= 7000,
+  'durasi splash berada di rentang 5-7 detik, dapat ' +
+  (SPLASH_MS_EXPECTED / 1000) + ' detik');
 if (splashTimer) {
   preview.go('splash');
   splashTimer.fn();
-  eq(preview.state.screen, 'login', 'splash auto-advances straight to the login form after 2300 ms');
+  eq(preview.state.screen, 'login',
+    'splash auto-advances straight to the login form after ' + (SPLASH_MS_EXPECTED / 1000) + ' detik');
 }
+
+// Splash 6 detik harus terasa hidup, tapi TANPA teks hitungan mundur:
+// permintaan pemilik produk adalah menghapus "Masuk dalam N detik".
+preview.go('splash');
+const splashText = viewport.textContent || '';
+ok(splashText.indexOf('Menyiapkan pengalaman belajar') >= 0,
+  'splash tetap menampilkan pesan penyiapan');
+ok(!/Masuk dalam \d+ detik/.test(splashText),
+  'teks hitungan mundur "Masuk dalam N detik" sudah dihapus');
+ok(!/\d+\s*detik/i.test(splashText),
+  'splash tidak menampilkan sisa waktu dalam detik sama sekali');
+ok(!viewport.querySelectorAll('.splash-countdown')[0],
+  'elemen .splash-countdown tidak lagi dirender');
+ok(!!viewport.querySelectorAll('.splash-progress')[0],
+  'splash punya progress bar sebagai penanda kemajuan');
+// Logo beranimasi + background tetap ada.
+const splashArtImg = viewport.querySelectorAll('.splash-art')[0];
+ok(!!splashArtImg, 'background splash (ilustrasi) tetap ditampilkan');
+const logoImg = viewport.querySelectorAll('.splash-logo')[0];
+ok(!!logoImg, 'logo KARSA tampil di splash');
+if (logoImg) {
+  ok(String(logoImg.getAttribute('src')).indexOf('karsa-login-logo.png') >= 0,
+    'logo memakai aset logo transparan (karsa-login-logo.png)');
+  ok(logoImg.getAttribute('class').indexOf('splash-logo') >= 0,
+    'logo memakai kelas beranimasi .splash-logo');
+}
+ok(!!viewport.querySelectorAll('.splash-logo-ring')[0],
+  'logo punya cincin animasi (.splash-logo-ring)');
+
+// ---- Audio splash ----
+const splashAudioEl = viewport.querySelectorAll('.splash-audio')[0];
+ok(!!splashAudioEl, 'splash menyiapkan elemen audio');
+if (splashAudioEl) {
+  ok(String(splashAudioEl.getAttribute('src')).indexOf('splash-logo.wav') >= 0,
+    'audio memakai berkas splash-logo.wav');
+  ok(splashAudioEl.getAttribute('preload') === 'auto',
+    'audio dimuat lebih awal (preload=auto) supaya tidak telat berbunyi');
+  ok(splashAudioEl.getAttribute('aria-hidden') === 'true',
+    'elemen audio disembunyikan dari pembaca layar');
+}
+
+// Audio asli harus ada & panjangnya sama dengan durasi splash (6 detik).
+const audioPath = path.join(__dirname, '..', 'assets', 'audio', 'splash-logo.wav');
+ok(fs.existsSync(audioPath), 'berkas audio splash-logo.wav ada');
+if (fs.existsSync(audioPath)) {
+  const head = fs.readFileSync(audioPath).subarray(0, 44);
+  ok(head.subarray(0, 4).toString() === 'RIFF' && head.subarray(8, 12).toString() === 'WAVE',
+    'berkas audio berformat WAV yang sah');
+  const channels = head.readUInt16LE(22);
+  const rate = head.readUInt32LE(24);
+  const bits = head.readUInt16LE(34);
+  const dataBytes = head.readUInt32LE(40);
+  const seconds = dataBytes / (rate * channels * (bits / 8));
+  ok(seconds > 5.5 && seconds < 6.5,
+    'durasi audio sama dengan splash (~6 detik), dapat ' + seconds.toFixed(2) + ' detik');
+  ok(rate >= 44100 && channels === 2,
+    'kualitas audio layak (stereo, ' + rate + ' Hz)');
+}
+
+ok(!!splashAudioEl, 'elemen audio splash ada di DOM');
+
+// Putar: kalau berhasil, status 'diputar'.
+const mediaCalls = [];
+const audioTestable = !!splashAudioEl && typeof splashAudioEl === 'object';
+if (audioTestable) {
+splashAudioEl.play = function () {
+  mediaCalls.push('play');
+  this.paused = false;
+  return { then() { return { catch() {} }; } };
+};
+splashAudioEl.pause = function () {
+  mediaCalls.push('pause');
+  this.paused = true;
+};
+preview.go('splash');
+ok(preview.playSplashAudio() === 'diputar', 'playSplashAudio memutar audio');
+ok(mediaCalls.indexOf('play') >= 0, 'elemen audio benar-benar dipanggil play()');
+ok(splashAudioEl.volume === 0.75, 'volume audio wajar (0.75), tidak mengagetkan');
+
+// Autoplay DIBLOKIR browser: splash tidak boleh rusak, harus dicoba lagi nanti.
+splashAudioEl.play = () => {
+  const err = new Error('NotAllowedError');
+  return { then() { return { catch(cb) { cb(err); } }; } };
+};
+const blockedResult = preview.playSplashAudio();
+ok(blockedResult === 'diputar' || blockedResult === 'diblokir',
+  'autoplay yang diblokir ditangani, bukan dilempar sebagai error');
+ok(preview.state.screen === 'splash',
+  'splash tetap berjalan walau audio diblokir browser');
+
+// Hentikan saat meninggalkan splash.
+splashAudioEl.paused = false;
+splashAudioEl.currentTime = 2.5;
+ok(preview.stopSplashAudio() === true, 'stopSplashAudio menghentikan musik');
+ok(splashAudioEl.paused === true, 'audio benar-benar di-pause');
+ok(splashAudioEl.currentTime === 0, 'posisi audio dikembalikan ke awal (tidak lanjut di layar lain)');
+}
+
+// ---- Animasi harus VARIATIF, bukan satu pola berulang ----
+const splashCssEarly = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+ok(!!viewport.querySelectorAll('.splash-logo-ring-alt')[0],
+  'ada cincin kedua dengan ritme berbeda (.splash-logo-ring-alt)');
+ok(!!viewport.querySelectorAll('.splash-logo-halo')[0],
+  'ada lapis aura (.splash-logo-halo)');
+ok(!!viewport.querySelectorAll('.splash-logo-float')[0],
+  'logo dibungkus lapis melayang (.splash-logo-float)');
+ok(!!viewport.querySelectorAll('.splash-logo-rays')[0],
+  'ada lapis sapuan cahaya (.splash-logo-rays)');
+
+// Kumpulkan durasi tiap animasi: harus BERBEDA satu sama lain.
+const durations = [...splashCssEarly.matchAll(
+  /animation:\s*([a-z-]+)\s+([\d.]+)s/g)].map((m) => ({ name: m[1], secs: Number(m[2]) }));
+const logoAnims = durations.filter((d) =>
+  ['karsa-logo-pulse', 'karsa-logo-float', 'karsa-logo-halo',
+   'karsa-logo-ring', 'karsa-logo-ring-alt', 'karsa-logo-sweep'].indexOf(d.name) >= 0);
+ok(logoAnims.length >= 5,
+  'ada minimal 5 lapis animasi logo, dapat ' + logoAnims.length);
+const uniqueDurations = [...new Set(logoAnims.map((d) => d.secs))];
+ok(uniqueDurations.length === logoAnims.length,
+  'setiap lapis punya durasi berbeda (tidak serempak): ' +
+  logoAnims.map((d) => d.name.replace('karsa-logo-', '') + '=' + d.secs + 's').join(', '));
+const splashSecs = SPLASH_MS_EXPECTED / 1000;
+ok(uniqueDurations.every((d) => d > 0 && d <= splashSecs),
+  'tiap putaran animasi (' + uniqueDurations.join('s, ') + 's) tidak lebih lama ' +
+  'dari splash ' + splashSecs + ' detik, jadi tidak terpotong di tengah');
+ok(uniqueDurations.every((d) => d < splashSecs),
+  'setiap lapis menyelesaikan minimal satu putaran penuh selama splash');
+// Fase tidak boleh kembar: gabungan durasi berbeda -> pola tidak pernah
+// kembali ke kondisi awal yang sama selama splash 6 detik.
+const combos = new Set();
+for (let i = 0; i < 100; i += 1) {
+  const t = i / 10;
+  combos.add(logoAnims.map((d) => (t % d.secs).toFixed(3)).join('|'));
+}
+ok(combos.size >= 95,
+  'kombinasi fase antar lapis unik di hampir semua waktu (' + combos.size + '/100)');
+
+
+// Penempatan logo: jsdom tidak punya layout engine, jadi ukuran ilustrasi
+// dipalsukan untuk menguji perhitungannya (logika sama dengan Flutter).
+const logoStageEl = viewport.querySelectorAll('.splash-stage')[0];
+const splashArtEl = viewport.querySelectorAll('.splash-art')[0];
+const logoWrapEl = viewport.querySelectorAll('.splash-logo-wrap')[0];
+if (logoStageEl && splashArtEl && logoWrapEl) {
+  const fake = (el, r) => { el.getBoundingClientRect = () => r; };
+  // layar ponsel 390x844: ilustrasi memenuhi lebar, rata bawah
+  fake(logoStageEl, { left: 0, top: 0, width: 390, height: 844 });
+  fake(splashArtEl, { left: 0, top: 0, width: 390, height: 844 });
+  const placed = preview.layoutSplashLogo();
+  ok(placed === true, 'layoutSplashLogo berhasil menghitung posisi logo');
+  ok(logoWrapEl.style.width === '156px',
+    'lebar logo 40% dari lebar ilustrasi (156px dari 390), dapat ' + logoWrapEl.style.width);
+  ok(logoWrapEl.style.height === '143.91946308724832px' ||
+     String(logoWrapEl.style.height).indexOf('143.9') === 0,
+    'tinggi logo mengikuti rasio isi logo 298x275, dapat ' + logoWrapEl.style.height);
+  // Tengah logo harus di x 46,41% dan y 19,23% DARI ILUSTRASI. Di layar
+  // ponsel ilustrasi lebih pendek dari layar (contain + rata bawah), jadi
+  // posisi Y bukan 19,23% tinggi layar -- hitung dari kotak ilustrasinya.
+  const artH390 = 390 / (654 / 1048);
+  const cx = parseFloat(logoWrapEl.style.left);
+  const cy = parseFloat(logoWrapEl.style.top);
+  ok(Math.abs(cx - 390 * (303.5 / 654)) < 0.6,
+    'logo berada di tengah x logo aslinya, dapat ' + cx.toFixed(1) + 'px');
+  const expectCy390 = (844 - artH390) + artH390 * (201.5 / 1048);
+  ok(Math.abs(cy - expectCy390) < 0.6,
+    'logo berada di tengah y logo aslinya (di dalam ilustrasi), dapat ' +
+    cy.toFixed(1) + 'px, harusnya ' + expectCy390.toFixed(1) + 'px');
+  // dan tidak boleh memakai 19,23% tinggi layar (bug sebelum ini)
+  ok(Math.abs(cy - 844 * (201.5 / 1048)) > 10,
+    'posisi Y tidak dihitung dari tinggi layar (melainkan dari ilustrasi)');
+
+  // layar lebar (tablet landscape): ilustrasi contain -> ada ruang kiri/kanan,
+  // logo harus tetap menempel pada ilustrasi, bukan pada layar.
+  fake(logoStageEl, { left: 0, top: 0, width: 1024, height: 600 });
+  fake(splashArtEl, { left: 0, top: 0, width: 1024, height: 600 });
+  preview.layoutSplashLogo();
+  const boxW = Math.min(1024, 600 * (654 / 1048)); // 374.35...
+  const expectCx = (1024 - boxW) / 2 + boxW * (303.5 / 654);
+  const gotCx = parseFloat(logoWrapEl.style.left);
+  ok(Math.abs(gotCx - expectCx) < 0.6,
+    'di layar lebar logo ikut ilustrasi (contain), bukan layar: ' +
+    gotCx.toFixed(1) + ' vs ' + expectCx.toFixed(1));
+  const expectCy = 600 - boxW / (654 / 1048) + (boxW / (654 / 1048)) * (201.5 / 1048);
+  const gotCy = parseFloat(logoWrapEl.style.top);
+  ok(Math.abs(gotCy - expectCy) < 0.6,
+    'di layar lebar posisi tegak logo juga mengikuti ilustrasi');
+}
+// Background yang dipakai tidak lagi memuat logo tercetak, supaya logo
+// beranimasi tidak bertumpuk dengan logo statis.
+const splashCss = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+ok(/@keyframes\s+karsa-logo-pulse/.test(splashCss),
+  'ada keyframes detak logo (karsa-logo-pulse)');
+ok(/@keyframes\s+karsa-logo-ring/.test(splashCss),
+  'ada keyframes cincin logo (karsa-logo-ring)');
+ok(splashCss.indexOf('.splash-logo {') >= 0 &&
+   /animation:\s*karsa-logo-pulse/.test(splashCss),
+  'CSS menerapkan animasi detak ke logo');
+ok(/prefers-reduced-motion[\s\S]{0,220}splash-logo/.test(splashCss),
+  'animasi logo dimatikan bila pengguna meminta kurangi gerak');
+ok(/@keyframes\s+karsa-logo-pulse[\s\S]{0,200}scale\(0\.97\)/.test(splashCss),
+  'detak logo memakai skala (bukan hanya opacity)');
+
+// Mock DOM menyimpan style lewat setAttribute('style', ...).
+const widthOf = (el) => {
+  if (!el) return null;
+  const v = String(el.getAttribute('style') || '');
+  const m = v.match(/([\d.]+)%/);
+  return m ? Number(m[1]) : null;
+};
+const widthBefore = widthOf(viewport.querySelectorAll('.splash-progress-fill')[0]);
+// Tik detik berikutnya harus memajukan progress bar (tanpa mengubah teks apa pun).
+const tick = timers.find((t) => t.ms === 1000);
+ok(!!tick, 'splash menjadwalkan pembaruan tiap detik');
+if (tick) {
+  const logoBefore = viewport.querySelectorAll('.splash-logo')[0];
+  const textBefore = viewport.textContent;
+  tick.fn();
+  const widthAfter = widthOf(viewport.querySelectorAll('.splash-progress-fill')[0]);
+  ok(widthBefore !== null && widthAfter !== null && widthAfter > widthBefore,
+    'progress bar bertambah tiap detik (' + widthBefore + '% -> ' + widthAfter + '%)');
+  ok(viewport.textContent === textBefore,
+    'tik per detik tidak mengubah teks apa pun (tidak ada hitungan mundur)');
+  // Node logo harus tetap sama setelah tik: kalau diganti, animasi CSS
+  // ter-restart dan logo terlihat berkedip tiap detik.
+  ok(viewport.querySelectorAll('.splash-logo')[0] === logoBefore,
+    'tik per detik tidak membangun ulang logo (animasi tidak restart)');
+}
+
+// Musik WAJIB berhenti saat splash berakhir. Ambil jadwal timeout splash,
+// jalankan, lalu pastikan pause() benar-benar terjadi sebelum pindah layar.
+if (audioTestable) {
+  mediaCalls.length = 0;
+  splashAudioEl.paused = false;
+  preview.go('splash');
+  const splashTimeoutEnd = timers.filter((t) => t.ms === SPLASH_MS_EXPECTED).pop();
+  ok(!!splashTimeoutEnd, 'timeout splash bisa diuji');
+  if (splashTimeoutEnd) {
+    splashTimeoutEnd.fn();
+    ok(mediaCalls.indexOf('pause') >= 0,
+      'audio benar-benar dihentikan saat splash berakhir (pause dipanggil)');
+    ok(splashAudioEl.paused === true, 'audio tidak terus berbunyi di layar login');
+    eq(preview.state.screen, 'login', 'splash tetap pindah ke login setelah audio dihentikan');
+  }
+}
+
+
 
 /* ------------------------------------------------------------------ *
  * 4. Login flow per role (credentials + error message)
@@ -2761,6 +3039,148 @@ ok(htmlText.indexOf('http://') < 0 && htmlText.indexOf('https://') < 0, 'index.h
 /* ------------------------------------------------------------------ *
  * Report
  * ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ *
+ * 14. Ikon adalah SVG inline, bukan glyph font PUA
+ * ------------------------------------------------------------------ */
+// Bug yang dilaporkan: "tombol mode terang hilang kalau sedang di mode
+// terang". Akarnya dua lapis:
+//   1. ikon berupa glyph Private Use Area dari Ionicons.ttf. Glyph PUA tidak
+//      punya fallback font sistem; kalau font gagal dimuat, ikonnya hilang
+//      tanpa jejak (tombol jadi lingkaran kosong), dan
+//   2. permukaan tombol (#FFFDFB) praktis sama dengan latar halaman
+//      (#FFFAF7) - kontras 1,02:1 - jadi tombolnya menyatu dengan latar.
+// Tes ini mengunci keduanya.
+
+// 14a. Setiap ikon dirender sebagai <svg>, bukan teks glyph.
+const iconsSource = fs.readFileSync(path.join(previewDir, 'icon-paths.js'), 'utf8');
+ok(iconsSource.indexOf('window.KARSA_ICONS') >= 0,
+  'icon-paths.js exposes the inline SVG icon map');
+
+// Buka beranda siswa supaya header sapaan (pemilik tombol tema) terender.
+preview.state.role = 'siswa';
+preview.state.tab = 'Beranda';
+preview.go('siswa-beranda');
+const themeBtnForIcons = viewport.querySelectorAll('.round-icon-btn')
+  .filter((n) => {
+    const label = n.getAttribute('aria-label') || '';
+    return label.indexOf('mode gelap') >= 0 || label.indexOf('mode terang') >= 0;
+  })[0];
+ok(!!themeBtnForIcons, 'the theme button exists on the dashboard');
+if (themeBtnForIcons) {
+  // Lihat elemen ikon di dalam tombol (di DOM nyata innerHTML tombol ikut
+  // memuat markup anak, tapi mock ini menyimpannya per-elemen).
+  const iconNode = themeBtnForIcons.querySelector('.ion') || themeBtnForIcons;
+  const inner = iconNode.innerHTML || '';
+  ok(inner.toLowerCase().indexOf('<svg') >= 0,
+    'the theme button renders an inline <svg> icon');
+  ok(inner.indexOf('<path') >= 0 || inner.indexOf('<circle') >= 0,
+    'the theme icon SVG actually contains drawing geometry');
+  // Glyph PUA lama berkisar U+F100-U+F8FF. Pastikan tidak ada lagi.
+  const puaInButton = /[\uF100-\uF8FF]/.test(inner);
+  ok(!puaInButton, 'the theme button no longer depends on a Private Use Area glyph');
+}
+
+// 14a-2. Tab navigasi bawah juga memakai SVG, bukan glyph font.
+// Ini sempat lolos: tab merender glyph langsung (`text: ICONS[...]`) sehingga
+// tetap buta tanpa font meski tombol lain sudah SVG.
+// Navigasi bawah hidup di elemen #bottom-nav, DI LUAR viewport layar.
+const navIconNodes = bottomNav.querySelectorAll('.ion');
+ok(navIconNodes.length > 0, 'the bottom nav renders icon nodes');
+const navWithoutSvg = navIconNodes.filter((n) => {
+  const markup = n.innerHTML || '';
+  return markup.toLowerCase().indexOf('<svg') < 0;
+});
+eq(navWithoutSvg.length, 0,
+  'every bottom-nav icon renders inline SVG, none fall back to glyphs');
+
+// Ikon di dalam layar (header sapaan dsb.) juga tidak boleh ada yang glyph.
+const screenIconNodes = viewport.querySelectorAll('.ion');
+const screenWithoutSvg = screenIconNodes.filter((n) => {
+  const markup = n.innerHTML || '';
+  return markup.toLowerCase().indexOf('<svg') < 0;
+});
+eq(screenWithoutSvg.length, 0,
+  'every icon inside the screen renders inline SVG, none fall back to glyphs');
+
+// 14b. Ikon tetap tampil TANPA Ionicons.ttf.
+// Inti perbaikan: kalau font tidak dimuat, ikon SVG tetap tergambar.
+const iconNames = Object.keys(sandbox.window.KARSA_ICONS || {});
+ok(iconNames.length >= 30,
+  'the inline SVG map carries every icon the app uses (' + iconNames.length + ' found)');
+const emptyIcons = iconNames.filter((name) => {
+  const markup = String(sandbox.window.KARSA_ICONS[name] || '').trim();
+  return markup.length === 0;
+});
+eq(emptyIcons.length, 0,
+  'no icon in the inline map is empty (would render as an invisible button)');
+
+// Setiap kunci ikon di curriculum-data.js punya padanan SVG. Kalau tidak,
+// icon() jatuh ke glyph font lama dan bug ini kembali.
+const curriculumIcons = sandbox.window.KARSA_CURRICULUM.icons || {};
+const missingSvg = Object.keys(curriculumIcons)
+  .filter((name) => !sandbox.window.KARSA_ICONS[name]);
+eq(missingSvg.length, 0,
+  'every icon name in curriculum-data.js has an inline SVG (' +
+  (missingSvg.length ? 'missing: ' + missingSvg.join(', ') : 'all present') + ')');
+
+// 14c. Tepi tombol ikon benar-benar terlihat di KEDUA tema.
+// Ambang WCAG untuk batas komponen antarmuka (bukan teks) adalah 3:1.
+function iconRelLum(hex) {
+  const h = String(hex).replace('#', '');
+  const parts = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+  const lin = parts.map((c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)));
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+}
+function iconContrast(a, b) {
+  const la = iconRelLum(a);
+  const lb = iconRelLum(b);
+  const hi = Math.max(la, lb);
+  const lo = Math.min(la, lb);
+  return (hi + 0.05) / (lo + 0.05);
+}
+function iconToken(block, token) {
+  const match = block.match(new RegExp('--' + token + ':\\s*(#[0-9A-Fa-f]{6})'));
+  return match ? match[1] : null;
+}
+const lightThemeBlock = (cssText.match(/:root\s*\{([\s\S]*?)\}/) || [])[1] || '';
+const darkThemeBlock = (cssText.match(/\[data-theme='dark'\]\s*\{([\s\S]*?)\}/) || [])[1] || '';
+
+const lightBorder = iconToken(lightThemeBlock, 'control-border');
+const lightBg = iconToken(lightThemeBlock, 'bg');
+ok(!!lightBorder, 'light theme defines a --control-border token');
+ok(!!lightBg, 'light theme defines a --bg token');
+if (lightBorder && lightBg) {
+  const ratio = iconContrast(lightBorder, lightBg);
+  ok(ratio >= 3,
+    'light theme: the icon button border reaches 3:1 against the page (' +
+    ratio.toFixed(2) + ':1)');
+}
+
+const darkBorder = iconToken(darkThemeBlock, 'control-border');
+const darkBg = iconToken(darkThemeBlock, 'bg');
+if (darkBorder && darkBg) {
+  const ratio = iconContrast(darkBorder, darkBg);
+  ok(ratio >= 3,
+    'dark theme: the icon button border reaches 3:1 against the page (' +
+    ratio.toFixed(2) + ':1)');
+}
+
+// Tombol tema punya permukaan sendiri, jadi tidak menyatu dengan latar.
+ok(/\.round-icon-btn\.theme-toggle\s*\{/.test(cssText),
+  'the theme toggle has its own surface rule');
+ok(cssText.indexOf('var(--control-border)') >= 0,
+  'the icon button border uses the visible --control-border token');
+
+// 14d. Berkas standalone juga membawa ikon inline (tanpa font eksternal).
+const standaloneIcons = fs.existsSync(path.join(previewDir, 'karsa-standalone.html'))
+  ? fs.readFileSync(path.join(previewDir, 'karsa-standalone.html'), 'utf8')
+  : '';
+if (standaloneIcons) {
+  ok(standaloneIcons.indexOf('KARSA_ICONS') >= 0,
+    'the standalone build carries the inline icon map');
+}
+
 console.log('Checks passed: ' + passed);
 if (failures.length) {
   console.log('FAILURES (' + failures.length + '):');

@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+"""Bangun satu berkas HTML mandiri dari preview KARSA.
+
+Preview di `karsa_app/preview/` butuh server (styles.css, app.js,
+curriculum-data.js, dan aset gambar dimuat terpisah). Sandbox preview memakai
+token akses, jadi URL mentahnya tidak bisa dibuka langsung di tab baru.
+Berkas hasil skrip ini menanam SEMUA aset (CSS, JS, gambar, font) sebagai data
+URI, sehingga bisa dibuka langsung dari disk tanpa server dan tanpa token.
+
+Pemakaian:
+    python3 karsa_app/tool/build_standalone.py
+    # -> karsa_app/preview/karsa-standalone.html
+"""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+PREVIEW = ROOT / "preview"
+ASSETS = ROOT / "assets"
+
+# Berkas gambar yang dirujuk app.js, dipetakan ke nama di folder assets.
+IMAGES = {
+    "./assets/images/icon.png": "images/icon.png",
+    "./assets/images/karsa-login-logo.png": "images/karsa-login-logo.png",
+    "./assets/images/logo-sd-karitas.png": "images/logo-sd-karitas.png",
+    "./assets/images/splash-art.png": "images/splash-art.png",
+    "./assets/images/student-banner.png": "images/student-banner.png",
+    "./assets/images/teacher-banner.png": "images/teacher-banner.png",
+}
+
+
+# Berkas non-gambar yang juga harus ikut (audio splash).
+SOUNDS = {
+    "./assets/audio/splash-logo.wav": "audio/splash-logo.wav",
+}
+
+
+def data_uri(path: Path, mime: str) -> str:
+    return "data:%s;base64,%s" % (mime, base64.b64encode(path.read_bytes()).decode("ascii"))
+
+
+def build(with_font: bool = False) -> Path:
+    html = (PREVIEW / "index.html").read_text(encoding="utf-8")
+    css = (PREVIEW / "styles.css").read_text(encoding="utf-8")
+    app_js = (PREVIEW / "app.js").read_text(encoding="utf-8")
+    curriculum = (PREVIEW / "curriculum-data.js").read_text(encoding="utf-8")
+    icons = (PREVIEW / "icon-paths.js").read_text(encoding="utf-8")
+
+    # Ikon kini SVG inline (preview/icon-paths.js), jadi Ionicons.ttf tidak
+    # lagi dibutuhkan untuk menampilkan ikon. Menanamnya hanya menambah ~520 KB
+    # pada berkas hasil. Default: JANGAN ditanam, dan @font-face-nya dibuang
+    # supaya berkas mandiri tidak merujuk apa pun yang tidak ada.
+    if with_font:
+        css = css.replace(
+            "url('./assets/fonts/Ionicons.ttf')",
+            "url('%s')" % data_uri(ASSETS / "fonts" / "Ionicons.ttf", "font/ttf"),
+            1,
+        )
+    else:
+        css = re.sub(r"@font-face\s*\{[^}]*\}\s*", "", css, count=1)
+
+    # Semua gambar ditanam di app.js.
+    for rel, name in IMAGES.items():
+        app_js = app_js.replace(rel, data_uri(ASSETS / name, "image/png"))
+
+    # Audio splash juga ditanam supaya berkas mandiri tetap berbunyi.
+    for rel, name in SOUNDS.items():
+        app_js = app_js.replace(rel, data_uri(ASSETS / name, "audio/wav"))
+
+    # Favicon ditanam.
+    html = html.replace(
+        'href="./assets/images/icon.png"',
+        'href="%s"' % data_uri(ASSETS / "images" / "icon.png", "image/png"),
+        1,
+    )
+
+    # Gabungkan menjadi satu dokumen.
+    html = html.replace(
+        '<link rel="stylesheet" href="./styles.css" />',
+        "<style>\n%s\n</style>" % css,
+        1,
+    )
+    html = html.replace(
+        '<script src="./curriculum-data.js"></script>\n'
+        '  <script src="./icon-paths.js"></script>\n'
+        '  <script src="./app.js"></script>',
+        "<script>\n%s\n</script>\n  <script>\n%s\n</script>\n  <script>\n%s\n</script>"
+        % (curriculum, icons, app_js),
+        1,
+    )
+
+    # Jangan tinggalkan rujukan berkas luar: berkasnya harus benar-benar mandiri.
+    if "<script src=" in html or 'href="./styles.css"' in html or "./assets/" in html:
+        raise SystemExit("Gagal: masih ada rujukan berkas luar di hasil build")
+
+    out = PREVIEW / "karsa-standalone.html"
+    out.write_text(html, encoding="utf-8")
+    print("OK: %s (%.2f MB)" % (out.relative_to(ROOT.parent), out.stat().st_size / 1048576))
+    return out
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Bangun HTML mandiri dari preview KARSA.")
+    parser.add_argument(
+        "--with-font",
+        action="store_true",
+        help="ikut tanam Ionicons.ttf (tidak perlu: ikon sudah SVG inline)",
+    )
+    args = parser.parse_args()
+    build(with_font=args.with_font)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

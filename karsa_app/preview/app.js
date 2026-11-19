@@ -10,6 +10,7 @@
    * ------------------------------------------------------------------ */
   var CURR = window.KARSA_CURRICULUM;
   var ICONS = CURR.icons || {};
+  var PATHS = window.KARSA_ICONS || null;
 
   var ACCOUNTS = {
     operator: { id: '19870003', password: 'operator123', label: 'Operator sekolah', emoji: '🗂️' },
@@ -112,6 +113,7 @@
     loginLogo: './assets/images/karsa-login-logo.png',
     schoolLogo: './assets/images/logo-sd-karitas.png',
     splashArt: './assets/images/splash-art.png',
+    splashAudio: './assets/audio/splash-logo.wav',
     studentBanner: './assets/images/student-banner.png',
     teacherBanner: './assets/images/teacher-banner.png'
   };
@@ -175,14 +177,32 @@
     return append(node, children);
   }
 
+  // Ikon = SVG inline (icon-paths.js), BUKAN glyph font lagi.
+  //
+  // Dulu ikon berupa glyph Private Use Area dari Ionicons.ttf. Glyph PUA tak
+  // punya fallback font sistem, jadi begitu font gagal dimuat (dibuka dari
+  // disk, iframe tanpa jaringan, font diblokir) ikonnya hilang tanpa jejak —
+  // tombol mode terang tampak kosong/"hilang". SVG selalu tampil dan
+  // mewarisi `currentColor`, sehingga warnanya benar di kedua tema.
   function icon(name, size) {
-    var glyph = ICONS[name] || '';
-    return el('span', {
+    var px = size || 20;
+    var markup = PATHS ? PATHS[name] : '';
+    var node = el('span', {
       class: 'ion',
-      style: 'font-size:' + (size || 20) + 'px',
-      text: glyph,
+      style: 'width:' + px + 'px;height:' + px + 'px',
       'aria-hidden': 'true'
     });
+    if (markup) {
+      // Markup berasal dari berkas kami sendiri (ionicons resmi, MIT).
+      node.innerHTML = '<svg viewBox="0 0 512 512" width="' + px + '" height="' + px +
+        '" focusable="false">' + markup + '</svg>';
+    } else {
+      // Jaring pengaman: kalau nama ikon tak dikenal, jangan tinggalkan
+      // kotak kosong yang tak terlihat — pakai glyph font lama bila ada.
+      node.textContent = ICONS[name] || '';
+      node.setAttribute('style', 'font-size:' + px + 'px');
+    }
+    return node;
   }
 
   function clear(node) {
@@ -608,8 +628,11 @@
       el('p', { class: 't-name', text: opts.userName }),
       el('p', { class: 't-small', style: 'margin-top:2px', text: opts.subtitle })
     ]));
+    // Tombol tema: memakai `round-icon-btn` + `theme-toggle` supaya
+    // permukaannya terwarnai (bukan kartu putih di latar putih) dan tetap
+    // terlihat jelas di kedua tema.
     children.push(el('button', {
-      class: 'round-icon-btn pressable',
+      class: 'round-icon-btn theme-toggle pressable',
       type: 'button',
       'aria-label': opts.dark ? 'Aktifkan mode terang' : 'Aktifkan mode gelap',
       onclick: function () { toggleTheme(); }
@@ -1207,9 +1230,45 @@
   /* ------------------------------------------------------------------ *
    * Screens
    * ------------------------------------------------------------------ */
+  /* Lama splash tampil sebelum form login. Cermin
+     AppConstants.splashDuration di Flutter; tes membaca angka ini. */
+  // Permintaan pemilik produk: splash 5-7 detik (dipakai 6), logo beranimasi.
+  var SPLASH_MS = 6000;
+
   function renderSplash() {
+    // Splash 6 detik: progress bar sebagai penanda kemajuan (tanpa teks).
+    var progress = Math.min(100, Math.max(0,
+      ((SPLASH_MS / 1000) - remaining()) / (SPLASH_MS / 1000) * 100));
     return el('div', { class: 'splash-stage' }, [
+      // Musik splash: satu nada per denyut logo. Tidak ada kontrol karena ini
+      // hanya iringan singkat; kalau browser memblokir autoplay, splash tetap
+      // berjalan tanpa suara dan audio baru diputar pada sentuhan pertama.
+      el('audio', {
+        class: 'splash-audio',
+        src: ASSETS.splashAudio,
+        preload: 'auto',
+        'aria-hidden': 'true'
+      }),
       el('img', { class: 'splash-art', src: ASSETS.splashArt, alt: 'Ilustrasi KARSA' }),
+      // Logo KARSA beranimasi, menempati area logo yang sudah dibersihkan
+      // dari ilustrasi (x 95..566, y 88..348 dari 654x1048).
+      el('div', { class: 'splash-art-box' }, [
+        el('div', { class: 'splash-logo-wrap' }, [
+          // Beberapa lapis animasi dengan ritme berbeda supaya gerakannya
+          // variatif, bukan satu pola yang berulang terus.
+          el('span', { class: 'splash-logo-halo' }),
+          el('span', { class: 'splash-logo-ring' }),
+          el('span', { class: 'splash-logo-ring splash-logo-ring-alt' }),
+          el('span', { class: 'splash-logo-rays' }),
+          el('span', { class: 'splash-logo-float' }, [
+            el('img', {
+              class: 'splash-logo',
+              src: ASSETS.loginLogo,
+              alt: 'Logo KARSA'
+            })
+          ])
+        ])
+      ]),
       el('div', { class: 'splash-pill' }, [
         el('div', { class: 'splash-dots' }, [
           el('span', { class: 'splash-dot' }),
@@ -1217,6 +1276,9 @@
           el('span', { class: 'splash-dot' })
         ]),
         el('div', { class: 'splash-pill-text', text: 'Menyiapkan pengalaman belajar' })
+      ]),
+      el('div', { class: 'splash-progress', 'aria-hidden': 'true' }, [
+        el('div', { class: 'splash-progress-fill', style: 'width:' + progress + '%' })
       ])
     ]);
   }
@@ -6211,7 +6273,9 @@
           go(navScreenFor(role, tab));
         }
       }, [
-        el('span', { class: 'ion', text: ICONS[NAV_ICONS[tab]] || '' }),
+        // Lewat icon() supaya ikon tab juga SVG inline (bukan glyph font),
+        // dengan ukuran seragam seperti sebelumnya.
+        icon(NAV_ICONS[tab], 18),
         el('span', { text: tab })
       ]));
     });
@@ -6284,12 +6348,164 @@
     return def.render();
   }
 
+  /// Letakkan logo beranimasi tepat di atas logo yang dihapus dari ilustrasi.
+  ///
+  /// Ilustrasi digambar dengan object-fit: contain + rata bawah, jadi kotak
+  /// gambarnya belum tentu sama dengan kotak elemen <img>. Ukuran nyatanya
+  /// diukur lalu logo ditempatkan dalam piksel -- logikanya sama dengan
+  /// `_AnimatedKarsaLogo` di Flutter (LayoutBuilder + AspectRatio).
+  ///
+  /// Posisi logo tercetak di ilustrasi (654x1048): x 202..405, y 105..298.
+  var SPLASH_ART_ASPECT = 654 / 1048;
+  var SPLASH_LOGO_ASPECT = 298 / 275;
+  var SPLASH_LOGO_W = 0.40;           // 40% lebar ilustrasi
+  var SPLASH_LOGO_CX = 303.5 / 654;   // 0.4641
+  var SPLASH_LOGO_CY = 201.5 / 1048;  // 0.1923
+
+  function layoutSplashLogo() {
+    var host = window.document || document;
+    var root = (typeof host.getElementById === 'function'
+      ? host.getElementById('app-viewport') : null) || host;
+    var stage = root.querySelectorAll('.splash-stage')[0];
+    if (!stage) return false;
+    var art = stage.querySelectorAll('.splash-art')[0];
+    var wrap = stage.querySelectorAll('.splash-logo-wrap')[0];
+    var artBox = stage.querySelectorAll('.splash-art-box')[0];
+    if (!art || !wrap) return false;
+    if (typeof stage.getBoundingClientRect !== 'function') return false;
+    var sr = stage.getBoundingClientRect();
+    // Kalau .splash-art-box ada (browser sungguhan), kotak ilustrasi sudah
+    // dihitung CSS: cukup pakai kotaknya. Kalau tidak, hitung sendiri dari
+    // ukuran <img> (object-fit: contain, rata bawah).
+    var br = (artBox && typeof artBox.getBoundingClientRect === 'function')
+      ? artBox.getBoundingClientRect() : null;
+    var ar = art.getBoundingClientRect();
+    if (!sr || !ar || !(sr.width > 0) || !(sr.height > 0)) return false;
+    if (!(ar.width > 0) || !(ar.height > 0)) return false;
+
+    var boxW, boxH, left, top;
+    if (br && br.width > 0 && br.height > 0) {
+      boxW = br.width;
+      boxH = br.height;
+      left = br.left - sr.left;
+      top = br.top - sr.top;
+    } else {
+      // kotak gambar sebenarnya di dalam <img> (contain + rata bawah)
+      boxW = Math.min(ar.width, ar.height * SPLASH_ART_ASPECT);
+      boxH = boxW / SPLASH_ART_ASPECT;
+      left = (ar.left - sr.left) + (ar.width - boxW) / 2;
+      top = (ar.top - sr.top) + (ar.height - boxH);
+    }
+
+    var w = boxW * SPLASH_LOGO_W;
+    var h = w / SPLASH_LOGO_ASPECT;
+    wrap.style.left = (left + boxW * SPLASH_LOGO_CX) + 'px';
+    wrap.style.top = (top + boxH * SPLASH_LOGO_CY) + 'px';
+    wrap.style.width = w + 'px';
+    wrap.style.height = h + 'px';
+    return true;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Audio splash
+   * ------------------------------------------------------------------ */
+
+  /// Putar musik splash pada elemen <audio> yang ada di splash.
+  ///
+  /// Browser modern memblokir audio sebelum ada interaksi pengguna. Itu bukan
+  /// kesalahan: splash tetap berjalan tanpanya, dan kita mencoba lagi pada
+  /// sentuhan/klik/keyboard pertama.
+  function splashAudioEl() {
+    var host = (window.document || document);
+    var root = (typeof host.getElementById === 'function'
+      ? host.getElementById('app-viewport') : null) || host;
+    if (!root || typeof root.querySelectorAll !== 'function') return null;
+    return root.querySelectorAll('.splash-audio')[0] || null;
+  }
+
+  function playSplashAudio() {
+    var audio = splashAudioEl();
+    if (!audio || typeof audio.play !== 'function') return 'tidak-ada';
+    try {
+      if (typeof audio.currentTime === 'number') audio.currentTime = 0;
+      audio.volume = 0.75;
+      var maybe = audio.play();
+      if (maybe && typeof maybe.then === 'function') {
+        maybe.then(function () {
+          state.splashAudioBlocked = false;
+        }).catch(function () {
+          state.splashAudioBlocked = true;   // autoplay diblokir
+        });
+      }
+      return 'diputar';
+    } catch (e) {
+      state.splashAudioBlocked = true;
+      return 'diblokir';
+    }
+  }
+
+  /// Hentikan musik splash (dipanggil saat meninggalkan splash).
+  function stopSplashAudio() {
+    var audio = splashAudioEl();
+    if (!audio) return false;
+    try {
+      if (typeof audio.pause === 'function') audio.pause();
+      if (typeof audio.currentTime === 'number') audio.currentTime = 0;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Setelah interaksi pertama, coba putar lagi bila autoplay tadi diblokir.
+  function armSplashAudioRetry() {
+    var events = ['pointerdown', 'touchstart', 'keydown'];
+    function retry() {
+      if (state.screen !== 'splash') return;
+      if (!state.splashAudioBlocked) return;
+      playSplashAudio();
+    }
+    events.forEach(function (ev) {
+      window.addEventListener(ev, retry, true);
+    });
+  }
+
+  /// Perbarui hitungan mundur & progress bar tanpa membangun ulang splash.
+  /// Mengembalikan true bila splash sudah ada di DOM dan berhasil diperbarui.
+  /// Sisa detik splash. Angkanya tidak ditampilkan ke pengguna (hanya dipakai
+  /// progress bar); permintaan pemilik produk: teks hitungan mundur dihapus.
+  function remaining() {
+    return typeof state.splashRemaining === 'number'
+      ? state.splashRemaining
+      : Math.ceil(SPLASH_MS / 1000);
+  }
+
+  function patchSplash(viewport) {
+    var stage = viewport.querySelectorAll('.splash-stage')[0];
+    if (!stage) return false;
+    var progress = Math.min(100, Math.max(0,
+      ((SPLASH_MS / 1000) - remaining()) / (SPLASH_MS / 1000) * 100));
+    var fill = stage.querySelectorAll('.splash-progress-fill')[0];
+    if (fill) fill.setAttribute('style', 'width:' + progress + '%');
+    return true;
+  }
+
   function render() {
     var viewport = document.getElementById('app-viewport');
     var isSplash = state.screen === 'splash';
     viewport.classList.toggle('no-pad', isSplash);
+    // Splash beranimasi CSS: render ulang penuh tiap detik akan me-restart
+    // animasinya dari nol sehingga logo terlihat berkedip. Jadi saat splash
+    // sudah tampil, cukup perbarui bagian yang berubah (hitungan + progress).
+    if (isSplash && patchSplash(viewport)) {
+      document.getElementById('app-shell').classList.toggle('splash-mode', true);
+      document.body.classList.toggle('is-splash', true);
+      layoutSplashLogo();
+      return;
+    }
     clear(viewport);
     viewport.appendChild(renderScreen());
+    if (isSplash) layoutSplashLogo();
     document.getElementById('app-shell').classList.toggle('splash-mode', isSplash);
     document.body.classList.toggle('is-splash', isSplash);
     var def = screenDef(state.screen);
@@ -6327,16 +6543,39 @@
       render();
     } else {
       state.screen = 'splash';
+      state.splashRemaining = Math.ceil(SPLASH_MS / 1000);
       render();
+      playSplashAudio();
+      armSplashAudioRetry();
+      // Hitung mundur per detik agar splash panjang tetap terasa hidup.
+      var splashTick = window.setInterval(function () {
+        if (state.screen !== 'splash') {
+          window.clearInterval(splashTick);
+          return;
+        }
+        state.splashRemaining = Math.max(0, (state.splashRemaining || 1) - 1);
+        render();
+      }, 1000);
       window.setTimeout(function () {
+        window.clearInterval(splashTick);
+        // Musik splash berhenti sebelum pindah layar.
+        stopSplashAudio();
         // Splash langsung ke form login: tidak ada lagi layar pilih peran.
         if (state.screen === 'splash') go('login');
-      }, 2300);
+      }, SPLASH_MS);
     }
+
+    window.addEventListener('resize', function () {
+      if (state.screen === 'splash') layoutSplashLogo();
+    });
+    window.addEventListener('load', function () {
+      if (state.screen === 'splash') layoutSplashLogo();
+    });
 
     window.addEventListener('hashchange', function () {
       var value = (window.location.hash || '').replace('#', '');
       var target = value ? resolveScreen(value) : null;
+      if (target && state.screen === 'splash') stopSplashAudio();
       if (target && target !== state.screen) {
         var def = screenDef(target);
         state.screen = target;
@@ -6358,6 +6597,9 @@
   /* Expose a tiny surface for automated verification (mock DOM tests). */
   window.KARSA_PREVIEW = {
     state: state,
+    layoutSplashLogo: layoutSplashLogo,
+    playSplashAudio: playSplashAudio,
+    stopSplashAudio: stopSplashAudio,
     screens: SCREENS.map(function (s) { return s.id; }),
     go: go,
     toggleTheme: toggleTheme,

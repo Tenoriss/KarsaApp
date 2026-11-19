@@ -227,7 +227,7 @@ dikunci ke orientasi potret.
 ```bash
 python3 karsa_app/preview/serve.py --host 0.0.0.0 --port 8000
 curl http://127.0.0.1:8000/healthz
-node karsa_app/preview/test_preview.js    # 692 pemeriksaan, mock DOM
+node karsa_app/preview/test_preview.js    # 768 pemeriksaan, mock DOM
 ```
 
 ---
@@ -247,7 +247,7 @@ node karsa_app/preview/test_preview.js    # 692 pemeriksaan, mock DOM
 
 | Area | Detail |
 | --- | --- |
-| Identitas | Splash (#A2D7FB + ilustrasi asli, 2300 ms), logo & teks SD Karitas Purwokerto, banner siswa & guru |
+| Identitas | Splash (#A2D7FB + ilustrasi asli, 6 detik, logo beranimasi + musik), logo & teks SD Karitas Purwokerto, banner siswa & guru |
 | Autentikasi | Satu form login untuk 5 peran (peran dideteksi dari NIP/NISN + kata sandi + tombol mata), "Ingat saya" yang menyimpan identitas tanpa kata sandi, lupa kata sandi, logout, validasi dengan pesan galat yang sama |
 | Dashboard | 5 dashboard berbeda sesuai peran (tanpa menyatukan menjadi halaman generik) |
 | **Operator sekolah** | 6 tab (Beranda, Siswa, Kelas, Materi, Media, Profil) + halaman tugas, pengumuman, agenda, nilai, dan form siswa/kelas/akun/materi. CRUD siswa, kelas dinamis, akun guru & wali, tugas, pengumuman, agenda, materi, nilai 0–100, logo/banner sekolah, serta data pribadi operator. Semua tersimpan di `@karsa-demo-v1`, dengan validasi terlihat dan perlindungan kelas terakhir |
@@ -270,14 +270,61 @@ node karsa_app/preview/test_preview.js    # 692 pemeriksaan, mock DOM
 ## Yang belum terverifikasi
 
 * `flutter analyze` dan `flutter test` **belum dijalankan** (SDK tidak ada di
-  lingkungan pembuatan). Tujuh berkas uji sudah siap di `karsa_app/test/`,
+  lingkungan pembuatan). Sepuluh berkas uji sudah siap di `karsa_app/test/`,
   termasuk `operator_crud_test.dart`, `quiz_assistant_test.dart`, dan
   `task_two_methods_test.dart`;
   sebagai gantinya `python3 karsa_app/tool/check_syntax.py` memvalidasi
-  125 berkas Dart,
+  133 berkas Dart,
   impor, aset, inisialisasi field `final`, argumen bernama `Image()`, dan
   null-check `.isEmpty` secara statis, sementara
-  `node karsa_app/preview/test_preview.js` menjalankan 692 pemeriksaan alur.
+  `node karsa_app/preview/test_preview.js` menjalankan 728 pemeriksaan alur.
+
+**Splash 6 detik dengan logo beranimasi.** Sesuai permintaan terakhir
+(rentang 5-7 detik), layar splash tampil **6 detik** sebelum form login. Durasi tunggal ada di
+`AppConstants.splashDuration` (`Duration(seconds: 10)`); preview memakai angka
+yang sama (`SPLASH_MS = 10000`).
+
+Background ilustrasi sekolah **tetap** dipakai. Logo KARSA pada ilustrasi asli
+dihapus dari `splash-art.png` (inpainting: diisi langit sekitarnya, area di luar
+logo identik piksel, nol sisa logo), lalu diganti logo transparan
+`karsa-login-logo.png` yang dianimasikan pada posisi logo aslinya -- jadi tetap
+satu logo, bukan dua. Geometri logo asli diukur dari ilustrasi: x 202..405,
+y 105..298 dari 654x1048, tengah (46,41% ; 19,23%).
+
+Ukuran logo animasi dinaikkan ke **40% lebar ilustrasi** (aslinya 31%): pada
+layar ponsel ukuran asli terlalu kecil untuk animasi, sedangkan 72% (percobaan
+pertama) terlalu besar dan menutupi awan. Posisi dihitung dari **kotak
+ilustrasi** (contain + rata bawah), bukan dari layar -- di layar lebar
+ilustrasi tidak selebar layar, jadi logo harus ikut ilustrasi. Flutter:
+`LayoutBuilder` di `_AnimatedKarsaLogo`; preview: `layoutSplashLogo()` yang
+mengukur ukuran nyata lalu menaruh logo dalam piksel (diperbarui saat resize).
+Animasinya **6 lapis dengan ritme berbeda** (permintaan: lebih variatif) —
+melayang naik-turun + miring 3,4 dtk, detak skala dengan kurva tidak simetris
+2,5 dtk, aura putih menguat-melemah 3,1 dtk, dua cincin mengembang 2,9 dtk &
+3,7 dtk (fase digeser), dan sapuan cahaya yang lewat sesekali 3,3 dtk. Karena
+durasi tiap lapis berbeda, kombinasinya tidak pernah kembali ke kondisi awal
+selama 6 detik: 120 dari 120 sampel waktu menghasilkan fase unik. Ada
+`prefers-reduced-motion` untuk yang tidak suka gerak.
+
+Teks hitungan mundur *"Masuk dalam N detik"* **tidak ditampilkan lagi**
+(permintaan pemilik produk); kemajuan ditunjukkan oleh progress bar tipis di
+dasar layar, dan durasi tetap 6 detik (di dalam rentang 5-7 detik).
+
+**Musik splash.** `assets/audio/splash-logo.wav` (6 detik, stereo 44,1 kHz,
+dibuat khusus: arpeggio lonceng C-E-G-C yang satu nadanya berbunyi tiap logo
+berdenyut). Diputar lewat `audioplayers` saat splash tampil, volume 0,75, dan
+**selalu dihentikan** saat splash selesai supaya tidak ada suara tertinggal di
+dashboard. Semua kegagalan (perangkat senyap, aset hilang, plugin tidak
+tersedia) diabaikan agar splash tidak pernah macet karena audio.
+
+Di preview, browser memblokir audio sebelum ada interaksi pengguna. Itu
+ditangani dengan benar: splash tetap berjalan tanpa suara, dan musik dicoba
+lagi pada sentuhan/klik/keyboard pertama (`armSplashAudioRetry`).
+
+Preview memakai `patchSplash()`: saat splash sudah tampil, tik per detik hanya
+memperbarui lebar progress bar, **tidak** membangun ulang DOM. Render ulang
+penuh akan me-restart animasi CSS tiap detik sehingga logo berkedip; hal ini
+dijaga oleh tes.
 * Uji visual di perangkat iOS/Android nyata belum dilakukan.
 * Pembukaan berkas ekspor `.xlsx`/`.pdf` di perangkat belum diuji.
 * Perilaku `file_picker` di iOS belum diuji.

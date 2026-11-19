@@ -40,7 +40,8 @@ curl http://127.0.0.1:8000/healthz
 | `index.html` | Kerangka halaman: viewport, bottom nav, dan sheet modal — tanpa bar pengembang di atas. |
 | `styles.css` | Token claymorphism, palet terang/gelap, tipografi, dan komponen (1:1 dengan `lib/core/theme/*`). |
 | `app.js` | Seluruh logika pratinjau: state, 41 layar, interaksi, router hash. |
-| `curriculum-data.js` | **Berkas hasil generate** — bank soal, bank esai, info mata pelajaran, daftar agama, dan peta glif Ionicons. |
+| `curriculum-data.js` | **Berkas hasil generate** — bank soal, bank esai, info mata pelajaran, daftar agama, dan peta nama ikon Ionicons. |
+| `icon-paths.js` | **Berkas hasil generate** — 30 ikon Ionicons sebagai SVG inline. Dimuat sebelum `app.js`. |
 | `serve.py` | Server statis tanpa cache + `/healthz`. |
 | `test_preview.js` | Harness verifikasi (mock DOM) — `node test_preview.js`. |
 
@@ -69,8 +70,14 @@ node karsa_app/tool/generate_preview_data.js
   `var(--muted)`). Jangan menulis warna latar terang langsung di `style=`
   karena nilainya tidak ikut berubah saat mode gelap — itu yang dulu membuat
   kartu profil operator berlatar terang dengan teks terang (kontras ~1:1).
-* **Tanpa CDN**: seluruh aset (logo, banner, splash art, font ikon) berasal dari
+* **Tanpa CDN**: seluruh aset (logo, banner, splash art) berasal dari
   `karsa_app/assets/`.
+* **Ikon = SVG inline, bukan glyph font.** `icon()` merender `<svg>` dari
+  `icon-paths.js`; warnanya ikut `currentColor`. Glyph *Private Use Area*
+  (U+F100–U+F8FF) tidak punya fallback font sistem: begitu `Ionicons.ttf` gagal
+  dimuat (dibuka dari disk, iframe tanpa jaringan, font diblokir), ikonnya
+  hilang tanpa jejak dan tombol ikon tampak kosong — itu penyebab keluhan
+  "tombol mode terang hilang". Jangan kembali merender glyph sebagai teks.
 
 ---
 
@@ -302,8 +309,22 @@ node karsa_app/preview/test_preview.js
 ```
 
 Harness memakai **mock DOM** (tanpa browser) dan memverifikasi:
-41 layar ter-render tanpa error, transisi splash 2300 ms yang langsung membuka
-form login tunggal, deteksi peran dari NIP/NISN (kelima akun masuk lewat form
+41 layar ter-render tanpa error, splash **6000 ms** (6 detik, di dalam rentang
+5-7 detik yang diminta) yang menampilkan **logo beranimasi 6 lapis dengan ritme
+berbeda** (melayang 3,4 d · detak 2,5 d · aura 3,1 d · cincin 2,9 d & 3,7 d ·
+sapuan cahaya 3,3 d; keyframes `karsa-logo-pulse` / `karsa-logo-float` /
+`karsa-logo-halo` / `karsa-logo-ring` / `karsa-logo-ring-alt` /
+`karsa-logo-sweep`) di atas background ilustrasi yang tetap ada, progress bar
+yang benar-benar bertambah, **musik splash** (elemen `.splash-audio`, berkas
+WAV 6 detik yang sah, diputar dengan volume 0,75, tetap aman saat autoplay
+diblokir browser, dan benar-benar dihentikan saat splash berakhir),
+**tidak adanya teks hitungan mundur** (tidak ada
+teks "detik" apa pun), serta memastikan tik per detik **tidak** membangun
+ulang node logo (animasi tidak restart) dan tidak mengubah teks, dan
+`layoutSplashLogo()` menaruh logo pada posisi logo aslinya di dalam kotak
+ilustrasi (diuji dengan layout palsu: layar ponsel 390x844 dan layar lebar
+1024x600, karena jsdom tidak punya layout engine) sebelum membuka form login
+tunggal, deteksi peran dari NIP/NISN (kelima akun masuk lewat form
 yang sama, termasuk pesan galat per kolom kosong), "Ingat saya" yang menyimpan
 identitas tanpa kata sandi, navigasi bawah, filter chip/segmen/pencarian,
 pemilihan status kehadiran, pergantian tips, alur kuis → hasil, adaptasi agama,
@@ -317,13 +338,42 @@ dibangkitkan kembali saat pemuatan ulang. Lima kartu peran di layar `welcome`
 perannya sendiri (regresi untuk kartu Operator Sekolah yang sempat tidak
 bereaksi), dan label medan masuk harus NIP untuk staf vs NISN untuk
 siswa/orang tua.
-Total **692 pemeriksaan**.
+Total **728 pemeriksaan**.
+
+## Memilih musik splash
+
+`audio-preview.html` berisi tiga calon musik splash (lembut / ceria / kalem)
+dengan pemutar audio, untuk didengarkan sebelum dipilih. Yang dipakai aplikasi
+saat ini: **lembut** (`assets/audio/splash-logo.wav`). Setelah memilih, ganti
+berkas di `assets/audio/` lalu jalankan `python3 karsa_app/tool/build_standalone.py`.
+
+## Membuka preview tanpa panel Live Preview
+
+Preview di Arena berjalan di sandbox yang **mewajibkan token akses**
+(`e2b-traffic-access-token`). Tautan mentah `8000-<sandbox>.e2b.app` karena itu
+menampilkan **403 missing traffic access token** bila dibuka langsung di tab
+baru — token hanya disuntikkan oleh panel Live Preview.
+
+Untuk membuka aplikasi di luar panel tersebut:
+
+```bash
+python3 karsa_app/tool/build_standalone.py
+# -> karsa_app/preview/karsa-standalone.html (~3,8 MB)
+```
+
+Berkas itu menanam CSS, `app.js`, `curriculum-data.js`, `icon-paths.js`, enam
+gambar, dan musik splash sebagai data URI, jadi bisa dibuka **langsung dari
+disk** (klik dua kali) tanpa server. `Ionicons.ttf` **tidak** ikut ditanam
+karena ikon sudah SVG inline; pakai `--with-font` bila memang ingin
+menyertakannya (±520 KB tambahan). `standalone-download.html` adalah halaman pembuka berisi
+tombol unduh untuk berkas tersebut.
 
 ---
 
 ## Alur login terbaru
 
-Splash (2300 ms) → **satu form login** → dashboard sesuai peran. Tidak ada lagi
+Splash (**6 detik**, logo beranimasi 6 lapis + progress bar, tanpa teks
+hitungan mundur) → **satu form login** → dashboard sesuai peran. Tidak ada lagi
 layar pilih peran di jalur utama.
 
 | Langkah | Perilaku |

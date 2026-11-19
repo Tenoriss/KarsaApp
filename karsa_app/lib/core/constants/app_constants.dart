@@ -7,6 +7,20 @@ class AppConstants {
   static const String brandLabel = '✿ KARSA';
   static const String waliClass = 'Kelas 1';
 
+  /// Lama splash tampil sebelum masuk ke form login.
+  ///
+  /// Satu sumber kebenaran: dipakai [SplashPage] dan diuji oleh
+  /// `splash_duration_test.dart` / `preview/test_preview.js`. Permintaan
+  /// pemilik produk: **5-7 detik**; dipakai 6 detik (tengah rentang). Ubah di
+  /// sini bila perlu disesuaikan lagi.
+  static const Duration splashDuration = Duration(seconds: 6);
+
+  /// Lama satu putaran animasi logo di splash (skala + cahaya + cincin).
+  ///
+  /// Splash 6 detik berarti animasinya berulang beberapa kali; pakai durasi
+  /// yang membagi habis 6 detik supaya tidak terpotong di tengah putaran.
+  static const Duration splashLogoCycle = Duration(seconds: 2);
+
   static const List<String> classes = <String>[
     'Kelas 1',
     'Kelas 2',
@@ -47,6 +61,15 @@ class AppConstants {
   static const String assetLoginLogo = 'assets/images/karsa-login-logo.png';
   static const String assetSchoolLogo = 'assets/images/logo-sd-karitas.png';
   static const String assetSplashArt = 'assets/images/splash-art.png';
+
+  /// Musik singkat yang mengiringi animasi logo di splash.
+  ///
+  /// Dibuat khusus untuk KARSA: arpeggio lonceng lembut yang satu nadanya
+  /// berbunyi tepat setiap kali logo berdenyut (lihat [splashLogoCycle]),
+  /// panjangnya sama dengan [splashDuration] dan meluruh sendiri di akhir.
+  /// Path ini relatif terhadap `assets/` karena audioplayers menambahkan
+  /// prefix `assets/` sendiri.
+  static const String splashAudio = 'audio/splash-logo.wav';
   static const String assetStudentBanner = 'assets/images/student-banner.png';
   static const String assetTeacherBanner = 'assets/images/teacher-banner.png';
 }

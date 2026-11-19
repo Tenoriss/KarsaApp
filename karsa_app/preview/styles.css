@@ -15,6 +15,9 @@
   --bg: #FFFAF7;
   --card: #FFFDFB;
   --blue: #6E9CC3;
+  /* Batas komponen interaktif (tombol ikon). --line terlalu pucat untuk
+     memisahkan tombol dari latar: 1,25:1. Token ini mencapai >= 3:1. */
+  --control-border: #A07A6E;
 
   --outer-bg: #F4EDE9;
   --nav-bg: #FFFAF8;
@@ -73,6 +76,8 @@
   --bg: #211D27;
   --card: #302832;
   --blue: #85B2D1;
+  /* Di latar gelap tombol butuh tepi yang lebih terang, bukan lebih gelap. */
+  --control-border: #7A6976;
 
   --outer-bg: #493640;
   --nav-bg: #332D36;
@@ -151,6 +156,15 @@ body.is-splash {
   align-items: center;
   justify-content: center;
   user-select: none;
+  /* Ikon kini SVG inline: ukuran diatur lewat width/height inline, dan
+     warnanya ikut `currentColor` dari elemen induk. */
+  flex: 0 0 auto;
+}
+
+.ion svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* Mobile-first App Shell: 100dvh di ponsel, kolom 480px di layar lebar.
@@ -348,9 +362,191 @@ body.is-splash {
   display: block;
 }
 
+/* Logo KARSA beranimasi, duduk persis di atas area logo yang dibersihkan dari
+   ilustrasi. Ilustrasi memakai object-fit: contain selebar layar, jadi ukuran
+   logo dihitung relatif terhadap lebar ilustrasi (= lebar layar) dan posisinya
+   relatif terhadap tinggi ilustrasi (aspek 654/1048, rata bawah).
+   Ukuran asli logo tercetak: 204x193 px dari 654x1048. */
+/* Wadah berukuran ilustrasi (aspek 654/1048, rata bawah, contain), jadi
+   persentase di dalamnya selalu jatuh di titik yang sama pada gambar. */
+.splash-art-box {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  height: 100%;
+  aspect-ratio: 654 / 1048;
+  max-width: 100%;
+  pointer-events: none;
+}
+
+.splash-logo-wrap {
+  position: absolute;
+  left: 46.41%;
+  top: 19.23%;
+  /* 40% lebar ilustrasi: cukup besar untuk animasi, tidak menutupi awan. */
+  width: 40%;
+  transform: translate(-50%, -50%);
+  aspect-ratio: 298 / 275; /* isi logo 298x275 px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------ *
+   Animasi logo KARSA
+   Beberapa lapis bergerak dengan ritme BERBEDA (2.5s / 2.9s / 3.4s /
+   4.2s / 5s) supaya gerakannya variatif dan tidak terasa seperti satu pola
+   yang berulang. Selama 6 detik splash, tiap lapis menyelesaikan jumlah
+   putaran berbeda sehingga tidak pernah "bertemu" di fase yang sama.
+   ------------------------------------------------------------------ */
+
+/* Elemen audio hanya untuk suara, tidak boleh terlihat atau makan ruang. */
+.splash-audio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Lapis 1: logo melayang naik-turun + sedikit miring. */
+.splash-logo-float {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: karsa-logo-float 3.4s ease-in-out infinite;
+}
+
+.splash-logo {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 6px 16px rgba(60, 110, 150, 0.18));
+  animation: karsa-logo-pulse 2.5s ease-in-out infinite;
+}
+
+/* Lapis 2: cahaya putih di belakang logo, menguat-melemah lebih lambat. */
+.splash-logo-halo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 128%;
+  aspect-ratio: 1;
+  margin: -64% 0 0 -64%;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.22) 42%,
+    rgba(255, 255, 255, 0) 70%);
+  animation: karsa-logo-halo 3.1s ease-in-out infinite;
+}
+
+/* Lapis 3: dua cincin mengembang, fase & kecepatan berbeda. */
+.splash-logo-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 62%;
+  aspect-ratio: 1;
+  margin: -31% 0 0 -31%;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.55);
+  animation: karsa-logo-ring 2.9s ease-out infinite;
+}
+
+.splash-logo-ring-alt {
+  width: 48%;
+  margin: -24% 0 0 -24%;
+  border-width: 2px;
+  border-color: rgba(255, 255, 255, 0.42);
+  animation: karsa-logo-ring-alt 3.7s ease-out infinite;
+  animation-delay: -1.4s;
+}
+
+/* Lapis 4: sorot cahaya yang menyapu logo sesekali (bukan terus-menerus). */
+.splash-logo-rays {
+  position: absolute;
+  inset: -18% -10%;
+  background: linear-gradient(105deg,
+    rgba(255, 255, 255, 0) 38%,
+    rgba(255, 255, 255, 0.55) 50%,
+    rgba(255, 255, 255, 0) 62%);
+  background-size: 260% 100%;
+  background-repeat: no-repeat;
+  -webkit-mask-image: radial-gradient(circle at 50% 46%, #000 52%, transparent 74%);
+  mask-image: radial-gradient(circle at 50% 46%, #000 52%, transparent 74%);
+  pointer-events: none;
+  animation: karsa-logo-sweep 3.3s ease-in-out infinite;
+}
+
+@keyframes karsa-logo-pulse {
+  0%, 100% { transform: scale(0.97); }
+  45%      { transform: scale(1.035); }
+  70%      { transform: scale(0.995); }
+}
+
+@keyframes karsa-logo-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  28%      { transform: translateY(-2.2%) rotate(-0.7deg); }
+  62%      { transform: translateY(1.6%) rotate(0.5deg); }
+}
+
+@keyframes karsa-logo-halo {
+  0%, 100% { opacity: 0.34; transform: scale(0.94); }
+  40%      { opacity: 0.72; transform: scale(1.05); }
+  68%      { opacity: 0.46; transform: scale(0.99); }
+}
+
+@keyframes karsa-logo-ring {
+  0%   { transform: scale(0.55); opacity: 0; }
+  18%  { opacity: 0.6; }
+  62%  { transform: scale(1.28); opacity: 0; }
+  100% { transform: scale(1.28); opacity: 0; }
+}
+
+@keyframes karsa-logo-ring-alt {
+  0%   { transform: scale(0.7); opacity: 0; }
+  22%  { opacity: 0.45; }
+  70%  { transform: scale(1.42); opacity: 0; }
+  100% { transform: scale(1.42); opacity: 0; }
+}
+
+/* Sapuan cahaya: diam di kiri, menyapu ke kanan, lalu istirahat. */
+@keyframes karsa-logo-sweep {
+  0%, 55%   { background-position: 130% 0; opacity: 0; }
+  62%       { opacity: 0.9; }
+  82%       { background-position: -30% 0; opacity: 0.5; }
+  90%, 100% { background-position: -30% 0; opacity: 0; }
+}
+
+/* Hormati preferensi sistem: tanpa animasi bila pengguna memintanya. */
+@media (prefers-reduced-motion: reduce) {
+  .splash-logo,
+  .splash-logo-float,
+  .splash-logo-halo,
+  .splash-logo-ring,
+  .splash-logo-rays {
+    animation: none;
+  }
+  .splash-logo-ring,
+  .splash-logo-ring-alt {
+    opacity: 0.35;
+  }
+  .splash-logo-rays {
+    display: none;
+  }
+}
+
 .splash-pill {
   position: absolute;
-  bottom: 20px;
+  bottom: 30px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255, 250, 247, 0.9);
@@ -368,6 +564,28 @@ body.is-splash {
   display: flex;
   gap: 7px;
   margin-bottom: 4px;
+}
+
+/* Splash panjang (18 detik): progress bar tipis + hitungan mundur supaya
+   pengguna tahu aplikasi sedang menyiapkan, bukan macet. */
+.splash-progress {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 46%;
+  max-width: 220px;
+  height: 5px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+}
+
+.splash-progress-fill {
+  height: 5px;
+  border-radius: 999px;
+  background-color: var(--rose);
+  transition: width 0.9s linear;
 }
 
 .splash-dot {
@@ -455,7 +673,9 @@ body.is-splash {
   width: 42px;
   height: 42px;
   border-radius: 21px;
-  border: 1px solid var(--line);
+  /* Tepi lebih tegas: --line lama (#EFDFD9) hanya 1,25:1 di latar halaman,
+     sehingga tombol praktis menyatu dengan latar di mode terang. */
+  border: 1.5px solid var(--control-border);
   background-color: var(--card);
   box-shadow: var(--clay-soft-shadow);
   color: var(--rose);
@@ -464,6 +684,21 @@ body.is-splash {
   justify-content: center;
   position: relative;
   flex-shrink: 0;
+  /* Area sentuh nyaman (target >= 44px) tanpa mengubah bentuk visualnya. */
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Tombol tema: permukaan berwarna rose muda supaya tidak menyatu dengan
+   latar terang. Di mode gelap warnanya ikut token yang sesuai. */
+.round-icon-btn.theme-toggle {
+  background-color: var(--surface-rose);
+  border-color: var(--control-border);
+}
+
+[data-theme='dark'] .round-icon-btn.theme-toggle {
+  background-color: var(--surface-rose);
+  border-color: var(--control-border);
 }
 
 .notif-dot {
